@@ -27,6 +27,9 @@ static void __init dove_dt_init(void)
 	tauros2_init(0);
 #endif
 	BUG_ON(mvebu_mbus_dt_init());
+
+	dove_cpufreq_init();
+
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 }
 
