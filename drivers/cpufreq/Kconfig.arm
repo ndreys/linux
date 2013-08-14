@@ -8,6 +8,11 @@ config ARM_BIG_LITTLE_CPUFREQ
 	help
 	  This enables the Generic CPUfreq driver for ARM big.LITTLE platforms.
 
+config ARM_DOVE_CPUFREQ
+	def_bool ARCH_DOVE && OF
+	help
+	  This adds the CPUFreq driver for Marvell Dove SoCs.
+
 config ARM_DT_BL_CPUFREQ
 	tristate "Generic probing via DT for ARM big LITTLE CPUfreq driver"
 	depends on ARM_BIG_LITTLE_CPUFREQ && OF
