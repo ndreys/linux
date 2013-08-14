@@ -344,6 +344,42 @@ void __init dove_sdio1_init(void)
 	platform_device_register(&dove_sdio1);
 }
 
+/*****************************************************************************
+ * CPU Frequency
+ ****************************************************************************/
+static struct resource dove_cpufreq_resources[] = {
+	[0] = {
+		.start  = DOVE_PMU_PHYS_BASE,
+		.end    = DOVE_PMU_PHYS_BASE + 0x7,
+		.flags  = IORESOURCE_MEM,
+		.name   = "cpufreq: DFS"
+	},
+	[1] = {
+		.start  = DOVE_PMU_PHYS_BASE + 0x8000,
+		.end    = DOVE_PMU_PHYS_BASE + 0x8003,
+		.flags  = IORESOURCE_MEM,
+		.name   = "cpufreq: PMU CR"
+	},
+	[2] = {
+		.start  = DOVE_PMU_PHYS_BASE + 0x0044,
+		.end    = DOVE_PMU_PHYS_BASE + 0x0047,
+		.flags  = IORESOURCE_MEM,
+		.name   = "cpufreq: PMU Clk Div"
+	},
+};
+
+static struct platform_device dove_cpufreq_device = {
+	.name		= "dove-cpufreq",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(dove_cpufreq_resources),
+	.resource	= dove_cpufreq_resources,
+};
+
+void __init dove_cpufreq_init(void)
+{
+	platform_device_register(&dove_cpufreq_device);
+}
+
 void __init dove_setup_cpu_wins(void)
 {
 	/*

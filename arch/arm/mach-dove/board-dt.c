@@ -70,6 +70,8 @@ static void __init dove_dt_init(void)
 	/* Setup clocks for legacy devices */
 	dove_legacy_clk_init();
 
+	dove_cpufreq_init();
+
 	/* Internal devices not ported to DT yet */
 	dove_pcie_init(1, 1);
 
