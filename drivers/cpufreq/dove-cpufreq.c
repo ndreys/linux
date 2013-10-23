@@ -17,7 +17,6 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/of.h>
-#include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <asm/proc-fns.h>
 
@@ -144,15 +143,6 @@ static int dove_cpufreq_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_generic_init(policy, dove_freq_table, 5000);
 }
 
-/*
- * Handle the interrupt raised when the frequency change is
- * complete.
- */
-static irqreturn_t dove_cpufreq_irq(int irq, void *dev)
-{
-	return IRQ_HANDLED;
-}
-
 static struct cpufreq_driver dove_cpufreq_driver = {
 	.get	= dove_cpufreq_get_cpu_frequency,
 	.verify	= cpufreq_generic_frequency_table_verify,
@@ -167,7 +157,7 @@ static int dove_cpufreq_probe(struct platform_device *pdev)
 {
 	struct device *cpu_dev;
 	struct resource *res;
-	int err, irq;
+	int err;
 
 	memset(&priv, 0, sizeof(priv));
 	priv.dev = &pdev->dev;
@@ -215,19 +205,6 @@ static int dove_cpufreq_probe(struct platform_device *pdev)
 		goto out;
 
 	dove_freq_table[1].frequency = clk_get_rate(priv.ddr_clk) / 1000;
-
-	irq = irq_of_parse_and_map(cpu_dev->of_node, 0);
-	if (!irq) {
-		err = -ENXIO;
-		goto out;
-	}
-
-	err = devm_request_irq(&pdev->dev, irq, dove_cpufreq_irq,
-			       0, "dove-cpufreq", NULL);
-	if (err) {
-		dev_err(&pdev->dev, "cannot assign irq %d, %d\n", irq, err);
-		goto out;
-	}
 
 	/* Read the target ratio which should be the DDR ratio */
 	priv.dpratio = readl_relaxed(priv.pmu_clk_div);
