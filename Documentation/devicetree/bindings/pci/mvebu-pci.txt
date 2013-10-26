@@ -79,6 +79,8 @@ and the following optional properties:
   value is 0.
 - reset-gpios: optional gpio to PERST#
 - reset-delay-us: delay in us to wait after reset de-assertion
+- phys: pHandle to the PCIe phy node
+- phy-names: must be "phy"
 
 Example:
 
@@ -146,6 +148,8 @@ pcie-controller {
 		/* wait 20ms for device settle after reset deassertion */
 		reset-delay-us = <20000>;
 		clocks = <&gateclk 5>;
+		phys = <&pcie_phy1>;
+		phy-names = "phy";
 		status = "disabled";
 	};
 
@@ -163,6 +167,8 @@ pcie-controller {
 		marvell,pcie-port = <0>;
 		marvell,pcie-lane = <1>;
 		clocks = <&gateclk 6>;
+		phys = <&pcie_phy2>;
+		phy-names = "phy";
 		status = "disabled";
 	};
 
@@ -180,6 +186,8 @@ pcie-controller {
 		marvell,pcie-port = <0>;
 		marvell,pcie-lane = <2>;
 		clocks = <&gateclk 7>;
+		phys = <&pcie_phy3>;
+		phy-names = "phy";
 		status = "disabled";
 	};
 
@@ -197,6 +205,8 @@ pcie-controller {
 		marvell,pcie-port = <0>;
 		marvell,pcie-lane = <3>;
 		clocks = <&gateclk 8>;
+		phys = <&pcie_phy4>;
+		phy-names = "phy";
 		status = "disabled";
 	};
 
