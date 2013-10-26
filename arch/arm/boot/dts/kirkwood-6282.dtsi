@@ -33,6 +33,8 @@
 				marvell,pcie-port = <0>;
 				marvell,pcie-lane = <0>;
 				clocks = <&gate_clk 2>;
+				phys = <&pcie_phy0>;
+				phy-names = "phy";
 				status = "disabled";
 			};
 
@@ -50,6 +52,8 @@
 				marvell,pcie-port = <1>;
 				marvell,pcie-lane = <0>;
 				clocks = <&gate_clk 18>;
+ 				phys = <&pcie_phy0>;
+				phy-names = "phy";
 				status = "disabled";
 			};
 		};
@@ -109,6 +113,24 @@
 			reg = <0x10300 0x20>;
 			interrupts = <53>;
 			clocks = <&gate_clk 7>;
+		};
+
+		pcie_phy0: pcie_phy@0 {
+			compatible = "marvell,mvebu-pcie-phy";
+			reg = <0x40000 0x1a08>;
+			clocks = <&gate_clk 14>;
+			clock-names = "pcie";
+			#phy-cells = <1>;
+			status = "ok";
+		};
+
+		pcie_phy1: pcie_phy@1 {
+			compatible = "marvell,mvebu-pcie-phy";
+			reg = <0x44000 0x1a08>;
+			clocks = <&gate_clk 14>;
+			clock-names = "pcie";
+			#phy-cells = <1>;
+			status = "ok";
 		};
 
 		sata@80000 {
