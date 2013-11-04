@@ -240,6 +240,16 @@ config MACH_OMAP3_TORPEDO
 	 for full description please see the products webpage at
 	 http://www.logicpd.com/products/development-kits/zoom-omap35x-torpedo-development-kit
 
+config MACH_DM3730_TORPEDO
+	bool "Logic DM37x Torpedo board"
+	depends on ARCH_OMAP3
+	select OMAP_PACKAGE_CBP
+	default y
+	help
+	 Support for the LogicPD DM37x Torpedo Development kit
+	 for full description please see the products webpage at
+	 http://www.logicpd.com/products/development-kits/dm3730-torpedo-devkit
+
 config MACH_OVERO
 	bool "Gumstix Overo board"
 	depends on ARCH_OMAP3
