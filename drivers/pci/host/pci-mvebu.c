@@ -15,6 +15,7 @@
 #include <linux/mbus.h>
 #include <linux/msi.h>
 #include <linux/slab.h>
+#include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -128,6 +129,7 @@ struct mvebu_pcie_port {
 	unsigned int io_target;
 	unsigned int io_attr;
 	struct clk *clk;
+	struct phy *phy;
 	int reset_gpio;
 	int reset_active_low;
 	char *reset_name;
@@ -938,12 +940,18 @@ static int mvebu_pcie_probe(struct platform_device *pdev)
 		if (ret)
 			continue;
 
+		port->phy = devm_phy_get(&pdev->dev, "phy");
+		if (!IS_ERR(port->phy))
+			phy_power_on(port->phy);
+
 		port->base = mvebu_pcie_map_registers(pdev, child, port);
 		if (IS_ERR(port->base)) {
 			dev_err(&pdev->dev, "PCIe%d.%d: cannot map registers\n",
 				port->port, port->lane);
 			port->base = NULL;
 			clk_disable_unprepare(port->clk);
+			if (!IS_ERR(port->phy))
+				phy_power_off(port->phy);
 			continue;
 		}
 

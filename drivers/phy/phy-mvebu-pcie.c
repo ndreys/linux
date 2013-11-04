@@ -1,0 +1,136 @@
+/*
+ *      phy-mvebu-pcie.c: PCIe Phy driver for the Marvell MVEBU SoCs.
+ *
+ *      Copyright (C) 2013 Andrew Lunn <andrew@lunn.ch>
+ *
+ *      This program is free software; you can redistribute it and/or
+ *      modify it under the terms of the GNU General Public License
+ *      as published by the Free Software Foundation; either version
+ *      2 of the License, or (at your option) any later version.
+ */
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/clk.h>
+#include <linux/phy/phy.h>
+#include <linux/io.h>
+#include <linux/platform_device.h>
+
+struct priv
+{
+	struct clk 	*clk;
+	void __iomem	*base;
+};
+
+#define PCIE_LINK_CTRL	0x0070
+#define PCIE_STATUS	0x1a04
+
+static int phy_mvebu_pcie_power_off(struct phy *phy)
+{
+	struct priv * priv = phy_get_drvdata(phy);
+	u32 reg;
+
+	printk(KERN_ERR "phy_mvebu_pcie_power_off %d\n",
+	       readl(priv->base + PCIE_STATUS) & 0x1);
+
+	clk_prepare_enable(priv->clk);
+
+	reg = readl(priv->base + PCIE_LINK_CTRL);
+	reg |= 0x10;
+	writel(reg, priv->base + PCIE_LINK_CTRL);
+
+        while (1)
+                if (readl(priv->base + PCIE_STATUS) & 0x1)
+                        break;
+
+	reg = readl(priv->base + PCIE_LINK_CTRL);
+	reg &= ~0x10;
+        writel(reg, priv->base + PCIE_LINK_CTRL);
+
+	clk_disable_unprepare(priv->clk);
+
+	return 0;
+}
+
+static int phy_mvebu_pcie_power_on(struct phy *phy)
+{
+	struct priv * priv = phy_get_drvdata(phy);
+	u32 reg;
+
+	printk(KERN_ERR "phy_mvebu_pcie_power_off\n");
+
+	clk_prepare_enable(priv->clk);
+
+	reg = readl(priv->base + PCIE_LINK_CTRL);
+	reg |= 0x10;
+	writel(reg, priv->base + PCIE_LINK_CTRL);
+
+        while (1)
+                if (readl(priv->base + PCIE_STATUS) & 0x1)
+                        break;
+
+	clk_disable_unprepare(priv->clk);
+
+	return 0;
+}
+
+static struct phy_ops phy_mvebu_pcie_ops = {
+	.power_on	= phy_mvebu_pcie_power_on,
+	.power_off	= phy_mvebu_pcie_power_off,
+	.owner		= THIS_MODULE,
+};
+
+static int phy_mvebu_pcie_probe(struct platform_device * pdev)
+{
+	struct phy_provider *phy_provider;
+	struct resource *res;
+	struct priv *priv;
+	struct phy *phy;
+
+	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        priv->base = devm_ioremap_resource(&pdev->dev, res);
+        if (IS_ERR(priv->base))
+                return PTR_ERR(priv->base);
+
+	priv->clk = devm_clk_get(&pdev->dev, "pcie");
+	if (IS_ERR(priv->clk))
+                return PTR_ERR(priv->clk);
+
+	phy_provider = devm_of_phy_provider_register(&pdev->dev,
+						     of_phy_simple_xlate);
+	if (IS_ERR(phy_provider))
+		return PTR_ERR(phy_provider);
+
+	phy = devm_phy_create(&pdev->dev, &phy_mvebu_pcie_ops, NULL);
+	if (IS_ERR(phy))
+		return PTR_ERR(phy);
+
+	phy_set_drvdata(phy, priv);
+
+	/* The boot loader may of left it on. Turn it off. */
+	phy_mvebu_pcie_power_off(phy);
+
+	return 0;
+}
+
+static const struct of_device_id phy_mvebu_pcie_of_match[] = {
+	{ .compatible = "marvell,mvebu-pcie-phy" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, phy_mvebu_pcie_of_match);
+
+static struct platform_driver phy_mvebu_pcie_driver = {
+	.probe	= phy_mvebu_pcie_probe,
+	.driver = {
+		.name	= "phy-mvebu-pcie",
+		.owner	= THIS_MODULE,
+		.of_match_table	= phy_mvebu_pcie_of_match,
+	}
+};
+module_platform_driver(phy_mvebu_pcie_driver);
+
+MODULE_AUTHOR("Andrew Lunn <andrew@lunn.ch>");
+MODULE_DESCRIPTION("Marvell MVEBU PCIe PHY driver");
+MODULE_LICENSE("GPL v2");
