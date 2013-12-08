@@ -22,17 +22,17 @@
 
 		wlan-act {
 			label = "wlan-act";
-			gpios = <&gpio0 0 1>;
+			gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
 		};
 
 		wlan-ap {
 			label = "wlan-ap";
-			gpios = <&gpio0 1 1>;
+			gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
 		};
 
 		status {
 			label = "status";
-			gpios = <&gpio0 2 1>;
+			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -50,7 +50,7 @@
 			enable-active-high;
 			regulator-always-on;
 			regulator-boot-on;
-			gpio = <&gpio0 8 0>;
+			gpio = <&gpio0 8 GPIO_ACTIVE_HIGH>;
 			pinctrl-0 = <&pmx_gpio_8>;
 			pinctrl-names = "default";
 		};
@@ -90,7 +90,7 @@
 	/* Fresco Logic USB3.0 xHCI controller */
 	pcie-port@0 {
 		status = "okay";
-		reset-gpios = <&gpio0 26 1>;
+		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
 		reset-delay-us = <20000>;
 		pinctrl-0 = <&pmx_camera_gpio>;
 		pinctrl-names = "default";
@@ -98,6 +98,6 @@
 	/* Mini-PCIe slot */
 	pcie-port@1 {
 		status = "okay";
-		reset-gpios = <&gpio0 25 1>;
+		reset-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
 	};
 };
