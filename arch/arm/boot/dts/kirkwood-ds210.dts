@@ -1,0 +1,35 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/dts-v1/;
+
+#include "kirkwood.dtsi"
+#include "kirkwood-6281.dtsi"
+#include "synology/common.dtsi"
+#include "synology/i2c-rtc-seiko.dtsi"
+#include "synology/fan-speed-150.dtsi"
+#include "synology/fan-gpios-32.dtsi"
+#include "synology/fan-alarm-35-1.dtsi"
+#include "synology/hdd-leds-21-2.dtsi"
+#include "synology/hdd-power-31.dtsi"
+
+/ {
+	model = "Synology DS210 v10, v20, v30, DS211j";
+	compatible = "synology,ds210jv10", "synology,ds210jv20",
+		     "synology,ds210jv30", "synology,ds211j",
+		     "marvell,kirkwood";
+
+	memory {
+		device_type = "memory";
+		reg = <0x00000000 0x8000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8";
+	};
+};

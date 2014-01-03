@@ -1,0 +1,18 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		i2c@11000 {
+			s35390a: s35390a@30 {
+				compatible = "sii,s35390a";
+				reg = <0x30>;
+			};
+		};
+	};
+};

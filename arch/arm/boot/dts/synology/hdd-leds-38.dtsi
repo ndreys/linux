@@ -1,0 +1,52 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		pinctrl: pinctrl@10000 {
+
+			pmx_led_38: pmx-led-38 {
+				marvell,pins = "mpp38";
+				marvell,function = "gpio";
+			};
+			pmx_led_39: pmx-led-39 {
+				marvell,pins = "mpp39";
+				marvell,function = "gpio";
+			};
+			pmx_led_36: pmx-led-36 {
+				marvell,pins = "mpp36";
+				marvell,function = "gpio";
+			};
+			pmx_led_37: pmx-led-37 {
+				marvell,pins = "mpp37";
+				marvell,function = "gpio";
+			};
+		};
+	};
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-0 = <&pmx_led_38 &pmx_led_39 &pmx_led_36 &pmx_led_37>;
+		pinctrl-names = "default";
+		hdd1-green {
+			label = "synology:green:hdd1";
+			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		};
+		hdd1-amber {
+			label = "synology:amber:hdd1";
+			gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
+		};
+		hdd2-green {
+			label = "synology:green:hdd2";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+		};
+		hdd2-amber {
+			label = "synology:amber:hdd2";
+			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+		};
+	};
+};

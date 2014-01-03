@@ -1,0 +1,56 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		pinctrl: pinctrl@10000 {
+
+			pmx_hdd1_pwr_30: pmx-hdd-pwr-30 {
+				marvell,pins = "mpp30";
+				marvell,function = "gpio";
+			};
+			pmx_hdd2_pwr_34: pmx-hdd2-pwr-34 {
+				marvell,pins = "mpp34";
+				marvell,function = "gpio";
+			};
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-0 = <&pmx_hdd1_pwr_30 &pmx_hdd2_pwr_34>;
+		pinctrl-names = "default";
+
+		hdd1_power: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "hdd1power";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-boot-on;
+			startup-delay-us = <5000000>;
+			gpio = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+		};
+		hdd2_power: regulator@2 {
+			compatible = "regulator-fixed";
+			reg = <2>;
+			regulator-name = "hdd2power";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-boot-on;
+			startup-delay-us = <5000000>;
+			gpio = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};

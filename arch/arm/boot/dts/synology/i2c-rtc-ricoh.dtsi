@@ -1,0 +1,18 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		i2c@11000 {
+			rs5c372: rs5c372@32 {
+				compatible = "ricoh,rs5c372a";
+				reg = <0x32>;
+			};
+		};
+	};
+};

@@ -1,0 +1,28 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		pinctrl: pinctrl@10000 {
+
+			pmx_led_12: pmx-led-12 {
+				marvell,pins = "mpp12";
+				marvell,function = "gpio";
+			};
+		};
+	};
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-0 = <&pmx_led_12>;
+		pinctrl-names = "default";
+		hdd1-green {
+			label = "synology:alarm";
+			gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
