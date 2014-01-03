@@ -1,0 +1,32 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		pinctrl: pinctrl@10000 {
+
+			pmx_fan_35: pmx-fan-35 {
+				marvell,pins = "mpp35";
+				marvell,function = "gpio";
+			};
+			pmx_fan_44: pmx-fan-44 {
+				marvell,pins = "mpp44";
+				marvell,function = "gpio";
+			};
+			pmx_fan_45: pmx-fan-45 {
+				marvell,pins = "mpp45";
+				marvell,function = "gpio";
+			};
+		};
+	};
+	gpio_fan {
+		alarm-gpios = <&gpio1 3 GPIO_ACTIVE_HIGH
+			       &gpio1 12 GPIO_ACTIVE_HIGH
+			       &gpio1 13 GPIO_ACTIVE_HIGH>;
+	};
+};

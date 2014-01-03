@@ -1,0 +1,103 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	ocp@f1000000 {
+		pinctrl: pinctrl@10000 {
+
+			pmx_led_36: pmx-led-36 {
+				marvell,pins = "mpp36";
+				marvell,function = "gpio";
+			};
+			pmx_led_37: pmx-led-37 {
+				marvell,pins = "mpp37";
+				marvell,function = "gpio";
+			};
+			pmx_led_38: pmx-led-38 {
+				marvell,pins = "mpp38";
+				marvell,function = "gpio";
+			};
+			pmx_led_39: pmx-led-39 {
+				marvell,pins = "mpp39";
+				marvell,function = "gpio";
+			};
+			pmx_led_40: pmx-led-40 {
+				marvell,pins = "mpp40";
+				marvell,function = "gpio";
+			};
+			pmx_led_41: pmx-led-41 {
+				marvell,pins = "mpp41";
+				marvell,function = "gpio";
+			};
+			pmx_led_42: pmx-led-42 {
+				marvell,pins = "mpp42";
+				marvell,function = "gpio";
+			};
+			pmx_led_43: pmx-led-43 {
+				marvell,pins = "mpp43";
+				marvell,function = "gpio";
+			};
+			pmx_led_44: pmx-led-44 {
+				marvell,pins = "mpp44";
+				marvell,function = "gpio";
+			};
+			pmx_led_45: pmx-led-45 {
+				marvell,pins = "mpp45";
+				marvell,function = "gpio";
+			};
+		};
+	};
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-0 = <&pmx_led_36 &pmx_led_37 &pmx_led_38
+			     &pmx_led_39 &pmx_led_40 &pmx_led_41
+			     &pmx_led_42 &pmx_led_43 &pmx_led_44
+			     &pmx_led_45>;
+		pinctrl-names = "default";
+		hdd1-green {
+			label = "synology:green:hdd1";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+		};
+		hdd1-amber {
+			label = "synology:amber:hdd1";
+			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+		};
+		hdd2-green {
+			label = "synology:green:hdd2";
+			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		};
+		hdd2-amber {
+			label = "synology:amber:hdd2";
+			gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
+		};
+		hdd3-green {
+			label = "synology:green:hdd3";
+			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+		};
+		hdd3-amber {
+			label = "synology:amber:hdd3";
+			gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+		};
+		hdd4-green {
+			label = "synology:green:hdd4";
+			gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+		};
+		hdd4-amber {
+			label = "synology:amber:hdd4";
+			gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+		};
+		hdd5-green {
+			label = "synology:green:hdd5";
+			gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
+		};
+		hdd5-amber {
+			label = "synology:amber:hdd5";
+			gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
+		};
+	};
+};

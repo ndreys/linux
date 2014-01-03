@@ -1,0 +1,20 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/ {
+	gpio_fan {
+		gpio-fan,speed-map = <    0 0
+				       2500 1
+				       2700 2
+				       3000 4
+				       3600 3
+				       3800 5
+				       3900 6
+				       4300 7 >;
+	};
+};

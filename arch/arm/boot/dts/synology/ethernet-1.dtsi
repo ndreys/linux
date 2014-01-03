@@ -1,0 +1,15 @@
+&mdio {
+	status = "okay";
+
+	ethphy1: ethernet-phy {
+		device_type = "ethernet-phy";
+		reg = <9>;
+	};
+};
+
+&eth0 {
+	status = "okay";
+	ethernet1-port@0 {
+		phy-handle = <&ethphy1>;
+	};
+};

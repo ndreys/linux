@@ -1,0 +1,33 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/dts-v1/;
+
+#include "kirkwood.dtsi"
+#include "kirkwood-6282.dtsi"
+#include "synology/pcie-2.dtsi"
+#include "synology/common.dtsi"
+#include "synology/i2c-rtc-seiko.dtsi"
+#include "synology/fan-speed-100.dtsi"
+#include "synology/fan-gpios-15.dtsi"
+#include "synology/fan-alarm-35-1.dtsi"
+#include "synology/hdd-leds-21-1.dtsi"
+
+/ {
+	model = "Synology DS111";
+	compatible = "synology,ds111", "marvell,kirkwood";
+
+	memory {
+		device_type = "memory";
+		reg = <0x00000000 0x8000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8";
+	};
+};

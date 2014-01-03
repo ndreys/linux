@@ -1,0 +1,33 @@
+/*
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+/dts-v1/;
+
+#include "kirkwood.dtsi"
+#include "kirkwood-6281.dtsi"
+#include "synology/common.dtsi"
+#include "synology/i2c-rtc-ricoh.dtsi"
+#include "synology/ethernet-1.dtsi"
+#include "synology/fan-speed-120.dtsi"
+#include "synology/fan-gpios-15.dtsi"
+#include "synology/fan-alarm-18.dtsi"
+#include "synology/hdd-leds-36.dtsi"
+
+/ {
+	model = "Synology RS409";
+	compatible = "synology,rs409", "marvell,kirkwood";
+
+	memory {
+		device_type = "memory";
+		reg = <0x00000000 0x8000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8";
+	};
+};
