@@ -1,0 +1,19 @@
+* Marvell Ferocean Cache
+
+Required properties:
+- compatible : Should be "marvell,ferocean-kirkwod".
+- reg        : Address of the L2 cache control register
+
+Optional properties:
+- writethrough : only if present, the cache will be used in write through mode.
+
+Example:
+		l2: l2-cache@20128 {
+			compatible = "marvell,marvell,ferocean-cache";
+			reg = <0x20128 0x4>;
+		};
+
+There are at least two variants of the Ferocean, differing in how
+write through is enabled or not. If mv78xx0 support is added, it is
+expected to have a different compatibility string.
+

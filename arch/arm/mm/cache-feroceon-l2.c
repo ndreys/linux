@@ -13,10 +13,16 @@
  */
 
 #include <linux/init.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/highmem.h>
+#include <linux/io.h>
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
 #include <asm/hardware/cache-feroceon-l2.h>
+
+#define L2_WRITETHROUGH_KIRKWOOD	0x00000010
+
 
 /*
  * Low-level cache maintenance operations.
@@ -350,3 +356,43 @@ void __init feroceon_l2_init(int __l2_wt_override)
 	printk(KERN_INFO "Feroceon L2: Cache support initialised%s.\n",
 			 l2_wt_override ? ", in WT override mode" : "");
 }
+#ifdef CONFIG_OF
+static const struct of_device_id ferocean_ids[] __initconst = {
+	{ .compatible = "marvell,ferocean-kirkwood"},
+	{}
+};
+
+int __init feroceon_of_init(void)
+{
+	struct device_node *node;
+	void __iomem *base;
+	bool writethrough = false;
+	struct resource res;
+
+	node = of_find_matching_node(NULL, ferocean_ids);
+	if (!node) {
+		pr_info("Didn't find marvell,ferocean-*, not enabling it\n");
+		return -ENODEV;
+	}
+
+	if (of_property_read_bool(node, "writethrough"))
+		writethrough = true;
+
+	if (of_address_to_resource(node, 0, &res))
+		return -ENODEV;
+
+	base = ioremap(res.start, resource_size(&res));
+	if (!base)
+		return -ENOMEM;
+
+	if (writethrough) {
+		writel(readl(base) | L2_WRITETHROUGH_KIRKWOOD, base);
+		feroceon_l2_init(1);
+	} else {
+		writel(readl(base) & ~L2_WRITETHROUGH_KIRKWOOD, base);
+	feroceon_l2_init(0);
+	}
+
+	return 0;
+}
+#endif
