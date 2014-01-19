@@ -607,7 +607,7 @@ __\name\()_proc_info:
 	.long	HWCAP_SWP|HWCAP_HALF|HWCAP_THUMB|HWCAP_FAST_MULT|HWCAP_EDSP
 	.long	\cpu_name
 	.long	feroceon_processor_functions
-	.long	v4wbi_tlb_fns
+	.long	fr_tlb_fns
 	.long	feroceon_user_fns
 	.long	\cache
 	 .size	__\name\()_proc_info, . - __\name\()_proc_info

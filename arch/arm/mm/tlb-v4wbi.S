@@ -28,6 +28,7 @@
  *	- mm    - mm_struct describing address space
  */
 	.align	5
+ENTRY(fr_flush_user_tlb_range)
 ENTRY(v4wbi_flush_user_tlb_range)
 	vma_vm_mm ip, r2
 	act_mm	r3				@ get current->active_mm
@@ -46,6 +47,7 @@ ENTRY(v4wbi_flush_user_tlb_range)
 	blo	1b
 	mov	pc, lr
 
+ENTRY(fr_flush_kern_tlb_range)
 ENTRY(v4wbi_flush_kern_tlb_range)
 	mov	r3, #0
 	mcr	p15, 0, r3, c7, c10, 4		@ drain WB
@@ -62,3 +64,4 @@ ENTRY(v4wbi_flush_kern_tlb_range)
 
 	/* define struct cpu_tlb_fns (see <asm/tlbflush.h> and proc-macros.S) */
 	define_tlb_functions v4wbi, v4wbi_tlb_flags
+	define_tlb_functions fr, fr_tlb_flags
