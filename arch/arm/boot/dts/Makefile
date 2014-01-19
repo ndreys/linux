@@ -71,7 +71,21 @@ dtb-$(CONFIG_ARCH_HIGHBANK) += highbank.dtb \
 dtb-$(CONFIG_ARCH_INTEGRATOR) += integratorap.dtb \
 	integratorcp.dtb
 dtb-$(CONFIG_ARCH_LPC32XX) += ea3250.dtb phy3250.dtb
-dtb-$(CONFIG_ARCH_KIRKWOOD) += kirkwood-b3.dtb \
+dtb-$(CONFIG_ARCH_MARCO) += marco-evb.dtb
+dtb-$(CONFIG_ARCH_MSM) += qcom-msm8660-surf.dtb \
+	qcom-msm8960-cdp.dtb
+dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
+	armada-370-mirabox.dtb \
+	armada-370-netgear-rn102.dtb \
+	armada-370-netgear-rn104.dtb \
+	armada-370-rd.dtb \
+	armada-xp-axpwifiap.dtb \
+	armada-xp-db.dtb \
+	armada-xp-gp.dtb \
+	armada-xp-netgear-rn2120.dtb \
+	armada-xp-matrix.dtb \
+	armada-xp-openblocks-ax3-4.dtb \
+	kirkwood-b3.dtb \
 	kirkwood-cloudbox.dtb \
 	kirkwood-db-88f6281.dtb \
 	kirkwood-db-88f6282.dtb \
@@ -108,20 +122,6 @@ dtb-$(CONFIG_ARCH_KIRKWOOD) += kirkwood-b3.dtb \
 	kirkwood-ts219-6282.dtb \
 	kirkwood-ts419-6281.dtb \
 	kirkwood-ts419-6282.dtb
-dtb-$(CONFIG_ARCH_MARCO) += marco-evb.dtb
-dtb-$(CONFIG_ARCH_MSM) += qcom-msm8660-surf.dtb \
-	qcom-msm8960-cdp.dtb
-dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
-	armada-370-mirabox.dtb \
-	armada-370-netgear-rn102.dtb \
-	armada-370-netgear-rn104.dtb \
-	armada-370-rd.dtb \
-	armada-xp-axpwifiap.dtb \
-	armada-xp-db.dtb \
-	armada-xp-gp.dtb \
-	armada-xp-netgear-rn2120.dtb \
-	armada-xp-matrix.dtb \
-	armada-xp-openblocks-ax3-4.dtb
 dtb-$(CONFIG_ARCH_MXC) += \
 	imx25-karo-tx25.dtb \
 	imx25-pdk.dtb \
