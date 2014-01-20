@@ -23,9 +23,9 @@
 #include <asm/hardware/cache-feroceon-l2.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
-#include <mach/bridge-regs.h>
 #include <plat/common.h>
 #include <plat/pcie.h>
+#include "kirkwood.h"
 #include "kirkwood-pm.h"
 #include "common.h"
 
