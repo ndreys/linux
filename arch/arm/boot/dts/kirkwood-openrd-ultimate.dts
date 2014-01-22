@@ -1,0 +1,62 @@
+/*
+ * Marvell OpenRD Ultimate Board descrition
+ *
+ * Andrew Lunn <andrew@lunn.ch>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ *
+ * This file contains the definitions that are specific to OpenRD
+ * ultimate variant of the Marvell Kirkwood Development Board.
+ */
+
+/dts-v1/;
+
+#include "kirkwood-openrd.dtsi"
+
+/ {
+	model = "OpenRD Ultimate";
+	compatible = "marvell,openrd-ultimate", "marvell,openrd", "marvell,kirkwood-88f6281", "marvell,kirkwood";
+
+	ocp@f1000000 {
+		i2c@11000 {
+			status = "okay";
+			clock-frequency = <400000>;
+			pinctrl-0 = <&pmx_twsi0>;
+			pinctrl-names = "default";
+
+			cs42l51: cs42l51@4a {
+				compatible = "cs42l51";
+				reg = <0x4a>;
+			};
+		};
+	};
+};
+
+&mdio {
+	status = "okay";
+
+	ethphy0: ethernet-phy@0 {
+		device_type = "ethernet-phy";
+		reg = <0>;
+	};
+	ethphy1: ethernet-phy@1 {
+		device_type = "ethernet-phy";
+		reg = <1>;
+	};
+};
+
+&eth0 {
+	status = "okay";
+	ethernet0-port@0 {
+		phy-handle = <&ethphy0>;
+	};
+};
+
+&eth1 {
+	status = "okay";
+	ethernet1-port@0 {
+		phy-handle = <&ethphy1>;
+	};
+};
