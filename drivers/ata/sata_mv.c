@@ -4115,9 +4115,8 @@ static int mv_platform_probe(struct platform_device *pdev)
 		if (IS_ERR(hpriv->port_phys[port])) {
 			rc = PTR_ERR(hpriv->port_phys[port]);
 			hpriv->port_phys[port] = NULL;
-			if ((rc != -EPROBE_DEFER) && (rc != -ENODEV))
-				dev_warn(&pdev->dev, "error getting phy");
-			goto err;
+			if (rc == -EPROBE_DEFER)
+				goto err;
 		} else
 			phy_power_on(hpriv->port_phys[port]);
 	}
