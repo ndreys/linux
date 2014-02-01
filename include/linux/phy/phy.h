@@ -129,6 +129,7 @@ int phy_power_on(struct phy *phy);
 int phy_power_off(struct phy *phy);
 struct phy *phy_get(struct device *dev, const char *string);
 struct phy *devm_phy_get(struct device *dev, const char *string);
+struct phy *devm_phy_optional_get(struct device *dev, const char *string);
 void phy_put(struct phy *phy);
 void devm_phy_put(struct device *dev, struct phy *phy);
 struct phy *of_phy_simple_xlate(struct device *dev,
@@ -205,6 +206,12 @@ static inline struct phy *phy_get(struct device *dev, const char *string)
 }
 
 static inline struct phy *devm_phy_get(struct device *dev, const char *string)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline struct phy *devm_phy_optional_get(struct device *dev,
+						const char *string)
 {
 	return ERR_PTR(-ENOSYS);
 }

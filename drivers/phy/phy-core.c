@@ -390,13 +390,13 @@ struct phy *phy_get(struct device *dev, const char *string)
 			string);
 		phy = of_phy_get(dev, index);
 		if (IS_ERR(phy)) {
-			dev_err(dev, "unable to find phy\n");
+			dev_dbg(dev, "unable to find phy\n");
 			return phy;
 		}
 	} else {
 		phy = phy_lookup(dev, string);
 		if (IS_ERR(phy)) {
-			dev_err(dev, "unable to find phy\n");
+			dev_dbg(dev, "unable to find phy\n");
 			return phy;
 		}
 	}
@@ -439,6 +439,29 @@ struct phy *devm_phy_get(struct device *dev, const char *string)
 	return phy;
 }
 EXPORT_SYMBOL_GPL(devm_phy_get);
+
+/**
+ * devm_phy_optional_get() - lookup and obtain a reference to an optional phy.
+ * @dev: device that requests this phy
+ * @string: the phy name as given in the dt data or phy device name
+ * for non-dt case
+ *
+ * Gets the phy using phy_get(), and associates a device with it using
+ * devres. On driver detach, release function is invoked on the devres data,
+ * then, devres data is freed. This differs to devm_phy_get() in that if the
+ * phy does not exist, it is not considered an error. Instead the NULL phy
+ * is returned, which can be passed to all other phy consumer calls.
+ */
+struct phy *devm_phy_optional_get(struct device *dev, const char *string)
+{
+	struct phy *phy = devm_phy_get(dev, string);
+
+	if (PTR_ERR(phy) == -ENODEV)
+		phy = NULL;
+
+	return phy;
+}
+EXPORT_SYMBOL_GPL(devm_phy_optional_get);
 
 /**
  * phy_create() - create a new phy
