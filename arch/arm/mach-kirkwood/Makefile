@@ -10,5 +10,3 @@ obj-$(CONFIG_MACH_RD88F6281)		+= rd88f6281-setup.o
 obj-$(CONFIG_MACH_T5325)		+= t5325-setup.o
 obj-$(CONFIG_MACH_TS219)		+= ts219-setup.o tsx1x-common.o
 obj-$(CONFIG_MACH_TS41X)		+= ts41x-setup.o tsx1x-common.o
-
-obj-$(CONFIG_ARCH_KIRKWOOD_DT)		+= board-dt.o
