@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <linux/export.h>
 #include <linux/init.h>
+#include "linux/interrupt.h"
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/irqchip.h>
@@ -23,6 +24,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/perf/arm_pmu.h>
 #include <linux/pm_opp.h>
 #include <linux/pci.h>
 #include <linux/phy.h>
@@ -262,6 +264,39 @@ static void __init imx6q_axi_init(void)
 	}
 }
 
+/*
+ * The i.MX6 PMU has a design errata where the interrupts of all cores are
+ * wired together into a single irq line. To work around this we have to
+ * bounce the interrupt around all cores until we find the one where the PMU
+ * counter overflow has happened.
+ */
+static irqreturn_t imx6q_pmu_handler(int irq, void *dev, irq_handler_t handler)
+{
+	irqreturn_t ret = handler(irq, dev);
+	int next;
+
+	if (ret == IRQ_NONE) {
+		/*
+		 * Kick the irq over to the next cpu, regardless of it's
+		 * online status (it might have gone offline while we were busy
+		 * bouncing the irq).
+		 */
+		next = (smp_processor_id() + 1) % num_present_cpus();
+		irq_set_affinity(irq, cpumask_of(next));
+	}
+
+	return ret;
+}
+
+struct arm_pmu_platdata imx6q_pmu_platdata = {
+	.handle_irq		= imx6q_pmu_handler,
+};
+
+static struct of_dev_auxdata imx6q_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("arm,cortex-a9-pmu", 0, "arm-pmu", &imx6q_pmu_platdata),
+	{}
+};
+
 static void __init imx6q_init_machine(void)
 {
 	struct device *parent;
@@ -278,7 +313,8 @@ static void __init imx6q_init_machine(void)
 
 	imx6q_enet_phy_init();
 
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
+	of_platform_populate(NULL, of_default_bus_match_table,
+			imx6q_auxdata_lookup, parent);
 
 	imx_anatop_init();
 	cpu_is_imx6q() ?  imx6q_pm_init() : imx6dl_pm_init();
