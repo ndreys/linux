@@ -1006,7 +1006,7 @@ static int coda_start_encoding(struct coda_ctx *ctx)
 		break;
 	default:
 		v4l2_err(v4l2_dev,
-			 "dst format (0x%08x) invalid.\n", dst_fourcc);
+			 "dst format (%4.4s) invalid.\n", (char *)&dst_fourcc);
 		ret = -EINVAL;
 		goto out;
 	}
