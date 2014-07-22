@@ -26,6 +26,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <linux/of.h>
@@ -85,14 +86,14 @@ void coda_write(struct coda_dev *dev, u32 data, u32 reg)
 {
 	v4l2_dbg(2, coda_debug, &dev->v4l2_dev,
 		 "%s: data=0x%x, reg=0x%x\n", __func__, data, reg);
-	writel(data, dev->regs_base + reg);
+	regmap_write(dev->regmap, reg, data);
 }
 
 unsigned int coda_read(struct coda_dev *dev, u32 reg)
 {
 	u32 data;
 
-	data = readl(dev->regs_base + reg);
+	regmap_read(dev->regmap, reg, &data);
 	v4l2_dbg(2, coda_debug, &dev->v4l2_dev,
 		 "%s: data=0x%x, reg=0x%x\n", __func__, data, reg);
 	return data;
@@ -2725,6 +2726,48 @@ put_pm:
 	pm_runtime_put_sync(&pdev->dev);
 }
 
+static bool coda_writeable_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case CODA_REG_BIT_CODE_RUN:
+	case CODA_REG_BIT_CODE_DOWN:
+	case CODA_REG_BIT_HOST_IN_REQ:
+	case CODA_REG_BIT_INT_CLEAR:
+	case CODA_REG_BIT_CODE_RESET:
+	case CODA9_REG_BIT_SW_RESET:
+		return true;
+	default:
+		return reg >= 0x100;
+	}
+}
+
+static bool coda_readable_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case CODA_REG_BIT_CODE_RUN:
+	case CODA_REG_BIT_CODE_DOWN:
+	case CODA_REG_BIT_HOST_IN_REQ:
+	case CODA_REG_BIT_INT_CLEAR:
+	case CODA_REG_BIT_INT_STATUS:
+	case CODA_REG_BIT_CODE_RESET:
+	case CODA_REG_BIT_CUR_PC:
+	case CODA9_REG_BIT_SW_RESET_STATUS:
+		return true;
+	default:
+		return reg >= 0x100;
+	}
+}
+
+static struct regmap_config coda_regmap_config = {
+	.name = "coda",
+	.reg_bits = 32,
+	.reg_stride = 4,
+	.val_bits = 32,
+	.writeable_reg = coda_writeable_reg,
+	.readable_reg = coda_readable_reg,
+	.max_register = 0x3238,
+};
+
 enum coda_platform {
 	CODA_IMX27,
 	CODA_IMX51,
@@ -2835,6 +2878,7 @@ static int coda_probe(struct platform_device *pdev)
 	const struct platform_device_id *pdev_id;
 	struct coda_platform_data *pdata = pdev->dev.platform_data;
 	struct device_node *np = pdev->dev.of_node;
+	void __iomem *regs_base;
 	struct gen_pool *pool;
 	struct coda_dev *dev;
 	struct resource *res;
@@ -2870,9 +2914,17 @@ static int coda_probe(struct platform_device *pdev)
 
 	/* Get  memory for physical registers */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	dev->regs_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(dev->regs_base))
-		return PTR_ERR(dev->regs_base);
+	regs_base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(regs_base))
+		return PTR_ERR(regs_base);
+
+	coda_regmap_config.lock_arg = dev;
+	dev->regmap = devm_regmap_init_mmio_clk(&pdev->dev, "per",
+			regs_base, &coda_regmap_config);
+	if (IS_ERR(dev->regmap)) {
+		dev_err(&pdev->dev, "failed to init regmap\n");
+		return PTR_ERR(dev->regmap);
+	}
 
 	/* IRQ */
 	irq = platform_get_irq_byname(pdev, "bit");
