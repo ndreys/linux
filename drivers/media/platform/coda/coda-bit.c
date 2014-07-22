@@ -256,6 +256,8 @@ static bool coda_bitstream_try_queue(struct coda_ctx *ctx,
 	if (ctx == v4l2_m2m_get_curr_priv(ctx->dev->m2m_dev))
 		coda_kfifo_sync_to_device_write(ctx);
 
+	if (ctx->hold)
+		dev_info(ctx->fh.vdev->dev_parent, "resuming after hold\n");
 	ctx->hold = false;
 
 	return true;
