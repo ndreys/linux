@@ -1177,6 +1177,16 @@ static int coda_start_encoding(struct coda_ctx *ctx)
 		if (ret < 0)
 			goto out;
 
+		if ((q_data_src->width % 16) || (q_data_src->height % 16)) {
+			ret = coda_sps_fixup(ctx, q_data_src->width,
+					     q_data_src->height,
+					     &ctx->vpu_header[0][0],
+					     &ctx->vpu_header_size[0],
+					     sizeof(ctx->vpu_header[0]));
+			if (ret < 0)
+				goto out;
+		}
+
 		/*
 		 * Get PPS in the first frame and copy it to an
 		 * intermediate buffer.
