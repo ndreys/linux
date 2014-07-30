@@ -383,10 +383,10 @@ enum ipu_ic_task {
 
 struct ipu_ic;
 int ipu_ic_task_init(struct ipu_ic *ic,
-		     int in_width, int in_height,
-		     int out_width, int out_height,
-		     enum ipu_color_space in_cs,
-		     enum ipu_color_space out_cs);
+		      int in_width, int in_height,
+		      int out_width, int out_height,
+		      enum ipu_color_space in_cs,
+		      enum ipu_color_space out_cs);
 int ipu_ic_task_graphics_init(struct ipu_ic *ic,
 			      enum ipu_color_space in_g_cs,
 			      bool galpha_en, u32 galpha,
@@ -445,5 +445,36 @@ struct ipu_client_platformdata {
 	int dma[2];
 	struct device_node *of_node;
 };
+
+enum ipu_image_scale_ctrl {
+	IPU_IMAGE_SCALE_ROUND_DOWN,
+	IPU_IMAGE_SCALE_PIXELPERFECT,
+	IPU_IMAGE_SCALE_ROUND_UP,
+};
+
+struct image_convert_ctx;
+
+struct image_convert_ctx *ipu_image_convert_prepare2(struct ipu_soc *ipu,
+		struct ipu_image *in, struct ipu_image *out,
+		enum ipu_image_scale_ctrl ctrl, int *num_tiles);
+int ipu_image_convert_run(struct ipu_soc *ipu, struct ipu_image *in,
+		struct ipu_image *out, struct image_convert_ctx *ctx,
+		int num_tiles, void (*complete)(void *ctx, int err),
+		void *complete_context, bool free_ctx);
+
+static inline int ipu_image_convert2(struct ipu_soc *ipu, struct ipu_image *in,
+		struct ipu_image *out, void (*complete)(void *ctx, int err),
+		void *complete_context, enum ipu_image_scale_ctrl ctrl)
+{
+	struct image_convert_ctx *ctx;
+	int num_tiles;
+
+	ctx = ipu_image_convert_prepare2(ipu, in, out, ctrl, &num_tiles);
+	if (IS_ERR(ctx))
+		return PTR_ERR(ctx);
+
+	return ipu_image_convert_run(ipu, in, out, ctx, num_tiles, complete,
+			complete_context, true);
+}
 
 #endif /* __DRM_IPU_H__ */
