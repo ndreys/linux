@@ -159,6 +159,7 @@ struct ipuv3_channel {
 	unsigned int num;
 	struct ipu_soc *ipu;
 	struct list_head list;
+	bool vout_active;
 };
 
 struct ipu_cpmem;
