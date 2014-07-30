@@ -283,6 +283,11 @@ void ipu_cpmem_set_yuv_planar_full(struct ipuv3_channel *ch,
 int ipu_cpmem_set_fmt(struct ipuv3_channel *ch, u32 drm_fourcc);
 int ipu_cpmem_set_image(struct ipuv3_channel *ch, struct ipu_image *image);
 void ipu_cpmem_dump(struct ipuv3_channel *ch);
+/* Hacks for V4L2 overlay driver */
+void ipu_cpmem_get_base_resolution(struct ipu_soc *ipu, u32 *width, u32 *height);
+int ipu_cpmem_save(struct ipuv3_channel *ch, void **cpmem, u32 *eba);
+void ipu_cpmem_restore(struct ipuv3_channel *ch, void **cpmem);
+bool ipu_cpmem_vout_backoff(struct ipuv3_channel *ch);
 
 /*
  * IPU Display Controller (dc) functions

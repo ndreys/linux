@@ -640,6 +640,8 @@ static void ipu_plane_atomic_update(struct drm_plane *plane,
 		/* nothing to do if PRE is used */
 		if (ipu_state->use_pre)
 			return;
+		if (ipu_cpmem_vout_backoff(ipu_plane->ipu_ch))
+			return;
 		active = ipu_idmac_get_current_buffer(ipu_plane->ipu_ch);
 		ipu_cpmem_set_buffer(ipu_plane->ipu_ch, !active, eba);
 		ipu_idmac_select_buffer(ipu_plane->ipu_ch, !active);
