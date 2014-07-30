@@ -1221,6 +1221,8 @@ static struct ipu_platform_reg client_reg[] = {
 			.dma[1] = -EINVAL,
 		},
 		.name = "imx-ipuv3-crtc",
+	}, {
+		.name = "imx-ipuv3-scaler",
 	},
 };
 
@@ -1245,7 +1247,7 @@ static int ipu_add_client_devices(struct ipu_soc *ipu, unsigned long ipu_base)
 
 		/* Associate subdevice with the corresponding port node */
 		of_node = of_graph_get_port_by_id(dev->of_node, i);
-		if (!of_node) {
+		if (i < 4 && !of_node) {
 			dev_info(dev,
 				 "no port@%d node in %pOF, not using %s%d\n",
 				 i, dev->of_node,
