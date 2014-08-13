@@ -594,14 +594,14 @@ int ipu_cpmem_set_fmt(struct ipuv3_channel *ch, u32 drm_fourcc)
 		/* pix format */
 		ipu_ch_param_write_field(ch, IPU_FIELD_PFS, 2);
 		/* burst size */
-		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 31);
+		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 63);
 		break;
 	case DRM_FORMAT_YUV422:
 	case DRM_FORMAT_YVU422:
 		/* pix format */
 		ipu_ch_param_write_field(ch, IPU_FIELD_PFS, 1);
 		/* burst size */
-		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 31);
+		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 63);
 		break;
 	case DRM_FORMAT_YUV444:
 	case DRM_FORMAT_YVU444:
@@ -614,13 +614,13 @@ int ipu_cpmem_set_fmt(struct ipuv3_channel *ch, u32 drm_fourcc)
 		/* pix format */
 		ipu_ch_param_write_field(ch, IPU_FIELD_PFS, 4);
 		/* burst size */
-		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 31);
+		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 63);
 		break;
 	case DRM_FORMAT_NV16:
 		/* pix format */
 		ipu_ch_param_write_field(ch, IPU_FIELD_PFS, 3);
 		/* burst size */
-		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 31);
+		ipu_ch_param_write_field(ch, IPU_FIELD_NPB, 63);
 		break;
 	case DRM_FORMAT_UYVY:
 		/* bits/pixel */
