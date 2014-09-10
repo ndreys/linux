@@ -1,0 +1,48 @@
+* Broadcom Starfighter 2 integrated switch device
+
+Required properties:
+
+- compatible: should be "brcm,brcm-sf2"
+- reg: addresses and length of the register sets for the device, must be 6
+  pairs of register addresses and lengths
+- interrupts: interrupts for the devices, must be two interrupts
+
+Optional properties:
+
+- reg-names: litteral names for the device base register addresses,
+  when present must be: "core", "reg", "intrl2_0", "intrl2_1", "fcb",
+  "acb"
+
+- interrupt-names: litternal names for the device interrupt lines,
+  when present must be: "switch_0" and "switch_1"
+
+- brcm,num-gphy: specify the maximum number of integrated gigabit PHYs
+  in the switch
+
+- brcm,num-rgmii-ports: specify the maximum number of RGMII interfaces
+  supported by the switch
+
+- brcm,fcb-pause-override: boolean property, if present indicates that
+  the switch supports Failover Control Block pause override capability
+
+- brcm,acb-packets-inflight: boolean property, if present indicates
+  that the switch Admission Control Block supports reporting the
+  number of packets in-flight in a switch queue
+
+Example:
+
+	switchdev0: switchdev0 {
+		compatible = "brcm,brcm-sf2";
+		reg = <0x0 0x40000
+			0x40000 0x110
+			0x40340 0x30
+			0x40380 0x30
+			0x40400 0x34
+			0x40600 0x208>;
+		interrupts = <0 0x18 0
+				0 0x19 0>;
+		brcm,num-gphy = <1>;
+		brcm,num-rgmii-ports = <2>;
+		brcm,fcb-pause-override;
+		brcm,acb-packets-inflight;
+	};
