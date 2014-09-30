@@ -159,9 +159,11 @@ static const struct coda_codec coda7_codecs[] = {
 static const struct coda_codec coda9_codecs[] = {
 	CODA_CODEC(CODA9_MODE_ENCODE_H264, V4L2_PIX_FMT_YUV420, V4L2_PIX_FMT_H264,   1920, 1088),
 	CODA_CODEC(CODA9_MODE_ENCODE_MP4,  V4L2_PIX_FMT_YUV420, V4L2_PIX_FMT_MPEG4,  1920, 1088),
+	CODA_CODEC(CODA9_MODE_ENCODE_MJPG, V4L2_PIX_FMT_YUV420, V4L2_PIX_FMT_JPEG,   8192, 8192),
 	CODA_CODEC(CODA9_MODE_DECODE_H264, V4L2_PIX_FMT_H264,   V4L2_PIX_FMT_YUV420, 1920, 1088),
 	CODA_CODEC(CODA9_MODE_DECODE_MP2,  V4L2_PIX_FMT_MPEG2,  V4L2_PIX_FMT_YUV420, 1920, 1088),
 	CODA_CODEC(CODA9_MODE_DECODE_MP4,  V4L2_PIX_FMT_MPEG4,  V4L2_PIX_FMT_YUV420, 1920, 1088),
+	CODA_CODEC(CODA9_MODE_DECODE_MJPG, V4L2_PIX_FMT_JPEG,	V4L2_PIX_FMT_YUV420, 8192, 8192),
 };
 
 struct coda_video_device {
@@ -239,6 +241,38 @@ static const struct coda_video_device coda_bit_jpeg_decoder = {
 	},
 };
 
+static const struct coda_video_device coda9_jpeg_encoder = {
+	.name = "coda-jpeg-encoder",
+	.type = CODA_INST_ENCODER,
+	.ops = &coda9_jpeg_encode_ops,
+	.direct = true,
+	.src_formats = {
+		V4L2_PIX_FMT_NV12,
+		V4L2_PIX_FMT_YUV420,
+		V4L2_PIX_FMT_YVU420,
+		V4L2_PIX_FMT_YUV422P,
+	},
+	.dst_formats = {
+		V4L2_PIX_FMT_JPEG,
+	},
+};
+
+static const struct coda_video_device coda9_jpeg_decoder = {
+	.name = "coda-jpeg-decoder",
+	.type = CODA_INST_DECODER,
+	.ops = &coda9_jpeg_decode_ops,
+	.direct = true,
+	.src_formats = {
+		V4L2_PIX_FMT_JPEG,
+	},
+	.dst_formats = {
+		V4L2_PIX_FMT_NV12,
+		V4L2_PIX_FMT_YUV420,
+		V4L2_PIX_FMT_YVU420,
+		V4L2_PIX_FMT_YUV422P,
+	},
+};
+
 static const struct coda_video_device *codadx6_video_devices[] = {
 	&coda_bit_encoder,
 };
@@ -256,6 +290,8 @@ static const struct coda_video_device *coda7_video_devices[] = {
 };
 
 static const struct coda_video_device *coda9_video_devices[] = {
+	&coda9_jpeg_encoder,
+	&coda9_jpeg_decoder,
 	&coda_bit_encoder,
 	&coda_bit_decoder,
 };
@@ -728,13 +764,14 @@ static int coda_s_fmt(struct coda_ctx *ctx, struct v4l2_format *f,
 		ctx->tiled_map_type = GDI_TILED_FRAME_MB_RASTER_MAP;
 		break;
 	case V4L2_PIX_FMT_NV12:
-		if (!disable_tiling) {
+		if (!disable_tiling && ctx->use_bit) {
 			ctx->tiled_map_type = GDI_TILED_FRAME_MB_RASTER_MAP;
 			break;
 		}
 		/* else fall through */
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_YVU420:
+	case V4L2_PIX_FMT_YUV422P:
 		ctx->tiled_map_type = GDI_LINEAR_FRAME_MAP;
 		break;
 	default:
@@ -1881,6 +1918,30 @@ static int coda_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_JPEG_RESTART_INTERVAL:
 		ctx->params.jpeg_restart_interval = ctrl->val;
 		break;
+	case V4L2_CID_JPEG_CHROMA_SUBSAMPLING:
+		switch (ctrl->val) {
+		case V4L2_JPEG_CHROMA_SUBSAMPLING_444:
+			ctx->params.jpeg_chroma_subsampling[0] = 0x11;
+			ctx->params.jpeg_chroma_subsampling[1] = 0x11;
+			ctx->params.jpeg_chroma_subsampling[2] = 0x11;
+			break;
+		case V4L2_JPEG_CHROMA_SUBSAMPLING_422:
+			ctx->params.jpeg_chroma_subsampling[0] = 0x21;
+			ctx->params.jpeg_chroma_subsampling[1] = 0x11;
+			ctx->params.jpeg_chroma_subsampling[2] = 0x11;
+			break;
+		case V4L2_JPEG_CHROMA_SUBSAMPLING_420:
+			ctx->params.jpeg_chroma_subsampling[0] = 0x22;
+			ctx->params.jpeg_chroma_subsampling[1] = 0x11;
+			ctx->params.jpeg_chroma_subsampling[2] = 0x11;
+			break;
+		case V4L2_JPEG_CHROMA_SUBSAMPLING_GRAY:
+			ctx->params.jpeg_chroma_subsampling[0] = 0x21;
+			ctx->params.jpeg_chroma_subsampling[1] = 0x00;
+			ctx->params.jpeg_chroma_subsampling[2] = 0x00;
+			break;
+		}
+		break;
 	case V4L2_CID_MPEG_VIDEO_VBV_DELAY:
 		ctx->params.vbv_delay = ctrl->val;
 		break;
@@ -2733,6 +2794,23 @@ static int coda_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to request irq: %d\n", ret);
 		return ret;
+	}
+
+	/* JPEG IRQ */
+	if (dev->devtype->product == CODA_960) {
+		irq = platform_get_irq_byname(pdev, "jpeg");
+		if (irq < 0) {
+			dev_err(&pdev->dev, "failed to get jpeg irq resource\n");
+			return irq;
+		}
+
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+					coda9_jpeg_irq_handler, IRQF_ONESHOT,
+					CODA_NAME " jpeg", dev);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "failed to request jpeg irq\n");
+			return ret;
+		}
 	}
 
 	dev->rstc = devm_reset_control_get_optional_exclusive(&pdev->dev,
