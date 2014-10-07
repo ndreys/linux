@@ -124,6 +124,7 @@ struct coda_params {
 	u8			mpeg4_inter_qp;
 	u8			gop_size;
 	int			intra_refresh;
+	u8			jpeg_format;
 	u8			jpeg_quality;
 	u8			jpeg_restart_interval;
 	u8			jpeg_comp_id[3];
@@ -334,6 +335,7 @@ int coda_h264_sps_fixup(struct coda_ctx *ctx, int width, int height, char *buf,
 			int *size, int max_size);
 
 bool coda_jpeg_check_buffer(struct coda_ctx *ctx, struct vb2_buffer *vb);
+int coda_jpeg_decode_header(struct coda_ctx *ctx, struct vb2_buffer *vb);
 int coda_jpeg_write_tables(struct coda_ctx *ctx);
 void coda_set_jpeg_compression_quality(struct coda_ctx *ctx, int quality);
 
