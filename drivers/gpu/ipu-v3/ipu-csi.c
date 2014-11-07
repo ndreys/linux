@@ -224,7 +224,8 @@ static int ipu_csi_set_testgen_mclk(struct ipu_csi *csi, u32 pixel_clk,
  * Find the CSI data format and data width for the given V4L2 media
  * bus pixel format code.
  */
-static int mbus_code_to_bus_cfg(struct ipu_csi_bus_config *cfg, u32 mbus_code)
+static int mbus_code_to_bus_cfg(struct ipu_csi_bus_config *cfg, u32 mbus_code,
+				enum v4l2_mbus_type mbus_type)
 {
 	switch (mbus_code) {
 	case MEDIA_BUS_FMT_BGR565_2X8_BE:
@@ -258,8 +259,18 @@ static int mbus_code_to_bus_cfg(struct ipu_csi_bus_config *cfg, u32 mbus_code)
 		cfg->data_width = IPU_CSI_DATA_WIDTH_8;
 		break;
 	case MEDIA_BUS_FMT_UYVY8_1X16:
+		if (mbus_type == V4L2_MBUS_PARALLEL)
+			cfg->data_fmt = CSI_SENS_CONF_DATA_FMT_BAYER;
+		else
+			cfg->data_fmt = CSI_SENS_CONF_DATA_FMT_YUV422_UYVY;
+		cfg->mipi_dt = MIPI_DT_YUV422;
+		cfg->data_width = IPU_CSI_DATA_WIDTH_16;
+		break;
 	case MEDIA_BUS_FMT_YUYV8_1X16:
-		cfg->data_fmt = CSI_SENS_CONF_DATA_FMT_BAYER;
+		if (mbus_type == V4L2_MBUS_PARALLEL)
+			cfg->data_fmt = CSI_SENS_CONF_DATA_FMT_BAYER;
+		else
+			cfg->data_fmt = CSI_SENS_CONF_DATA_FMT_YUV422_YUYV;
 		cfg->mipi_dt = MIPI_DT_YUV422;
 		cfg->data_width = IPU_CSI_DATA_WIDTH_16;
 		break;
@@ -324,7 +335,7 @@ static void fill_csi_bus_cfg(struct ipu_csi_bus_config *csicfg,
 {
 	memset(csicfg, 0, sizeof(*csicfg));
 
-	mbus_code_to_bus_cfg(csicfg, mbus_fmt->code);
+	mbus_code_to_bus_cfg(csicfg, mbus_fmt->code, mbus_cfg->type);
 
 	switch (mbus_cfg->type) {
 	case V4L2_MBUS_PARALLEL:
@@ -593,7 +604,7 @@ int ipu_csi_set_mipi_datatype(struct ipu_csi *csi, u32 vc,
 	if (vc > 3)
 		return -EINVAL;
 
-	mbus_code_to_bus_cfg(&cfg, mbus_fmt->code);
+	mbus_code_to_bus_cfg(&cfg, mbus_fmt->code, V4L2_MBUS_CSI2);
 
 	spin_lock_irqsave(&csi->lock, flags);
 
