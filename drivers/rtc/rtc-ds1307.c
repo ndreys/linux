@@ -23,6 +23,7 @@
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/clk-provider.h>
+#include <linux/of.h>
 
 /*
  * We can't determine type by probing, but if we expect pre-Linux code
@@ -1708,9 +1709,31 @@ static int ds1307_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id ds1307_driver_dt_ids[] = {
+	/* driver_data are passed through ds1307_id */
+	{ .compatible = "maxim,ds1307" },
+	{ .compatible = "maxim,ds1337" },
+	{ .compatible = "maxim,ds1338" },
+	{ .compatible = "maxim,ds1339" },
+	{ .compatible = "maxim,ds1388" },
+	{ .compatible = "maxim,ds1340" },
+	{ .compatible = "maxim,ds3231" },
+	{ .compatible = "st,m41t00" },
+	{ .compatible = "microchip,mcp7940x" },
+	{ .compatible = "microchip,mcp7941x" },
+	{ .compatible = "pericom,pt7c4338" },
+	{ .compatible = "epson,rx8025" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, ds1307_driver_dt_ids);
+#endif
+
 static struct i2c_driver ds1307_driver = {
 	.driver = {
 		.name	= "rtc-ds1307",
+		.owner	= THIS_MODULE,
+		.of_match_table	= of_match_ptr(ds1307_driver_dt_ids),
 		.acpi_match_table = ACPI_PTR(ds1307_acpi_ids),
 	},
 	.probe		= ds1307_probe,
