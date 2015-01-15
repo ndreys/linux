@@ -1190,6 +1190,13 @@ static int coda_start_encoding(struct coda_ctx *ctx)
 		goto out;
 	}
 
+	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
+		 "Start encoding %dx%d %4.4s->%4.4s @ %d/%d Hz\n",
+		 q_data_src->width, q_data_src->height,
+		 (char *)&ctx->codec->src_fourcc, (char *)&dst_fourcc,
+		 ctx->params.framerate & 0xffff,
+		 (ctx->params.framerate >> 16) + 1);
+
 	/* Save stream headers */
 	buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 	switch (dst_fourcc) {
