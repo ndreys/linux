@@ -1206,6 +1206,8 @@ static int coda_job_ready(void *m2m_priv)
 		bool stream_end = ctx->bit_stream_param &
 				  CODA_BIT_STREAM_END_FLAG;
 		int num_metas = ctx->num_metas;
+		struct coda_buffer_meta *meta;
+		unsigned int meta_size;
 		unsigned int count;
 
 		count = hweight32(ctx->frm_dis_flg);
@@ -1226,11 +1228,24 @@ static int coda_job_ready(void *m2m_priv)
 
 		if (!stream_end && (num_metas + src_bufs) < 2) {
 			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: need 2 buffers available (%d, %d)\n",
+				 "%d: not ready: need 2 buffers available (queue:%d + bitstream:%d)\n",
 				 ctx->idx, num_metas, src_bufs);
 			return 0;
 		}
 
+		meta = list_first_entry(&ctx->buffer_meta_list,
+					struct coda_buffer_meta, list);
+		if (meta->end >= meta->start)
+			meta_size = meta->end - meta->start;
+		else
+			meta_size = ctx->bitstream.size - meta->start + meta->end;
+		if (!stream_end && coda_get_bitstream_payload(ctx) < meta_size + 512) {
+			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
+				 "%d: not ready: need 3*256 bytes beyond first buffer in bitstream (%d %d)\n",
+				 ctx->idx, meta_size,
+				 coda_get_bitstream_payload(ctx));
+			return 0;
+		}
 
 		if (!src_bufs && !stream_end &&
 		    (coda_get_bitstream_payload(ctx) < 512)) {
