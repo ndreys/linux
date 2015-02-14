@@ -14,7 +14,6 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/slab.h>
-#include <linux/workqueue.h>
 #include <linux/leds.h>
 #include <linux/leds-regulator.h>
 #include <linux/platform_device.h>
@@ -28,7 +27,6 @@ struct regulator_led {
 	enum led_brightness value;
 	int enabled;
 	struct mutex mutex;
-	struct work_struct work;
 
 	struct regulator *vcc;
 };
@@ -123,21 +121,13 @@ out:
 	mutex_unlock(&led->mutex);
 }
 
-static void led_work(struct work_struct *work)
-{
-	struct regulator_led *led;
-
-	led = container_of(work, struct regulator_led, work);
-	regulator_led_set_value(led);
-}
-
 static void regulator_led_brightness_set(struct led_classdev *led_cdev,
 			   enum led_brightness value)
 {
 	struct regulator_led *led = to_regulator_led(led_cdev);
 
 	led->value = value;
-	schedule_work(&led->work);
+	regulator_led_set_value(led);
 }
 
 static int regulator_led_probe(struct platform_device *pdev)
@@ -181,15 +171,10 @@ static int regulator_led_probe(struct platform_device *pdev)
 		led->enabled = 1;
 
 	mutex_init(&led->mutex);
-	INIT_WORK(&led->work, led_work);
 
 	platform_set_drvdata(pdev, led);
 
 	ret = led_classdev_register(&pdev->dev, &led->cdev);
-	if (ret < 0) {
-		cancel_work_sync(&led->work);
-		return ret;
-	}
 
 	/* to expose the default value to userspace */
 	led->cdev.brightness = led->value;
@@ -205,7 +190,6 @@ static int regulator_led_remove(struct platform_device *pdev)
 	struct regulator_led *led = platform_get_drvdata(pdev);
 
 	led_classdev_unregister(&led->cdev);
-	cancel_work_sync(&led->work);
 	regulator_led_disable(led);
 	return 0;
 }
