@@ -174,7 +174,9 @@ static void pca9532_set_brightness(struct led_classdev *led_cdev,
 		if (err)
 			return; /* XXX: led api doesn't allow error code? */
 	}
-	schedule_work(&led->work);
+	if (led->state == PCA9532_PWM0)
+		pca9532_setpwm(led->client, 0);
+	pca9532_setled(led);
 }
 
 static int pca9532_set_blink(struct led_classdev *led_cdev,
@@ -198,7 +200,10 @@ static int pca9532_set_blink(struct led_classdev *led_cdev,
 	err = pca9532_calcpwm(client, 0, psc, led_cdev->brightness);
 	if (err)
 		return err;
-	schedule_work(&led->work);
+	if (led->state == PCA9532_PWM0)
+		pca9532_setpwm(led->client, 0);
+	pca9532_setled(led);
+
 	return 0;
 }
 
@@ -231,15 +236,6 @@ static void pca9532_input_work(struct work_struct *work)
 	i2c_smbus_write_byte_data(data->client, PCA9532_REG_PWM(maxleds, 1),
 		data->pwm[1]);
 	mutex_unlock(&data->update_lock);
-}
-
-static void pca9532_led_work(struct work_struct *work)
-{
-	struct pca9532_led *led;
-	led = container_of(work, struct pca9532_led, work);
-	if (led->state == PCA9532_PWM0)
-		pca9532_setpwm(led->client, 0);
-	pca9532_setled(led);
 }
 
 #ifdef CONFIG_LEDS_PCA9532_GPIO
@@ -307,7 +303,6 @@ static int pca9532_destroy_devices(struct pca9532_data *data, int n_devs)
 			break;
 		case PCA9532_TYPE_LED:
 			led_classdev_unregister(&data->leds[i].ldev);
-			cancel_work_sync(&data->leds[i].work);
 			break;
 		case PCA9532_TYPE_N2100_BEEP:
 			if (data->idev != NULL) {
@@ -361,7 +356,6 @@ static int pca9532_configure(struct i2c_client *client,
 			led->ldev.brightness = LED_OFF;
 			led->ldev.brightness_set = pca9532_set_brightness;
 			led->ldev.blink_set = pca9532_set_blink;
-			INIT_WORK(&led->work, pca9532_led_work);
 			err = led_classdev_register(&client->dev, &led->ldev);
 			if (err < 0) {
 				dev_err(&client->dev,
