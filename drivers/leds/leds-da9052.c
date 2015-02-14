@@ -16,7 +16,6 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/leds.h>
-#include <linux/workqueue.h>
 #include <linux/slab.h>
 
 #include <linux/mfd/da9052/reg.h>
@@ -32,7 +31,6 @@
 
 struct da9052_led {
 	struct led_classdev cdev;
-	struct work_struct work;
 	struct da9052 *da9052;
 	unsigned char led_index;
 	unsigned char id;
@@ -58,13 +56,6 @@ static int da9052_set_led_brightness(struct da9052_led *led)
 	return error;
 }
 
-static void da9052_led_work(struct work_struct *work)
-{
-	struct da9052_led *led = container_of(work, struct da9052_led, work);
-
-	da9052_set_led_brightness(led);
-}
-
 static void da9052_led_set(struct led_classdev *led_cdev,
 			   enum led_brightness value)
 {
@@ -72,7 +63,7 @@ static void da9052_led_set(struct led_classdev *led_cdev,
 
 	led = container_of(led_cdev, struct da9052_led, cdev);
 	led->brightness = value;
-	schedule_work(&led->work);
+	da9052_set_led_brightness(led);
 }
 
 static int da9052_configure_leds(struct da9052 *da9052)
@@ -139,7 +130,6 @@ static int da9052_led_probe(struct platform_device *pdev)
 		led[i].brightness = LED_OFF;
 		led[i].led_index = pled->leds[i].flags;
 		led[i].da9052 = dev_get_drvdata(pdev->dev.parent);
-		INIT_WORK(&led[i].work, da9052_led_work);
 
 		error = led_classdev_register(pdev->dev.parent, &led[i].cdev);
 		if (error) {
@@ -166,10 +156,8 @@ static int da9052_led_probe(struct platform_device *pdev)
 	return 0;
 
 err_register:
-	for (i = i - 1; i >= 0; i--) {
+	for (i = i - 1; i >= 0; i--)
 		led_classdev_unregister(&led[i].cdev);
-		cancel_work_sync(&led[i].work);
-	}
 err:
 	return error;
 }
@@ -190,7 +178,6 @@ static int da9052_led_remove(struct platform_device *pdev)
 		led[i].brightness = 0;
 		da9052_set_led_brightness(&led[i]);
 		led_classdev_unregister(&led[i].cdev);
-		cancel_work_sync(&led[i].work);
 	}
 
 	return 0;
