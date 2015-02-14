@@ -124,7 +124,7 @@ void led_trigger_set(struct led_classdev *led_cdev, struct led_trigger *trig)
 		list_del(&led_cdev->trig_list);
 		write_unlock_irqrestore(&led_cdev->trigger->leddev_list_lock,
 			flags);
-		cancel_work_sync(&led_cdev->set_brightness_work);
+		cancel_work_sync(&led_cdev->set_brightness_delayed_work);
 		led_stop_software_blink(led_cdev);
 		if (led_cdev->trigger->deactivate)
 			led_cdev->trigger->deactivate(led_cdev);

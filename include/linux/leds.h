@@ -85,7 +85,7 @@ struct led_classdev {
 	int			 blink_brightness;
 	void			(*flash_resume)(struct led_classdev *led_cdev);
 
-	struct work_struct	set_brightness_work;
+	struct work_struct	set_brightness_delayed_work;
 	int			delayed_set_value;
 
 #ifdef CONFIG_LEDS_TRIGGERS
