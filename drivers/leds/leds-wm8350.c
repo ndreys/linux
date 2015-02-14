@@ -138,14 +138,15 @@ static void wm8350_led_disable(struct wm8350_led *led)
 	led->enabled = 0;
 }
 
-static void led_work(struct work_struct *work)
+static void wm8350_led_set(struct led_classdev *led_cdev,
+			   enum led_brightness value)
 {
-	struct wm8350_led *led = container_of(work, struct wm8350_led, work);
+	struct wm8350_led *led = to_wm8350_led(led_cdev);
+	unsigned long flags;
 	int ret;
 	int uA;
-	unsigned long flags;
 
-	mutex_lock(&led->mutex);
+	led->value = value;
 
 	spin_lock_irqsave(&led->value_lock, flags);
 
@@ -174,18 +175,6 @@ static void led_work(struct work_struct *work)
 
 out:
 	mutex_unlock(&led->mutex);
-}
-
-static void wm8350_led_set(struct led_classdev *led_cdev,
-			   enum led_brightness value)
-{
-	struct wm8350_led *led = to_wm8350_led(led_cdev);
-	unsigned long flags;
-
-	spin_lock_irqsave(&led->value_lock, flags);
-	led->value = value;
-	schedule_work(&led->work);
-	spin_unlock_irqrestore(&led->value_lock, flags);
 }
 
 static void wm8350_led_shutdown(struct platform_device *pdev)
@@ -252,7 +241,6 @@ static int wm8350_led_probe(struct platform_device *pdev)
 
 	spin_lock_init(&led->value_lock);
 	mutex_init(&led->mutex);
-	INIT_WORK(&led->work, led_work);
 	led->value = LED_OFF;
 	platform_set_drvdata(pdev, led);
 
@@ -264,7 +252,6 @@ static int wm8350_led_remove(struct platform_device *pdev)
 	struct wm8350_led *led = platform_get_drvdata(pdev);
 
 	led_classdev_unregister(&led->cdev);
-	flush_work(&led->work);
 	wm8350_led_disable(led);
 	return 0;
 }
