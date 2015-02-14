@@ -31,7 +31,6 @@
 #include <linux/slab.h>
 #include <linux/leds.h>
 #include <linux/mutex.h>
-#include <linux/workqueue.h>
 #include <linux/leds-lp3944.h>
 
 /* Read Only Registers */
@@ -71,7 +70,6 @@ struct lp3944_led_data {
 	enum lp3944_status status;
 	struct led_classdev ldev;
 	struct i2c_client *client;
-	struct work_struct work;
 };
 
 struct lp3944_data {
@@ -276,7 +274,7 @@ static int lp3944_led_set_blink(struct led_classdev *led_cdev,
 		__func__);
 
 	led->status = LP3944_LED_STATUS_DIM0;
-	schedule_work(&led->work);
+	lp3944_led_set(led, led->status);
 
 	return 0;
 }
@@ -290,14 +288,6 @@ static void lp3944_led_set_brightness(struct led_classdev *led_cdev,
 		__func__, led_cdev->name, brightness);
 
 	led->status = !!brightness;
-	schedule_work(&led->work);
-}
-
-static void lp3944_led_work(struct work_struct *work)
-{
-	struct lp3944_led_data *led;
-
-	led = container_of(work, struct lp3944_led_data, work);
 	lp3944_led_set(led, led->status);
 }
 
@@ -325,7 +315,6 @@ static int lp3944_configure(struct i2c_client *client,
 			led->ldev.blink_set = lp3944_led_set_blink;
 			led->ldev.flags = LED_CORE_SUSPENDRESUME;
 
-			INIT_WORK(&led->work, lp3944_led_work);
 			err = led_classdev_register(&client->dev, &led->ldev);
 			if (err < 0) {
 				dev_err(&client->dev,
@@ -364,7 +353,6 @@ exit:
 			case LP3944_LED_TYPE_LED:
 			case LP3944_LED_TYPE_LED_INVERTED:
 				led_classdev_unregister(&data->leds[i].ldev);
-				cancel_work_sync(&data->leds[i].work);
 				break;
 
 			case LP3944_LED_TYPE_NONE:
@@ -424,7 +412,6 @@ static int lp3944_remove(struct i2c_client *client)
 		case LP3944_LED_TYPE_LED:
 		case LP3944_LED_TYPE_LED_INVERTED:
 			led_classdev_unregister(&data->leds[i].ldev);
-			cancel_work_sync(&data->leds[i].work);
 			break;
 
 		case LP3944_LED_TYPE_NONE:
