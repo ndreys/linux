@@ -666,10 +666,8 @@ release_lock:
 	return pos;
 }
 
-static void lp5523_led_brightness_work(struct work_struct *work)
+static void lp5523_led_brightness(struct lp55xx_led *led)
 {
-	struct lp55xx_led *led = container_of(work, struct lp55xx_led,
-					      brightness_work);
 	struct lp55xx_chip *chip = led->chip;
 
 	mutex_lock(&chip->lock);
@@ -719,7 +717,7 @@ static struct lp55xx_device_config lp5523_cfg = {
 	},
 	.max_channel  = LP5523_MAX_LEDS,
 	.post_init_device   = lp5523_post_init_device,
-	.brightness_work_fn = lp5523_led_brightness_work,
+	.brightness_fn      = lp5523_led_brightness,
 	.set_led_current    = lp5523_set_led_current,
 	.firmware_cb        = lp5523_firmware_loaded,
 	.run_engine         = lp5523_run_engine,
