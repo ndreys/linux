@@ -45,6 +45,8 @@ struct dsa_slave_priv {
 	int			old_link;
 	int			old_pause;
 	int			old_duplex;
+
+	struct net_device	*bridge_dev;
 };
 
 /* dsa.c */
@@ -58,6 +60,8 @@ struct net_device *dsa_slave_create(struct dsa_switch *ds,
 				    int port, char *name);
 int dsa_slave_suspend(struct net_device *slave_dev);
 int dsa_slave_resume(struct net_device *slave_dev);
+int dsa_slave_netdevice_event(struct notifier_block *unused,
+			      unsigned long event, void *ptr);
 
 /* tag_dsa.c */
 extern const struct dsa_device_ops dsa_netdev_ops;
