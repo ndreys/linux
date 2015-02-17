@@ -23,6 +23,7 @@
 #include <linux/of_address.h>
 #include <net/dsa.h>
 #include <linux/ethtool.h>
+#include <linux/if_bridge.h>
 
 #include "bcm_sf2.h"
 #include "bcm_sf2_regs.h"
@@ -299,10 +300,14 @@ static int bcm_sf2_port_setup(struct dsa_switch *ds, int port,
 	if (port == 7)
 		intrl2_1_mask_clear(priv, P_IRQ_MASK(P7_IRQ_OFF));
 
-	/* Set this port, and only this one to be in the default VLAN */
+	/* Set this port, and only this one to be in the default VLAN,
+	 * if member of a bridge, restore its membership prior to
+	 * bringing down this port.
+	 */
 	reg = core_readl(priv, CORE_PORT_VLAN_CTL_PORT(port));
 	reg &= ~PORT_VLAN_CTRL_MASK;
 	reg |= (1 << port);
+	reg |= priv->port_sts[port].vlan_ctl_mask;
 	core_writel(priv, reg, CORE_PORT_VLAN_CTL_PORT(port));
 
 	bcm_sf2_imp_vlan_setup(ds, cpu_port);
@@ -396,6 +401,105 @@ static int bcm_sf2_sw_set_eee(struct dsa_switch *ds, int port,
 		if (!p->eee_enabled)
 			return -EOPNOTSUPP;
 	}
+
+	return 0;
+}
+
+static int bcm_sf2_sw_br_join(struct dsa_switch *ds, int port,
+			      u32 br_port_mask)
+{
+	struct bcm_sf2_priv *priv = ds_to_priv(ds);
+	unsigned int i;
+	u32 reg, p_ctl;
+
+	p_ctl = core_readl(priv, CORE_PORT_VLAN_CTL_PORT(port));
+
+	for (i = 0; i < priv->hw_params.num_ports; i++) {
+		if (!((1 << i) & br_port_mask))
+			continue;
+
+		/* Add this local port to the remote port VLAN control
+		 * membership and update the remote port bitmask
+		 */
+		reg = core_readl(priv, CORE_PORT_VLAN_CTL_PORT(i));
+		reg |= 1 << port;
+		core_writel(priv, reg, CORE_PORT_VLAN_CTL_PORT(i));
+		priv->port_sts[i].vlan_ctl_mask = reg;
+
+		p_ctl |= 1 << i;
+	}
+
+	/* Configure the local port VLAN control membership to include
+	 * remote ports and update the local port bitmask
+	 */
+	core_writel(priv, p_ctl, CORE_PORT_VLAN_CTL_PORT(port));
+	priv->port_sts[port].vlan_ctl_mask = p_ctl;
+
+	return 0;
+}
+
+static int bcm_sf2_sw_br_leave(struct dsa_switch *ds, int port,
+			       u32 br_port_mask)
+{
+	struct bcm_sf2_priv *priv = ds_to_priv(ds);
+	unsigned int i;
+	u32 reg, p_ctl;
+
+	p_ctl = core_readl(priv, CORE_PORT_VLAN_CTL_PORT(port));
+
+	for (i = 0; i < priv->hw_params.num_ports; i++) {
+		/* Don't touch the remaining ports */
+		if (!((1 << i) & br_port_mask))
+			continue;
+
+		reg = core_readl(priv, CORE_PORT_VLAN_CTL_PORT(i));
+		reg &= ~(1 << port);
+		core_writel(priv, reg, CORE_PORT_VLAN_CTL_PORT(i));
+		priv->port_sts[port].vlan_ctl_mask = reg;
+
+		/* Prevent self removal to preserve isolation */
+		if (port != i)
+			p_ctl &= ~(1 << i);
+	}
+
+	core_writel(priv, p_ctl, CORE_PORT_VLAN_CTL_PORT(port));
+	priv->port_sts[port].vlan_ctl_mask = p_ctl;
+
+	return 0;
+}
+
+static int bcm_sf2_sw_br_stp_update(struct dsa_switch *ds, int port,
+				    u8 state)
+{
+	struct bcm_sf2_priv *priv = ds_to_priv(ds);
+	u32 reg;
+	u8 hw_state;
+
+	switch (state) {
+	case BR_STATE_DISABLED:
+		hw_state = G_MISTP_DIS_STATE;
+		break;
+	case BR_STATE_LISTENING:
+		hw_state = G_MISTP_LISTEN_STATE;
+		break;
+	case BR_STATE_LEARNING:
+		hw_state = G_MISTP_LEARN_STATE;
+		break;
+	case BR_STATE_FORWARDING:
+		hw_state = G_MISTP_FWD_STATE;
+		break;
+	case BR_STATE_BLOCKING:
+		hw_state = G_MISTP_BLOCK_STATE;
+		break;
+	default:
+		pr_err("%s: invalid STP state: %d\n", __func__, state);
+		return -EINVAL;
+	}
+
+	reg = core_readl(priv, CORE_G_PCTL_PORT(port));
+	reg &= ~(G_MISTP_STATE_MASK << G_MISTP_STATE_SHIFT);
+	reg |= hw_state;
+	core_writel(priv, reg, CORE_G_PCTL_PORT(port));
 
 	return 0;
 }
@@ -916,6 +1020,9 @@ static struct dsa_switch_driver bcm_sf2_switch_driver = {
 	.port_disable		= bcm_sf2_port_disable,
 	.get_eee		= bcm_sf2_sw_get_eee,
 	.set_eee		= bcm_sf2_sw_set_eee,
+	.port_join_bridge	= bcm_sf2_sw_br_join,
+	.port_leave_bridge	= bcm_sf2_sw_br_leave,
+	.port_stp_update	= bcm_sf2_sw_br_stp_update,
 };
 
 static int __init bcm_sf2_init(void)
