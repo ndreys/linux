@@ -117,8 +117,6 @@ EXPORT_SYMBOL_GPL(led_stop_software_blink);
 void led_set_brightness(struct led_classdev *led_cdev,
 			enum led_brightness brightness)
 {
-	int ret = 0;
-
 	/* delay brightness setting if need to stop soft-blink timer */
 	if (led_cdev->blink_delay_on || led_cdev->blink_delay_off) {
 		led_cdev->delayed_set_value = brightness;
@@ -130,13 +128,9 @@ void led_set_brightness(struct led_classdev *led_cdev,
 		led_set_brightness_async(led_cdev, brightness);
 		return;
 	} else if (led_cdev->flags & SET_BRIGHTNESS_SYNC)
-		ret = led_set_brightness_sync(led_cdev, brightness);
+		led_set_brightness_sync(led_cdev, brightness);
 	else
-		ret = -EINVAL;
-
-	if (ret < 0)
-		dev_dbg(led_cdev->dev, "Setting LED brightness failed (%d)\n",
-			ret);
+		dev_dbg(led_cdev->dev, "Setting LED brightness failed\n");
 }
 EXPORT_SYMBOL(led_set_brightness);
 
