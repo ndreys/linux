@@ -168,8 +168,17 @@ static void set_brightness(struct work_struct *ws)
 		container_of(ws, struct led_classdev,
 			     set_brightness_work);
 
-	if (!(led_cdev->flags & LED_SUSPENDED))
-		led_cdev->brightness_set(led_cdev, led_cdev->brightness);
+	if (!(led_cdev->flags & LED_SUSPENDED)) {
+		if (led_cdev->flags & SET_BRIGHTNESS_ASYNC) {
+			led_cdev->brightness_set(led_cdev,
+						 led_cdev->brightness);
+		} else if (led_cdev->flags & SET_BRIGHTNESS_SYNC)
+			led_cdev->brightness_set_sync(led_cdev,
+						      led_cdev->brightness);
+		else
+			dev_dbg(led_cdev->dev,
+				"Setting LED brightness failed\n");
+	}
 }
 
 /**
@@ -247,8 +256,10 @@ int led_classdev_register(struct device *parent, struct led_classdev *led_cdev)
 
 	if (!led_cdev->max_brightness)
 		led_cdev->max_brightness = LED_FULL;
-
-	led_cdev->flags |= SET_BRIGHTNESS_ASYNC;
+	if (led_cdev->brightness_set)
+		led_cdev->flags |= SET_BRIGHTNESS_ASYNC;
+	if (led_cdev->brightness_set_sync)
+		led_cdev->flags |= SET_BRIGHTNESS_SYNC;
 
 	led_update_brightness(led_cdev);
 
