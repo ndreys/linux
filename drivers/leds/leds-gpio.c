@@ -19,31 +19,14 @@
 #include <linux/platform_device.h>
 #include <linux/property.h>
 #include <linux/slab.h>
-#include <linux/workqueue.h>
 
 struct gpio_led_data {
 	struct led_classdev cdev;
 	struct gpio_desc *gpiod;
-	struct work_struct work;
-	u8 new_level;
-	u8 can_sleep;
 	u8 blinking;
 	int (*platform_gpio_blink_set)(struct gpio_desc *desc, int state,
 			unsigned long *delay_on, unsigned long *delay_off);
 };
-
-static void gpio_led_work(struct work_struct *work)
-{
-	struct gpio_led_data *led_dat =
-		container_of(work, struct gpio_led_data, work);
-
-	if (led_dat->blinking) {
-		led_dat->platform_gpio_blink_set(led_dat->gpiod,
-					led_dat->new_level, NULL, NULL);
-		led_dat->blinking = 0;
-	} else
-		gpiod_set_value_cansleep(led_dat->gpiod, led_dat->new_level);
-}
 
 static void gpio_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
@@ -57,21 +40,12 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 	else
 		level = 1;
 
-	/* Setting GPIOs with I2C/etc requires a task context, and we don't
-	 * seem to have a reliable way to know if we're already in one; so
-	 * let's just assume the worst.
-	 */
-	if (led_dat->can_sleep) {
-		led_dat->new_level = level;
-		schedule_work(&led_dat->work);
-	} else {
-		if (led_dat->blinking) {
-			led_dat->platform_gpio_blink_set(led_dat->gpiod, level,
-							 NULL, NULL);
-			led_dat->blinking = 0;
-		} else
-			gpiod_set_value(led_dat->gpiod, level);
-	}
+	if (led_dat->blinking) {
+		led_dat->platform_gpio_blink_set(led_dat->gpiod, level,
+						 NULL, NULL);
+		led_dat->blinking = 0;
+	} else
+		gpiod_set_value(led_dat->gpiod, level);
 }
 
 static int gpio_blink_set(struct led_classdev *led_cdev,
@@ -123,13 +97,15 @@ static int create_gpio_led(const struct gpio_led *template,
 
 	led_dat->cdev.name = template->name;
 	led_dat->cdev.default_trigger = template->default_trigger;
-	led_dat->can_sleep = gpiod_cansleep(led_dat->gpiod);
 	led_dat->blinking = 0;
 	if (blink_set) {
 		led_dat->platform_gpio_blink_set = blink_set;
 		led_dat->cdev.blink_set = gpio_blink_set;
 	}
-	led_dat->cdev.brightness_set = gpio_led_set;
+	if (gpiod_cansleep(led_dat->gpiod))
+		led_dat->cdev.brightness_set = gpio_led_set;
+	else
+		led_dat->cdev.brightness_set_sync = gpio_led_set;
 	if (template->default_state == LEDS_GPIO_DEFSTATE_KEEP)
 		state = !!gpiod_get_value_cansleep(led_dat->gpiod);
 	else
@@ -142,15 +118,12 @@ static int create_gpio_led(const struct gpio_led *template,
 	if (ret < 0)
 		return ret;
 
-	INIT_WORK(&led_dat->work, gpio_led_work);
-
 	return led_classdev_register(parent, &led_dat->cdev);
 }
 
 static void delete_gpio_led(struct gpio_led_data *led)
 {
 	led_classdev_unregister(&led->cdev);
-	cancel_work_sync(&led->work);
 }
 
 struct gpio_leds_priv {
