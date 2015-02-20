@@ -44,14 +44,14 @@ static void hp6xxled_red_set(struct led_classdev *led_cdev,
 static struct led_classdev hp6xx_red_led = {
 	.name			= "hp6xx:red",
 	.default_trigger	= "hp6xx-charge",
-	.brightness_set		= hp6xxled_red_set,
+	.brightness_set_sync	= hp6xxled_red_set,
 	.flags			= LED_CORE_SUSPENDRESUME,
 };
 
 static struct led_classdev hp6xx_green_led = {
 	.name			= "hp6xx:green",
 	.default_trigger	= "ide-disk",
-	.brightness_set		= hp6xxled_green_set,
+	.brightness_set_sync	= hp6xxled_green_set,
 	.flags			= LED_CORE_SUSPENDRESUME,
 };
 

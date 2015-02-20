@@ -148,7 +148,7 @@ static int clevo_mail_led_blink(struct led_classdev *led_cdev,
 
 static struct led_classdev clevo_mail_led = {
 	.name			= "clevo::mail",
-	.brightness_set		= clevo_mail_led_set,
+	.brightness_set_sync	= clevo_mail_led_set,
 	.blink_set		= clevo_mail_led_blink,
 	.flags			= LED_CORE_SUSPENDRESUME,
 };

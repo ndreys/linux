@@ -55,20 +55,20 @@ static void wrap_extra_led_set(struct led_classdev *led_cdev,
 
 static struct led_classdev wrap_power_led = {
 	.name			= "wrap::power",
-	.brightness_set		= wrap_power_led_set,
+	.brightness_set_sync	= wrap_power_led_set,
 	.default_trigger	= "default-on",
 	.flags			= LED_CORE_SUSPENDRESUME,
 };
 
 static struct led_classdev wrap_error_led = {
-	.name		= "wrap::error",
-	.brightness_set	= wrap_error_led_set,
+	.name			= "wrap::error",
+	.brightness_set_sync	= wrap_error_led_set,
 	.flags			= LED_CORE_SUSPENDRESUME,
 };
 
 static struct led_classdev wrap_extra_led = {
-	.name           = "wrap::extra",
-	.brightness_set = wrap_extra_led_set,
+	.name			= "wrap::extra",
+	.brightness_set_sync	= wrap_extra_led_set,
 	.flags			= LED_CORE_SUSPENDRESUME,
 };
 

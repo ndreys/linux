@@ -223,7 +223,7 @@ create_ns2_led(struct platform_device *pdev, struct ns2_led_data *led_dat,
 	led_dat->cdev.name = template->name;
 	led_dat->cdev.default_trigger = template->default_trigger;
 	led_dat->cdev.blink_set = NULL;
-	led_dat->cdev.brightness_set = ns2_led_set;
+	led_dat->cdev.brightness_set_sync = ns2_led_set;
 	led_dat->cdev.flags |= LED_CORE_SUSPENDRESUME;
 	led_dat->cdev.groups = ns2_led_groups;
 	led_dat->cmd = template->cmd;

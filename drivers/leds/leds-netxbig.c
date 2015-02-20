@@ -316,7 +316,7 @@ create_netxbig_led(struct platform_device *pdev,
 	led_dat->cdev.name = template->name;
 	led_dat->cdev.default_trigger = template->default_trigger;
 	led_dat->cdev.blink_set = netxbig_led_blink_set;
-	led_dat->cdev.brightness_set = netxbig_led_set;
+	led_dat->cdev.brightness_set_sync = netxbig_led_set;
 	/*
 	 * Because the GPIO extension bus don't allow to read registers
 	 * value, there is no way to probe the LED initial state.

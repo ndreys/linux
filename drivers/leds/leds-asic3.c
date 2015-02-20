@@ -109,7 +109,7 @@ static int asic3_led_probe(struct platform_device *pdev)
 
 	led->cdev->name = led->name;
 	led->cdev->flags = LED_CORE_SUSPENDRESUME;
-	led->cdev->brightness_set = brightness_set;
+	led->cdev->brightness_set_sync = brightness_set;
 	led->cdev->blink_set = blink_set;
 	led->cdev->default_trigger = led->default_trigger;
 

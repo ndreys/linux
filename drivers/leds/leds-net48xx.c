@@ -32,9 +32,9 @@ static void net48xx_error_led_set(struct led_classdev *led_cdev,
 }
 
 static struct led_classdev net48xx_error_led = {
-	.name		= "net48xx::error",
-	.brightness_set	= net48xx_error_led_set,
-	.flags		= LED_CORE_SUSPENDRESUME,
+	.name			= "net48xx::error",
+	.brightness_set_sync	= net48xx_error_led_set,
+	.flags			= LED_CORE_SUSPENDRESUME,
 };
 
 static int net48xx_led_probe(struct platform_device *pdev)

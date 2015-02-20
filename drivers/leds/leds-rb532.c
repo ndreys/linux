@@ -32,7 +32,7 @@ static enum led_brightness rb532_led_get(struct led_classdev *cdev)
 
 static struct led_classdev rb532_uled = {
 	.name = "uled",
-	.brightness_set = rb532_led_set,
+	.brightness_set_sync = rb532_led_set,
 	.brightness_get = rb532_led_get,
 	.default_trigger = "nand-disk",
 };

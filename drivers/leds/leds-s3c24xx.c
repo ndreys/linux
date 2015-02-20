@@ -81,7 +81,7 @@ static int s3c24xx_led_probe(struct platform_device *dev)
 
 	platform_set_drvdata(dev, led);
 
-	led->cdev.brightness_set = s3c24xx_led_set;
+	led->cdev.brightness_set_sync = s3c24xx_led_set;
 	led->cdev.default_trigger = pdata->def_trigger;
 	led->cdev.name = pdata->name;
 	led->cdev.flags |= LED_CORE_SUSPENDRESUME;

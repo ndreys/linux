@@ -82,7 +82,7 @@ static int versatile_leds_probe(struct platform_device *dev)
 
 		led->base = base;
 		led->cdev.name = versatile_leds[i].name;
-		led->cdev.brightness_set = versatile_led_set;
+		led->cdev.brightness_set_sync = versatile_led_set;
 		led->cdev.brightness_get = versatile_led_get;
 		led->cdev.default_trigger = versatile_leds[i].trigger;
 		led->mask = BIT(i);

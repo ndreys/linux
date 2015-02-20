@@ -50,8 +50,8 @@ static void raq_web_led_set(struct led_classdev *led_cdev,
 }
 
 static struct led_classdev raq_web_led = {
-	.name		= "raq::web",
-	.brightness_set	= raq_web_led_set,
+	.name			= "raq::web",
+	.brightness_set_sync	= raq_web_led_set,
 };
 
 static void raq_power_off_led_set(struct led_classdev *led_cdev,
