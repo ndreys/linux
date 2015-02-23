@@ -1165,11 +1165,19 @@ static int coda_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	struct coda_ctx *ctx = fh_to_ctx(fh);
 	struct v4l2_fract *tpf;
 
-	if (a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
+	switch (a->type) {
+	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
+		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
+		tpf = &a->parm.output.timeperframe;
+		break;
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		a->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+		tpf = &a->parm.capture.timeperframe;
+		break;
+	default:
 		return -EINVAL;
+	}
 
-	a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
-	tpf = &a->parm.output.timeperframe;
 	tpf->denominator = ctx->params.framerate & CODA_FRATE_RES_MASK;
 	tpf->numerator = 1 + (ctx->params.framerate >>
 			      CODA_FRATE_DIV_OFFSET);
@@ -1248,11 +1256,19 @@ static int coda_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	struct coda_ctx *ctx = fh_to_ctx(fh);
 	struct v4l2_fract *tpf;
 
-	if (a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
+	switch (a->type) {
+	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
+		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
+		tpf = &a->parm.output.timeperframe;
+		break;
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		a->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+		tpf = &a->parm.capture.timeperframe;
+		break;
+	default:
 		return -EINVAL;
+	}
 
-	a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
-	tpf = &a->parm.output.timeperframe;
 	coda_approximate_timeperframe(tpf);
 	ctx->params.framerate = coda_timeperframe_to_frate(tpf);
 
