@@ -224,6 +224,8 @@ static u32 dsa_slave_br_port_mask(struct dsa_switch *ds,
 	for (port = 0; port < DSA_MAX_PORTS; port++) {
 		if (!((1 << port) & ds->phys_port_mask))
 			continue;
+		if (!ds->ports[port])
+			continue;
 
 		p = netdev_priv(ds->ports[port]);
 
@@ -709,9 +711,8 @@ int dsa_slave_resume(struct net_device *slave_dev)
 	return 0;
 }
 
-struct net_device *
-dsa_slave_create(struct dsa_switch *ds, struct device *parent,
-		 int port, char *name)
+int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
+		     int port, char *name)
 {
 	struct net_device *master = ds->dst->master_netdev;
 	struct net_device *slave_dev;
@@ -721,7 +722,7 @@ dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 	slave_dev = alloc_netdev(sizeof(struct dsa_slave_priv), name,
 				 NET_NAME_UNKNOWN, ether_setup);
 	if (slave_dev == NULL)
-		return slave_dev;
+		return -ENOMEM;
 
 	slave_dev->features = master->vlan_features;
 	slave_dev->ethtool_ops = &dsa_slave_ethtool_ops;
@@ -771,21 +772,23 @@ dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 	ret = dsa_slave_phy_setup(p, slave_dev);
 	if (ret) {
 		free_netdev(slave_dev);
-		return NULL;
+		return ret;
 	}
 
+	ds->ports[port] = slave_dev;
 	ret = register_netdev(slave_dev);
 	if (ret) {
 		netdev_err(master, "error %d registering interface %s\n",
 			   ret, slave_dev->name);
 		phy_disconnect(p->phy);
+		ds->ports[port] = NULL;
 		free_netdev(slave_dev);
-		return NULL;
+		return ret;
 	}
 
 	netif_carrier_off(slave_dev);
 
-	return slave_dev;
+	return 0;
 }
 
 static bool dsa_slave_dev_check(struct net_device *dev)
