@@ -79,6 +79,7 @@ struct mv88e6xxx_priv_state {
 	struct mutex eeprom_mutex;
 
 	int		id; /* switch product id */
+	int		num_ports;	/* number of switch ports */
 
 	/* hw bridging */
 
