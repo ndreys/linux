@@ -22,6 +22,10 @@
 #define ID_6095		0x0950
 #define ID_6131		0x1060
 #define ID_6131_B2	0x1066
+#define ID_6152		0x1a40
+#define ID_6155		0x1a50
+#define ID_6182		0x1a60
+#define ID_6185		0x1a70
 
 static char *mv88e6131_probe(struct device *host_dev, int sw_addr)
 {
@@ -43,6 +47,14 @@ static char *mv88e6131_probe(struct device *host_dev, int sw_addr)
 			return "Marvell 88E6131 (B2)";
 		if (ret_masked == ID_6131)
 			return "Marvell 88E6131";
+		if (ret_masked == ID_6152)
+			return "Marvell 88E6152";
+		if (ret_masked == ID_6155)
+			return "Marvell 88E6155";
+		if (ret_masked == ID_6182)
+			return "Marvell 88E6182";
+		if (ret_masked == ID_6185)
+			return "Marvell 88E6185";
 	}
 
 	return NULL;
@@ -157,6 +169,7 @@ static int mv88e6131_setup_global(struct dsa_switch *ds)
 
 	/* Force the priority of IGMP/MLD snoop frames and ARP frames
 	 * to the highest setting.
+	 * FIXME register does not exist on newly added chips.
 	 */
 	REG_WRITE(REG_GLOBAL2, 0x0f, 0x00ff);
 
@@ -296,6 +309,8 @@ static int mv88e6131_setup(struct dsa_switch *ds)
 
 	switch (ps->id) {
 	case ID_6085:
+	case ID_6182:
+	case ID_6185:
 		ps->num_ports = 10;
 		break;
 	case ID_6095:
@@ -304,6 +319,10 @@ static int mv88e6131_setup(struct dsa_switch *ds)
 	case ID_6131:
 	case ID_6131_B2:
 		ps->num_ports = 8;
+		break;
+	case ID_6152:
+	case ID_6155:
+		ps->num_ports = 6;
 		break;
 	default:
 		return -ENODEV;
@@ -438,3 +457,7 @@ MODULE_ALIAS("platform:mv88e6085");
 MODULE_ALIAS("platform:mv88e6095");
 MODULE_ALIAS("platform:mv88e6095f");
 MODULE_ALIAS("platform:mv88e6131");
+MODULE_ALIAS("platform:mv88e6152");
+MODULE_ALIAS("platform:mv88e6155");
+MODULE_ALIAS("platform:mv88e6182");
+MODULE_ALIAS("platform:mv88e6185");
