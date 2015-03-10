@@ -708,6 +708,8 @@ int mv88e6xxx_setup_common(struct dsa_switch *ds)
 	mutex_init(&ps->stats_mutex);
 	mutex_init(&ps->phy_mutex);
 
+	ps->id = REG_READ(REG_PORT(0), 0x03) & 0xfff0;
+
 	return 0;
 }
 
