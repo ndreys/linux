@@ -213,23 +213,6 @@ static int mv88e6131_setup_port(struct dsa_switch *ds, int p)
 	 */
 	REG_WRITE(addr, 0x05, dsa_is_cpu_port(ds, p) ? 0x8000 : 0x0000);
 
-	/* Port based VLAN map: give each port its own address
-	 * database, allow the CPU port to talk to each of the 'real'
-	 * ports, and allow each of the 'real' ports to only talk to
-	 * the upstream port.
-	 */
-	val = (p & 0xf) << 12;
-	if (dsa_is_cpu_port(ds, p))
-		val |= ds->phys_port_mask;
-	else
-		val |= 1 << dsa_upstream_port(ds);
-	REG_WRITE(addr, 0x06, val);
-
-	/* Default VLAN ID and priority: don't set a default VLAN
-	 * ID, and set the default packet priority to zero.
-	 */
-	REG_WRITE(addr, 0x07, 0x0000);
-
 	/* Port Control 2: don't force a good FCS, don't use
 	 * VLAN-based, source address-based or destination
 	 * address-based priority overrides, don't let the switch
@@ -278,7 +261,7 @@ static int mv88e6131_setup_port(struct dsa_switch *ds, int p)
 	 */
 	REG_WRITE(addr, 0x19, 0x7654);
 
-	return 0;
+	return mv88e6xxx_setup_port_common(ds, p);
 }
 
 static int mv88e6131_setup(struct dsa_switch *ds)
@@ -287,11 +270,11 @@ static int mv88e6131_setup(struct dsa_switch *ds)
 	int i;
 	int ret;
 
-	mutex_init(&ps->smi_mutex);
-	mv88e6xxx_ppu_state_init(ds);
-	mutex_init(&ps->stats_mutex);
+	ret = mv88e6xxx_setup_common(ds);
+	if (ret < 0)
+		return ret;
 
-	ps->id = REG_READ(REG_PORT(0), 0x03) & 0xfff0;
+	mv88e6xxx_ppu_state_init(ds);
 
 	ret = mv88e6131_switch_reset(ds);
 	if (ret < 0)
