@@ -42,12 +42,13 @@ static char *mv88e6171_probe(struct device *host_dev, int sw_addr)
 
 static int mv88e6171_switch_reset(struct dsa_switch *ds)
 {
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int i;
 	int ret;
 	unsigned long timeout;
 
 	/* Set all ports to the disabled state. */
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < ps->num_ports; i++) {
 		ret = REG_READ(REG_PORT(i), 0x04);
 		REG_WRITE(REG_PORT(i), 0x04, ret & 0xfffc);
 	}
@@ -74,7 +75,7 @@ static int mv88e6171_switch_reset(struct dsa_switch *ds)
 		return -ETIMEDOUT;
 
 	/* Enable ports not under DSA, e.g. WAN port */
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < ps->num_ports; i++) {
 		if (dsa_is_cpu_port(ds, i) || ds->phys_port_mask & (1 << i))
 			continue;
 
@@ -87,6 +88,8 @@ static int mv88e6171_switch_reset(struct dsa_switch *ds)
 
 static int mv88e6171_setup_global(struct dsa_switch *ds)
 {
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
 	int ret;
 	int i;
 
@@ -151,7 +154,7 @@ static int mv88e6171_setup_global(struct dsa_switch *ds)
 	}
 
 	/* Clear all trunk masks. */
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < ps->num_ports; i++)
 		REG_WRITE(REG_GLOBAL2, 0x07, 0x8000 | (i << 12) | 0xff);
 
 	/* Clear all trunk mappings. */
@@ -279,12 +282,15 @@ static int mv88e6171_setup_port(struct dsa_switch *ds, int p)
 
 static int mv88e6171_setup(struct dsa_switch *ds)
 {
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int i;
 	int ret;
 
 	ret = mv88e6xxx_setup_common(ds);
 	if (ret < 0)
 		return ret;
+
+	ps->num_ports = 7;
 
 	ret = mv88e6171_switch_reset(ds);
 	if (ret < 0)
@@ -296,7 +302,7 @@ static int mv88e6171_setup(struct dsa_switch *ds)
 	if (ret < 0)
 		return ret;
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < ps->num_ports; i++) {
 		if (!(dsa_is_cpu_port(ds, i) || ds->phys_port_mask & (1 << i)))
 			continue;
 
