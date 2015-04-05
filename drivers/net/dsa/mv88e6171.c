@@ -29,6 +29,12 @@ static char *mv88e6171_probe(struct device *host_dev, int sw_addr)
 	if (ret >= 0) {
 		if ((ret & 0xfff0) == PORT_SWITCH_ID_6171)
 			return "Marvell 88E6171";
+		if ((ret & 0xfff0) == PORT_SWITCH_ID_6175)
+			return "Marvell 88E6175";
+		if ((ret & 0xfff0) == PORT_SWITCH_ID_6351)
+			return "Marvell 88E6351";
+		if ((ret & 0xfff0) == PORT_SWITCH_ID_6371)
+			return "Marvell 88E6371";
 	}
 
 	return NULL;
@@ -116,4 +122,7 @@ struct dsa_switch_driver mv88e6171_switch_driver = {
 };
 
 MODULE_ALIAS("platform:mv88e6171");
+MODULE_ALIAS("platform:mv88e6175");
+MODULE_ALIAS("platform:mv88e6351");
+MODULE_ALIAS("platform:mv88e6371");
 
