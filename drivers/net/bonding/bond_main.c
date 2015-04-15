@@ -4539,7 +4539,7 @@ unsigned int bond_get_num_tx_queues(void)
  * Caller must NOT hold rtnl_lock; we need to release it here before we
  * set up our sysfs entries.
  */
-int bond_create(struct net *net, const char *name)
+struct net_device *bond_create(struct net *net, const char *name)
 {
 	struct net_device *bond_dev;
 	int res;
@@ -4552,7 +4552,7 @@ int bond_create(struct net *net, const char *name)
 	if (!bond_dev) {
 		pr_err("%s: eek! can't alloc netdev!\n", name);
 		rtnl_unlock();
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	dev_net_set(bond_dev, net);
@@ -4563,9 +4563,11 @@ int bond_create(struct net *net, const char *name)
 	netif_carrier_off(bond_dev);
 
 	rtnl_unlock();
-	if (res < 0)
+	if (res < 0) {
 		bond_destructor(bond_dev);
-	return res;
+		return ERR_PTR(res);
+	}
+	return bond_dev;
 }
 
 static int __net_init bond_net_init(struct net *net)
@@ -4610,6 +4612,7 @@ static int __init bonding_init(void)
 {
 	int i;
 	int res;
+	struct net_device *bond_dev;
 
 	pr_info("%s", bond_version);
 
@@ -4628,9 +4631,11 @@ static int __init bonding_init(void)
 	bond_create_debugfs();
 
 	for (i = 0; i < max_bonds; i++) {
-		res = bond_create(&init_net, NULL);
-		if (res)
+		bond_dev = bond_create(&init_net, NULL);
+		if (IS_ERR(bond_dev)) {
+			res = PTR_ERR(bond_dev);
 			goto err;
+		}
 	}
 
 	register_netdevice_notifier(&bond_netdev_notifier);

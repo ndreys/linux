@@ -99,6 +99,7 @@ static ssize_t bonding_store_bonds(struct class *cls,
 	struct bond_net *bn =
 		container_of(attr, struct bond_net, class_attr_bonding_masters);
 	char command[IFNAMSIZ + 1] = {0, };
+	struct net_device *bond_dev;
 	char *ifname;
 	int rv, res = count;
 
@@ -110,8 +111,9 @@ static ssize_t bonding_store_bonds(struct class *cls,
 
 	if (command[0] == '+') {
 		pr_info("%s is being created...\n", ifname);
-		rv = bond_create(bn->net, ifname);
-		if (rv) {
+		bond_dev = bond_create(bn->net, ifname);
+		if (IS_ERR(bond_dev)) {
+			rv = PTR_ERR(bond_dev);
 			if (rv == -EEXIST)
 				pr_info("%s already exists\n", ifname);
 			else
