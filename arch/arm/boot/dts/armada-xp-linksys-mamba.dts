@@ -333,7 +333,7 @@
 		#address-cells = <2>;
 		#size-cells = <0>;
 
-		dsa,ethernet = <&eth0>;
+		dsa,ethernet = <&bond>;
 		dsa,mii-bus = <&mdio>;
 
 		switch@0 {
@@ -370,7 +370,17 @@
 				reg = <5>;
 				label = "cpu";
 			};
+
+			port@6 {
+				reg = <6>;
+				label = "cpu";
+			};
 		};
+	};
+
+	bond: bond {
+		compatible = "linux,bond";
+		slaves = < &eth0 >, < &eth1 >;
 	};
 };
 
