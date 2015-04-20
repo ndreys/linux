@@ -1160,6 +1160,15 @@ static rx_handler_result_t bond_handle_frame(struct sk_buff **pskb)
 		ether_addr_copy(eth_hdr(skb)->h_dest, bond->dev->dev_addr);
 	}
 
+	/*
+	 * Some variants of DSA tagging don't have an ethertype field
+	 * at all, so we check here whether one of those tagging
+	 * variants has been configured on the bond interface,
+	 * and if so, set skb->protocol.
+	 */
+	if (unlikely(netdev_uses_dsa(skb->dev)))
+		skb->protocol = htons(ETH_P_XDSA);
+
 	return ret;
 }
 
