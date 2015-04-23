@@ -118,6 +118,12 @@
 #define PORT_CONTROL_STATE_LEARNING	0x02
 #define PORT_CONTROL_STATE_FORWARDING	0x03
 #define PORT_CONTROL_1		0x05
+#define PORT_CONTROL_1_MESSAGE		BIT(15)
+#define PORT_CONTROL_1_TRUNK_PORT	BIT(14)
+#define PORT_CONTROL_1_TRUNK_NEW_SHIFT	8
+#define PORT_CONTROL_1_TRUNK_NEW_MASK	0x0f00
+#define PORT_CONTROL_1_TRUNK_OLD_SHIFT	4
+#define PORT_CONTROL_1_TRUNK_OLD_MASK	0x00f0
 #define PORT_BASE_VLAN		0x06
 #define PORT_DEFAULT_VLAN	0x07
 #define PORT_CONTROL_2		0x08
@@ -328,6 +334,8 @@ struct mv88e6xxx_priv_state {
 
 	int		id; /* switch product id */
 	int		num_ports;	/* number of switch ports */
+	int		num_trunks;
+	DECLARE_BITMAP(trunks, 32);	/* which trunks are allocated */
 
 	/* hw bridging */
 

@@ -1348,6 +1348,81 @@ static void mv88e6xxx_bridge_work(struct work_struct *work)
 	}
 }
 
+static int mv88e6xxx_alloc_trunk(struct dsa_switch *ds)
+{
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	int bit;
+
+	mutex_lock(&ps->smi_mutex);
+	bit = find_first_zero_bit(ps->trunks, ps->num_trunks);
+	if (bit != ps->num_trunks)
+		set_bit(bit, ps->trunks);
+	mutex_unlock(&ps->smi_mutex);
+
+	pr_info("mv88e6xxx_alloc_trunk: %d\n", bit);
+
+	if (bit == ps->num_trunks)
+		return -ENOBUFS;
+	return bit;
+}
+
+static void mv88e6xxx_free_trunk(struct dsa_switch *ds, int bit)
+{
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	int old;
+
+	mutex_lock(&ps->smi_mutex);
+	old = test_and_clear_bit(bit, ps->trunks);
+	mutex_unlock(&ps->smi_mutex);
+
+	WARN_ON(!old);
+
+	return;
+}
+
+static int mv88e6xxx_setup_port_trunk(struct dsa_switch *ds, int port,
+				      int trunk)
+{
+	int reg;
+
+	reg = _mv88e6xxx_reg_read(ds, REG_PORT(port), PORT_CONTROL_1);
+	if (reg < 0)
+		return reg;
+	if (mv88e6xxx_6352_family(ds) || mv88e6xxx_6351_family(ds) ||
+	    mv88e6xxx_6165_family(ds) || mv88e6xxx_6097_family(ds)) {
+		reg &= ~PORT_CONTROL_1_TRUNK_NEW_MASK;
+		reg |= (trunk << PORT_CONTROL_1_TRUNK_NEW_SHIFT);
+	} else {
+		reg &= ~PORT_CONTROL_1_TRUNK_OLD_MASK;
+		reg |= (trunk << PORT_CONTROL_1_TRUNK_OLD_SHIFT);
+	}
+	reg |= PORT_CONTROL_1_TRUNK_PORT;
+
+	return _mv88e6xxx_reg_write(ds, REG_PORT(port), PORT_CONTROL_1, reg);
+}
+
+
+static int mv88e6xxx_setup_cpu_trunk(struct dsa_switch *ds)
+{
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	int trunk;
+	int port;
+	int ret;
+
+	trunk = mv88e6xxx_alloc_trunk(ds);
+	if (trunk < 0)
+		return trunk;
+
+	for (port = 0; port < ps->num_ports; port++) {
+		if (!test_bit(port, &ds->cpu_port_mask))
+			continue;
+		ret = mv88e6xxx_setup_port_trunk(ds, port, trunk);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
 static int mv88e6xxx_setup_port(struct dsa_switch *ds, int port)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
@@ -1433,7 +1508,7 @@ static int mv88e6xxx_setup_port(struct dsa_switch *ds, int port)
 	    mv88e6xxx_6095_family(ds) || mv88e6xxx_6065_family(ds)) {
 		if (ds->dsa_port_mask & (1 << port))
 			reg |= PORT_CONTROL_FRAME_MODE_DSA;
-		if (port == dsa_upstream_port(ds))
+		if (dsa_is_cpu_port(ds, port))
 			reg |= PORT_CONTROL_FORWARD_UNKNOWN |
 				PORT_CONTROL_FORWARD_UNKNOWN_MC;
 	}
@@ -1590,7 +1665,7 @@ abort:
 int mv88e6xxx_setup_ports(struct dsa_switch *ds)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
-	int ret;
+	int ret = 0;
 	int i;
 
 	for (i = 0; i < ps->num_ports; i++) {
@@ -1598,7 +1673,11 @@ int mv88e6xxx_setup_ports(struct dsa_switch *ds)
 		if (ret < 0)
 			return ret;
 	}
-	return 0;
+
+	if (bitmap_weight(&ds->cpu_port_mask, 32) > 1)
+		ret = mv88e6xxx_setup_cpu_trunk(ds);
+
+	return ret;
 }
 
 int mv88e6xxx_setup_common(struct dsa_switch *ds)
@@ -1620,6 +1699,15 @@ int mv88e6xxx_setup_global(struct dsa_switch *ds)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int i;
+
+	switch (ps->id) {
+	case PORT_SWITCH_ID_6092:
+	case PORT_SWITCH_ID_6182:
+		ps->num_trunks = 8;
+		break;
+	default:
+		ps->num_trunks = 16;
+	}
 
 	/* Set the default address aging time to 5 minutes, and
 	 * enable address learn messages to be sent to all message
