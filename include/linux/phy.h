@@ -327,6 +327,7 @@ struct phy_c45_device_ids {
  * c45_ids: 802.3-c45 Device Identifers if is_c45.
  * is_c45:  Set to true if this phy uses clause 45 addressing.
  * is_internal: Set to true if this phy is internal to a MAC.
+ * is_switch: Set to true if this phy is an Ethernet switch.
  * has_fixups: Set to true if this phy has fixups/quirks.
  * suspended: Set to true if this phy has been suspended successfully.
  * state: state of the PHY for management purposes
@@ -365,6 +366,7 @@ struct phy_device {
 	struct phy_c45_device_ids c45_ids;
 	bool is_c45;
 	bool is_internal;
+	bool is_switch;
 	bool has_fixups;
 	bool suspended;
 
@@ -672,6 +674,16 @@ static inline bool phy_interrupt_is_valid(struct phy_device *phydev)
 static inline bool phy_is_internal(struct phy_device *phydev)
 {
 	return phydev->is_internal;
+}
+
+/**
+ * phy_is_ethswitch - Convenience function for testing if this PHY is the
+ * CPU port facing side of an Ethernet switch
+ * @phydev: the phy_device struct
+ */
+static inline bool phy_is_ethswitch(struct phy_device *phydev)
+{
+	return phydev->is_switch;
 }
 
 /**
