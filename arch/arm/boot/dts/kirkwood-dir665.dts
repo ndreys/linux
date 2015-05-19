@@ -219,31 +219,43 @@
 			port@0 {
 				reg = <0>;
 				label = "lan4";
+				cpu = <&cpu1>;
 			};
 
 			port@1 {
 			       reg = <1>;
 			       label = "lan3";
+			       cpu = <&cpu0>;
 			};
 
 			port@2 {
 			       reg = <2>;
 			       label = "lan2";
+			       cpu = <&cpu1>;
 			};
 
 			port@3 {
 			       reg = <3>;
 			       label = "lan1";
+			       cpu = <&cpu0>;
 			};
 
 			port@4 {
 				reg = <4>;
 				label = "wan";
+				cpu = <&cpu1>;
 			};
 
-			port@6 {
+			cpu0: port@5 {
+			       reg = <5>;
+			       label = "cpu";
+			       ethernet = <&eth1port>;
+			};
+
+			cpu1: port@6 {
 			       reg = <6>;
 			       label = "cpu";
+			       ethernet = <&eth0port>;
 			};
 		};
 	};
@@ -268,7 +280,13 @@
  * single CPU port. So leave this port disabled to avoid confusion. */
 
 &eth1 {
-	status = "disabled";
+	status = "okay";
+
+	ethernet1-port@0 {
+		speed = <1000>;
+		duplex = <1>;
+		local-mac-address = [c8 be 19 61 de 55];
+	};
 };
 
 /* There is no battery on the boards, so the RTC does not keep time
