@@ -1051,7 +1051,7 @@ static int _mv88e6xxx_update_port_config(struct dsa_switch *ds, int port)
 		reg |= ds->phys_port_mask;
 	else
 		reg |= (ps->bridge_mask[fid] |
-		       (1 << dsa_upstream_port(ds))) & ~(1 << port);
+			(1 << dsa_port_upstream_port(ds, port))) & ~(1 << port);
 
 	return _mv88e6xxx_reg_write(ds, REG_PORT(port), PORT_BASE_VLAN, reg);
 }
@@ -1433,7 +1433,7 @@ static int mv88e6xxx_setup_port(struct dsa_switch *ds, int port)
 	    mv88e6xxx_6095_family(ds) || mv88e6xxx_6065_family(ds)) {
 		if (ds->dsa_port_mask & (1 << port))
 			reg |= PORT_CONTROL_FRAME_MODE_DSA;
-		if (port == dsa_upstream_port(ds))
+		if (dsa_is_upstream_port(ds, port))
 			reg |= PORT_CONTROL_FORWARD_UNKNOWN |
 				PORT_CONTROL_FORWARD_UNKNOWN_MC;
 	}
@@ -1464,11 +1464,11 @@ static int mv88e6xxx_setup_port(struct dsa_switch *ds, int port)
 
 	if (mv88e6xxx_6095_family(ds) || mv88e6xxx_6185_family(ds)) {
 		/* Set the upstream port this port should use */
-		reg |= dsa_upstream_port(ds);
+		reg |= dsa_port_upstream_port(ds, port);
 		/* enable forwarding of unknown multicast addresses to
 		 * the upstream port
 		 */
-		if (port == dsa_upstream_port(ds))
+		if (dsa_is_upstream_port(ds, port))
 			reg |= PORT_CONTROL_2_FORWARD_UNKNOWN;
 	}
 

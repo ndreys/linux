@@ -57,7 +57,7 @@ static netdev_tx_t trailer_xmit(struct sk_buff *skb, struct net_device *dev)
 	trailer[2] = 0x10;
 	trailer[3] = 0x00;
 
-	nskb->dev = p->parent->dst->master_netdev;
+	nskb->dev = p->master;
 	dev_queue_xmit(nskb);
 
 	return NETDEV_TX_OK;

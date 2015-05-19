@@ -196,14 +196,11 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 			continue;
 
 		if (!strcmp(name, "cpu")) {
-			if (dst->cpu_switch != -1) {
-				netdev_err(dst->master_netdev,
-					   "multiple cpu ports?!\n");
-				ret = -EINVAL;
-				goto out;
+			if (dst->cpu_switch == -1) {
+				dst->cpu_switch = index;
+				dst->cpu_port = i;
 			}
-			dst->cpu_switch = index;
-			dst->cpu_port = i;
+			ds->cpu_port_mask |= 1 << i;
 		} else if (!strcmp(name, "dsa")) {
 			ds->dsa_port_mask |= 1 << i;
 		} else {
@@ -211,6 +208,11 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 		}
 		valid_name_found = true;
 	}
+	pr_info("cpu_port_mask %x\n", ds->cpu_port_mask);
+	pr_info("dsa_port_mask %x\n", ds->dsa_port_mask);
+	pr_info("phys_port_mask %x\n", ds->phys_port_mask);
+	pr_info("cpu_switch %d\n", dst->cpu_switch);
+	pr_info("cpu_port %d\n", dst->cpu_port);
 
 	if (!valid_name_found && i == DSA_MAX_PORTS) {
 		ret = -EINVAL;
@@ -558,11 +560,15 @@ static void dsa_of_free_platform_data(struct dsa_platform_data *pd)
 {
 	int i;
 	int port_index;
+	struct dsa_chip_data *cd;
 
 	for (i = 0; i < pd->nr_chips; i++) {
+		cd = &pd->chip[i];
 		port_index = 0;
 		while (port_index < DSA_MAX_PORTS) {
-			kfree(pd->chip[i].port_names[port_index]);
+			kfree(cd->port_names[port_index]);
+			if (cd->port_ethernet[port_index])
+				dev_put(cd->port_ethernet[port_index]);
 			port_index++;
 		}
 		kfree(pd->chip[i].rtable);
@@ -570,15 +576,74 @@ static void dsa_of_free_platform_data(struct dsa_platform_data *pd)
 	kfree(pd->chip);
 }
 
+static int dsa_of_probe_dsa_port(struct dsa_platform_data *pd,
+				 struct dsa_chip_data *cd,
+				 int chip_index, struct device_node *port,
+				 int port_index)
+{
+	struct device_node *link;
+
+	link = of_parse_phandle(port, "link", 0);
+	if (!link)
+		return -EINVAL;
+
+	if (pd->nr_chips == 1)
+		return -EINVAL;
+
+	return dsa_of_setup_routing_table(pd, cd, chip_index, port_index,
+					  link);
+}
+
+static int dsa_of_probe_cpu_port(struct dsa_chip_data *cd,
+				 struct device_node *port,
+				 int port_index)
+{
+	struct net_device *ethernet_dev;
+	struct device_node *ethernet;
+
+	ethernet = of_parse_phandle(port, "ethernet", 0);
+	if (ethernet) {
+		ethernet_dev = of_find_net_device_by_node(ethernet);
+		if (!ethernet_dev)
+			return -EPROBE_DEFER;
+
+		dev_hold(ethernet_dev);
+		cd->port_ethernet[port_index] = ethernet_dev;
+	}
+
+	return 0;
+}
+
+static int dsa_of_probe_user_port(struct dsa_chip_data *cd,
+				  struct device_node *port,
+				  int port_index)
+{
+	struct device_node *cpu_port;
+	const unsigned int *cpu_port_reg;
+	int cpu_port_index;
+
+	cpu_port = of_parse_phandle(port, "cpu", 0);
+	if (cpu_port) {
+		cpu_port_reg = of_get_property(cpu_port, "reg", NULL);
+		if (!cpu_port_reg)
+			return -EINVAL;
+		cpu_port_index = be32_to_cpup(cpu_port_reg);
+		cd->port_cpu[port_index] = cpu_port_index;
+	}
+
+	return 0;
+}
+
 static int dsa_of_probe_port(struct dsa_platform_data *pd,
 			     struct dsa_chip_data *cd,
 			     int chip_index,
 			     struct device_node *port)
 {
+	bool is_cpu_port = false, is_dsa_port = false;
+	bool is_user_port = false;
 	const unsigned int *port_reg;
 	const char *port_name;
-	struct device_node *link;
-	int port_index, ret;
+	int port_index, ret = 0;
 
 	port_reg = of_get_property(port, "reg", NULL);
 	if (!port_reg)
@@ -590,20 +655,28 @@ static int dsa_of_probe_port(struct dsa_platform_data *pd,
 	if (!port_name)
 		return -EINVAL;
 
+	if (!strcmp(port_name, "cpu"))
+		is_cpu_port = true;
+	if (!strcmp(port_name, "dsa"))
+		is_dsa_port = true;
+	if (!is_cpu_port && !is_dsa_port)
+		is_user_port = true;
+
 	cd->port_dn[port_index] = port;
 
 	cd->port_names[port_index] = kstrdup(port_name, GFP_KERNEL);
 	if (!cd->port_names[port_index])
 		return -ENOMEM;
 
-	link = of_parse_phandle(port, "link", 0);
-
-	if (!strcmp(port_name, "dsa") && link && pd->nr_chips > 1) {
-		ret = dsa_of_setup_routing_table(pd, cd,
-						 chip_index, port_index, link);
-		if (ret)
-			return ret;
-	}
+	if (is_dsa_port)
+		ret = dsa_of_probe_dsa_port(pd, cd, chip_index, port,
+					    port_index);
+	if (is_cpu_port)
+		ret = dsa_of_probe_cpu_port(cd, port, port_index);
+	if (is_user_port)
+		ret = dsa_of_probe_user_port(cd, port, port_index);
+	if (ret)
+		return ret;
 
 	return port_index;
 }

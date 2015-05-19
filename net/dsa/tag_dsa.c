@@ -63,7 +63,7 @@ static netdev_tx_t dsa_xmit(struct sk_buff *skb, struct net_device *dev)
 		dsa_header[3] = 0x00;
 	}
 
-	skb->dev = p->parent->dst->master_netdev;
+	skb->dev = p->master;
 	dev_queue_xmit(skb);
 
 	return NETDEV_TX_OK;

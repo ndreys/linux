@@ -58,13 +58,24 @@ Optionnal property:
 			  Documentation/devicetree/bindings/net/ethernet.txt
 			  for details.
 
+- ethernet		: Optional for "cpu" ports. A phandle to an ethernet
+                          device which will be used by this CPU port for
+			  passing packets to/from the host. If not present,
+			  the port will use the "dsa,ethernet" property
+			  defined above.
+
+- cpu			: Option for non "cpu"/"dsa" ports. A phandle to a
+			  "cpu" port, which will be used for passing packets
+			  from this port to the host. If not present, the first
+			  "cpu" port will be used.
+
 Optional subnodes:
 - fixed-link		: Fixed-link subnode describing a link to a non-MDIO
 			  managed entity. See
 			  Documentation/devicetree/bindings/net/fixed-link.txt
 			  for details.
 
-Example:
+Examples:
 
 	dsa@0 {
 		compatible = "marvell,dsa";
@@ -112,6 +123,59 @@ Example:
 				reg = <0>;
 				label = "dsa";
 				link = <&switch0uplink>;
+			};
+		};
+	};
+
+	dsa@1 {
+		compatible = "marvell,dsa";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		dsa,ethernet = <&eth0port>;
+		dsa,mii-bus = <&mdio>;
+
+		switch@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0 0>;	/* MDIO address 0, switch 0 in tree */
+
+			port@0 {
+				reg = <0>;
+				label = "lan4";
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "lan3";
+				cpu = <&cpu1>;
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "lan2";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "lan1";
+				cpu = <&cpu1>;
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "wan";
+			};
+
+			port@5 {
+				reg = <5>;
+				label = "cpu";
+			};
+
+			cpu1: port@6 {
+				reg = <6>;
+				label = "cpu";
+				ethernet = <&eth1port>;
 			};
 		};
 	};

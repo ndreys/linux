@@ -56,6 +56,8 @@ struct dsa_chip_data {
 	 */
 	char		*port_names[DSA_MAX_PORTS];
 	struct device_node *port_dn[DSA_MAX_PORTS];
+	struct net_device *port_ethernet[DSA_MAX_PORTS];
+	int		port_cpu[DSA_MAX_PORTS];
 
 	/*
 	 * An array (with nr_chips elements) of which element [a]
@@ -160,6 +162,7 @@ struct dsa_switch {
 	 * Slave mii_bus and devices for the individual ports.
 	 */
 	u32			dsa_port_mask;
+	u32			cpu_port_mask;
 	u32			phys_port_mask;
 	u32			phys_mii_mask;
 	struct mii_bus		*slave_mii_bus;
@@ -168,12 +171,22 @@ struct dsa_switch {
 
 static inline bool dsa_is_cpu_port(struct dsa_switch *ds, int p)
 {
-	return !!(ds->index == ds->dst->cpu_switch && p == ds->dst->cpu_port);
+	return ds->cpu_port_mask & (1 << p);
+}
+
+static inline bool dsa_is_dsa_port(struct dsa_switch *ds, int p)
+{
+	return ds->dsa_port_mask & (1 << p);
 }
 
 static inline bool dsa_is_port_initialized(struct dsa_switch *ds, int p)
 {
 	return ds->phys_port_mask & (1 << p) && ds->ports[p];
+}
+
+static inline bool dsa_is_upstream_port(struct dsa_switch *ds, int p)
+{
+	return dsa_is_cpu_port(ds, p) || dsa_is_dsa_port(ds, p);
 }
 
 static inline u8 dsa_upstream_port(struct dsa_switch *ds)
@@ -190,6 +203,19 @@ static inline u8 dsa_upstream_port(struct dsa_switch *ds)
 		return dst->cpu_port;
 	else
 		return ds->pd->rtable[dst->cpu_switch];
+}
+
+static inline u8 dsa_port_upstream_port(struct dsa_switch *ds, int port)
+{
+
+	/*
+	 * If this port has a specific upstream cpu port, use it,
+	 * otherwise use the switch default.
+	 */
+	if (ds->pd->port_cpu[port])
+		return ds->pd->port_cpu[port];
+	else
+		return dsa_upstream_port(ds);
 }
 
 struct dsa_switch_driver {

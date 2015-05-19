@@ -875,10 +875,17 @@ int dsa_slave_resume(struct net_device *slave_dev)
 int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 		     int port, char *name)
 {
-	struct net_device *master = ds->dst->master_netdev;
+	struct net_device *master;
 	struct net_device *slave_dev;
 	struct dsa_slave_priv *p;
+	int port_cpu = ds->pd->port_cpu[port];
 	int ret;
+
+	if (port_cpu && ds->pd->port_ethernet[port_cpu])
+		master = ds->pd->port_ethernet[port_cpu];
+	else
+		master = ds->dst->master_netdev;
+	master->dsa_ptr = (void *)ds->dst;
 
 	slave_dev = alloc_netdev(sizeof(struct dsa_slave_priv), name,
 				 NET_NAME_UNKNOWN, ether_setup);
@@ -903,6 +910,7 @@ int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 	p->dev = slave_dev;
 	p->parent = ds;
 	p->port = port;
+	p->master = master;
 
 	switch (ds->dst->tag_protocol) {
 #ifdef CONFIG_NET_DSA_TAG_DSA
