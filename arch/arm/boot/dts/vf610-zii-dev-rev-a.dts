@@ -115,6 +115,17 @@
 			};
 		};
 	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-0 = <&pinctrl_leds_debug>;
+		pinctrl-names = "default";
+
+		debug_1 {
+			label = "zii:green:debug1";
+			gpios = <&gpio3 22 GPIO_ACTIVE_HIGH>;
+		};
+	};
 };
 
 &adc0 {
@@ -182,6 +193,12 @@
 			fsl,pins = <
 				VF610_PAD_PTA16__GPIO_6	0x31c2
 			>;
+		};
+
+		pinctrl_leds_debug: pinctrl-leds-debug {
+			fsl,pins = <
+				 VF610_PAD_PTE13__GPIO_118	0x31c2
+				 >;
 		};
 
 		pinctrl_adc0_ad5: adc0ad5grp {
