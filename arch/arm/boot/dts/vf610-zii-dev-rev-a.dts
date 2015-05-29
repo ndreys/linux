@@ -164,7 +164,7 @@
 };
 
 &iomuxc {
-	vf610-twr {
+	vf610-zii {
 		pinctrl_adc0_ad5: adc0ad5grp {
 			fsl,pins = <
 				VF610_PAD_PTC30__ADC0_SE5		0xa1
