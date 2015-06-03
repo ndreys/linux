@@ -164,6 +164,26 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0>;
 	status = "okay";
+
+	pca9505@20 {
+		compatible = "nxp,pca9554";
+		reg = <0x20>;
+	};
+
+	at24c04@50 {
+		compatible = "atmel,24c04";
+		reg = <0x50>;
+	};
+
+	at24c04@52 {
+		compatible = "atmel,24c04";
+		reg = <0x52>;
+	};
+
+	ds1682@6b {
+		compatible = "dallas,ds1682";
+		reg = <0x6b>;
+	};
 };
 
 &i2c1 {
@@ -178,6 +198,65 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
 	status = "okay";
+
+	tca9548@70 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		reset-gpios = <&gpio3 23 GPIO_ACTIVE_LOW>;
+
+		i2c2_0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			sfp1: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			sfp2: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+			sfp3: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_3:  i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+
+			sfp4: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+
+		};
+
+		i2c2_4: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+		};
+	};
 };
 
 &i2c3 {
@@ -188,6 +267,9 @@
 };
 
 &iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c_mux_reset>;
+
 	vf610-zii {
 		pinctrl_usb_vbus: pinctrl-usb-vbus {
 			fsl,pins = <
@@ -198,6 +280,12 @@
 		pinctrl_leds_debug: pinctrl-leds-debug {
 			fsl,pins = <
 				 VF610_PAD_PTE13__GPIO_118	0x31c2
+				 >;
+		};
+
+		pinctrl_i2c_mux_reset: pinctrl-i2c-mux-reset {
+			fsl,pins = <
+				 VF610_PAD_PTE14__GPIO_119	0x31c2
 				 >;
 		};
 
