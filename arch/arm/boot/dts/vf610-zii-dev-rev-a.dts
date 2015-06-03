@@ -239,37 +239,37 @@
 		 * open drain:		  enabled
 		 * hysteresis:		  Schmitt trigger
 		 * drive strength:	  20 Ohm
-		 * pull strength:	  100 kOhm pull-up
-		 * pull / keeper:	  disabled
-		 * pull / keeper select:  keeper
+		 * pull strength:	  22 kOhm pull-up
+		 * pull / keeper:	  enabled
+		 * pull / keeper select:  pull
 		 * output buffer:	  enabled
 		 * input buffer:	  enabled
 		 */
 		pinctrl_i2c0: i2c0grp {
 			fsl,pins = <
-				VF610_PAD_PTB14__I2C0_SCL		0x37e3
-				VF610_PAD_PTB15__I2C0_SDA		0x37e3
+				VF610_PAD_PTB14__I2C0_SCL		0x37ff
+				VF610_PAD_PTB15__I2C0_SDA		0x37ff
 			>;
 		};
 
 		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
-				VF610_PAD_PTB16__I2C1_SCL		0x37e3
-				VF610_PAD_PTB17__I2C1_SDA		0x37e3
+				VF610_PAD_PTB16__I2C1_SCL		0x37ff
+				VF610_PAD_PTB17__I2C1_SDA		0x37ff
 			>;
 		};
 
 		pinctrl_i2c2: i2c2grp {
 			fsl,pins = <
-				VF610_PAD_PTA22__I2C2_SCL		0x37e3
-				VF610_PAD_PTA23__I2C2_SDA		0x37e3
+				VF610_PAD_PTA22__I2C2_SCL		0x37ff
+				VF610_PAD_PTA23__I2C2_SDA		0x37ff
 			>;
 		};
 
 		pinctrl_i2c3: i2c3grp {
 			fsl,pins = <
-				VF610_PAD_PTA30__I2C3_SCL		0x37e3
-				VF610_PAD_PTA31__I2C3_SDA		0x37e3
+				VF610_PAD_PTA30__I2C3_SCL		0x37ff
+				VF610_PAD_PTA31__I2C3_SDA		0x37ff
 			>;
 		};
 
