@@ -152,6 +152,11 @@
 	pinctrl-0 = <&pinctrl_fec1>;
 	status = "okay";
 
+	fixed-link {
+		   speed = <100>;
+		   full-duplex;
+	};
+
 	mdio1: mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
