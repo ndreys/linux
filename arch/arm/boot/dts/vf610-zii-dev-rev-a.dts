@@ -257,6 +257,11 @@
 		reg = <0x20>;
 	};
 
+	lm75@48 {
+		compatible = "national,lm75";
+		reg = <0x48>;
+	};
+
 	at24c04@50 {
 		compatible = "atmel,24c04";
 		reg = <0x50>;
