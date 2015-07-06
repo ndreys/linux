@@ -1292,7 +1292,7 @@ static int coda_job_ready(void *m2m_priv)
 	if (!src_bufs && ctx->inst_type != CODA_INST_DECODER) {
 		trace_coda_not_ready(ctx, stream_end, src_bufs, -1, -1);
 		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			 "not ready: not enough video buffers.\n");
+			 "not ready: not enough video output buffers.\n");
 		return 0;
 	}
 
