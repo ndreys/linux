@@ -84,6 +84,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x02 0>;
+			eeprom-length = <512>;
 
 			port@0 {
 				reg = <0>;
@@ -137,6 +138,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x04 1>;
+			eeprom-length = <512>;
 
 			port@0 {
 				reg = <0>;
