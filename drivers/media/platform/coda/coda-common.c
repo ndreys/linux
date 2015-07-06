@@ -42,6 +42,7 @@
 
 #include "coda.h"
 #include "imx-vdoa.h"
+#include "trace.h"
 
 #define CODA_NAME		"coda"
 
@@ -1184,6 +1185,7 @@ static int coda_job_ready(void *m2m_priv)
 {
 	struct coda_ctx *ctx = m2m_priv;
 	int src_bufs = v4l2_m2m_num_src_bufs_ready(ctx->fh.m2m_ctx);
+	bool stream_end = ctx->bit_stream_param & CODA_BIT_STREAM_END_FLAG;
 
 	/*
 	 * For both 'P' and 'key' frame cases 1 picture
@@ -1191,20 +1193,20 @@ static int coda_job_ready(void *m2m_priv)
 	 * the compressed frame can be in the bitstream.
 	 */
 	if (!src_bufs && ctx->inst_type != CODA_INST_DECODER) {
+		trace_coda_not_ready(ctx, stream_end, src_bufs, -1, -1);
 		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 			 "not ready: not enough video buffers.\n");
 		return 0;
 	}
 
 	if (!v4l2_m2m_num_dst_bufs_ready(ctx->fh.m2m_ctx)) {
+		trace_coda_not_ready(ctx, stream_end, src_bufs, -2, -2);
 		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 			 "not ready: not enough video capture buffers.\n");
 		return 0;
 	}
 
 	if (ctx->inst_type == CODA_INST_DECODER && ctx->use_bit) {
-		bool stream_end = ctx->bit_stream_param &
-				  CODA_BIT_STREAM_END_FLAG;
 		int num_metas = ctx->num_metas;
 		struct coda_buffer_meta *meta;
 		unsigned int meta_size;
@@ -1221,6 +1223,7 @@ static int coda_job_ready(void *m2m_priv)
 		}
 
 		if (ctx->hold && !src_bufs) {
+			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
 			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 				 "%d: not ready: on hold for more buffers.\n",
 				 ctx->idx);
@@ -1228,6 +1231,7 @@ static int coda_job_ready(void *m2m_priv)
 		}
 
 		if (!stream_end && (num_metas + src_bufs) < 2) {
+			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
 			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 				 "%d: not ready: need 2 buffers available (queue:%d + bitstream:%d)\n",
 				 ctx->idx, num_metas, src_bufs);
@@ -1241,6 +1245,7 @@ static int coda_job_ready(void *m2m_priv)
 		else
 			meta_size = ctx->bitstream.size - meta->start + meta->end;
 		if (!stream_end && payload < meta_size + 512) {
+			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
 			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 				 "%d: not ready: need 3*256 bytes beyond first buffer in bitstream (%d %d)\n",
 				 ctx->idx, meta_size, payload);
@@ -1249,6 +1254,7 @@ static int coda_job_ready(void *m2m_priv)
 
 		if (!src_bufs && !stream_end &&
 		    (payload < 512)) {
+			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
 			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
 				 "%d: not ready: not enough bitstream data (%d).\n",
 				 ctx->idx, payload);
