@@ -1389,6 +1389,7 @@ static int coda_job_ready(void *m2m_priv)
 				  CODA_BIT_STREAM_END_FLAG;
 		int num_metas = ctx->num_metas;
 		struct coda_buffer_meta *meta;
+		unsigned int payload = coda_get_bitstream_payload(ctx);
 		unsigned int count;
 
 		count = hweight32(ctx->frm_dis_flg);
