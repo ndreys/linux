@@ -1,0 +1,434 @@
+/*
+ * Copyright 2013 Freescale Semiconductor, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#include "vf610.dtsi"
+
+/ {
+	audio_ext: mclk-osc {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24576000>;
+	};
+
+	enet_ext: eth-osc {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <50000000>;
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_3p3v: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+		reg_vcc_3v3_mcu: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "vcc_3v3_mcu";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		usb0_vbus: regulator@2 {
+			compatible = "regulator-fixed";
+			pinctrl-0 = <&pinctrl_usb_vbus>;
+			reg = <2>;
+			regulator-name = "usb_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-boot-on;
+			gpio = <&gpio0 6 0>;
+		};
+	};
+};
+
+&adc0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc0_ad5>;
+	vref-supply = <&reg_vcc_3v3_mcu>;
+	status = "okay";
+};
+
+&edma0 {
+	status = "okay";
+};
+
+&esdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_esdhc1>;
+	bus-width = <4>;
+	status = "okay";
+};
+
+&fec1 {
+	phy-mode = "rmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fec1>;
+	status = "okay";
+
+	fixed-link {
+		   speed = <100>;
+		   full-duplex;
+	};
+
+	mdio1: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+	};
+};
+
+&i2c0 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0>;
+	status = "okay";
+
+	gpio5: pca9505@20 {
+		compatible = "nxp,pca9554";
+		reg = <0x20>;
+	};
+
+	lm75@48 {
+		compatible = "national,lm75";
+		reg = <0x48>;
+	};
+
+	at24c04@50 {
+		compatible = "atmel,24c04";
+		reg = <0x50>;
+	};
+
+	at24c04@52 {
+		compatible = "atmel,24c04";
+		reg = <0x52>;
+	};
+
+	ds1682@6b {
+		compatible = "dallas,ds1682";
+		reg = <0x6b>;
+	};
+};
+
+&i2c1 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	status = "okay";
+};
+
+&i2c2 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2>;
+	status = "okay";
+
+	tca9548@70 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		reset-gpios = <&gpio3 23 GPIO_ACTIVE_LOW>;
+
+		i2c2_0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			sfp1: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			sfp2: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+			sfp3: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+		};
+
+		i2c2_3:  i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+
+			sfp4: at24c04@50 {
+				compatible = "atmel,24c02";
+				reg = <0x50>;
+			};
+
+		};
+
+		i2c2_4: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+		};
+	};
+};
+
+&i2c3 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c3>;
+	status = "okay";
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c_mux_reset>;
+
+	vf610-zii {
+		pinctrl_usb_vbus: pinctrl-usb-vbus {
+			fsl,pins = <
+				VF610_PAD_PTA16__GPIO_6	0x31c2
+			>;
+		};
+
+		pinctrl_i2c_mux_reset: pinctrl-i2c-mux-reset {
+			fsl,pins = <
+				 VF610_PAD_PTE14__GPIO_119	0x31c2
+				 >;
+		};
+
+		pinctrl_adc0_ad5: adc0ad5grp {
+			fsl,pins = <
+				VF610_PAD_PTC30__ADC0_SE5		0xa1
+			>;
+		};
+
+		pinctrl_esdhc1: esdhc1grp {
+			fsl,pins = <
+				VF610_PAD_PTA24__ESDHC1_CLK	0x31ef
+				VF610_PAD_PTA25__ESDHC1_CMD	0x31ef
+				VF610_PAD_PTA26__ESDHC1_DAT0	0x31ef
+				VF610_PAD_PTA27__ESDHC1_DAT1	0x31ef
+				VF610_PAD_PTA28__ESDHC1_DATA2	0x31ef
+				VF610_PAD_PTA29__ESDHC1_DAT3	0x31ef
+				VF610_PAD_PTA7__GPIO_134	0x219d
+			>;
+		};
+
+		pinctrl_fec1: fec1grp {
+			fsl,pins = <
+				VF610_PAD_PTA6__ENET_RMII_CLKIN		0x30d1
+				VF610_PAD_PTC9__ENET_RMII1_MDC		0x30d2
+				VF610_PAD_PTC10__ENET_RMII1_MDIO	0x30d3
+				VF610_PAD_PTC11__ENET_RMII1_CRS		0x30d1
+				VF610_PAD_PTC12__ENET_RMII1_RXD1	0x30d1
+				VF610_PAD_PTC13__ENET_RMII1_RXD0	0x30d1
+				VF610_PAD_PTC14__ENET_RMII1_RXER	0x30d1
+				VF610_PAD_PTC15__ENET_RMII1_TXD1	0x30d2
+				VF610_PAD_PTC16__ENET_RMII1_TXD0	0x30d2
+				VF610_PAD_PTC17__ENET_RMII1_TXEN	0x30d2
+			>;
+		};
+
+		/* -------------------------------------------------------------
+		 * speed:		  high (200 MHz)
+		 * slew rate:		  slow
+		 * open drain:		  enabled
+		 * hysteresis:		  Schmitt trigger
+		 * drive strength:	  20 Ohm
+		 * pull strength:	  22 kOhm pull-up
+		 * pull / keeper:	  enabled
+		 * pull / keeper select:  pull
+		 * output buffer:	  enabled
+		 * input buffer:	  enabled
+		 */
+		pinctrl_i2c0: i2c0grp {
+			fsl,pins = <
+				VF610_PAD_PTB14__I2C0_SCL		0x37ff
+				VF610_PAD_PTB15__I2C0_SDA		0x37ff
+			>;
+		};
+
+		pinctrl_i2c1: i2c1grp {
+			fsl,pins = <
+				VF610_PAD_PTB16__I2C1_SCL		0x37ff
+				VF610_PAD_PTB17__I2C1_SDA		0x37ff
+			>;
+		};
+
+		pinctrl_i2c2: i2c2grp {
+			fsl,pins = <
+				VF610_PAD_PTA22__I2C2_SCL		0x37ff
+				VF610_PAD_PTA23__I2C2_SDA		0x37ff
+			>;
+		};
+
+		pinctrl_i2c3: i2c3grp {
+			fsl,pins = <
+				VF610_PAD_PTA30__I2C3_SCL		0x37ff
+				VF610_PAD_PTA31__I2C3_SDA		0x37ff
+			>;
+		};
+
+		pinctrl_pwm0: pwm0grp {
+			fsl,pins = <
+				VF610_PAD_PTB0__FTM0_CH0		0x1582
+				VF610_PAD_PTB1__FTM0_CH1		0x1582
+				VF610_PAD_PTB2__FTM0_CH2		0x1582
+				VF610_PAD_PTB3__FTM0_CH3		0x1582
+			>;
+		};
+
+		pinctrl_uart0: uart0grp {
+			fsl,pins = <
+				VF610_PAD_PTB10__UART0_TX		0x21a2
+				VF610_PAD_PTB11__UART0_RX		0x21a1
+			>;
+		};
+
+		pinctrl_uart1: uart1grp {
+			fsl,pins = <
+				VF610_PAD_PTB23__UART1_TX		0x21a2
+				VF610_PAD_PTB24__UART1_RX		0x21a1
+			>;
+		};
+
+		pinctrl_uart2: uart2grp {
+			fsl,pins = <
+				VF610_PAD_PTD0__UART2_TX		0x21a2
+				VF610_PAD_PTD1__UART2_RX		0x21a1
+			>;
+		};
+
+		pinctrl_qspi0: qspi0grp {
+			fsl,pins = <
+				VF610_PAD_PTD7__QSPI0_B_QSCK		0x31c3
+				VF610_PAD_PTD8__QSPI0_B_CS0		0x31ff
+				VF610_PAD_PTD9__QSPI0_B_DATA3		0x31c3
+				VF610_PAD_PTD10__QSPI0_B_DATA2		0x31c3
+				VF610_PAD_PTD11__QSPI0_B_DATA1		0x31c3
+				VF610_PAD_PTD12__QSPI0_B_DATA0		0x31c3
+			>;
+		};
+
+		pinctrl_usb0_host: usb0-host-grp {
+			fsl,pins = <
+				VF610_PAD_PTD6__GPIO_85			0x62
+			>;
+		};
+	};
+};
+
+&L2 {
+	arm,data-latency = <2 1 2>;
+	arm,tag-latency = <3 2 3>;
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart0>;
+	status = "okay";
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1>;
+	status = "okay";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	status = "okay";
+};
+
+&usbdev0 {
+	disable-over-current;
+	status = "okay";
+	vbus-supply = <&usb0_vbus>;
+	dr_mode = "host";
+};
+
+&usbh1 {
+	disable-over-current;
+	status = "okay";
+};
+
+&usbmisc0 {
+	status = "okay";
+};
+
+&usbmisc1 {
+	status = "okay";
+};
+
+&usbphy0 {
+	status = "okay";
+};
+
+&usbphy1 {
+	status = "okay";
+};
+
+&qspi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_qspi0>;
+	fsl,nor-size = <0x10000000>;
+	fsl,spi-num-chipselects = <2>;
+	status = "okay";
+
+	flash0: mt25ql02gc@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "micron,mt25ql02gc";
+		spi-max-frequency = <66000000>;
+		reg = <0>;
+
+		partition@0 {
+			label = "mt25ql02gc-0-uboot";
+			reg = <0x0 0x0100000>;
+		};
+
+		partition2@100000 {
+			label = "mt25ql02gc-0-dtb";
+			reg = <0x0100000 0x0100000>;
+		};
+
+		partition3@200000 {
+			label = "mt25ql02gc-0-kernel";
+			reg = <0x0200000 0x0500000>;
+		};
+
+		partition4@700000 {
+			label = "mt25ql02gc-0-rfs";
+			reg = <0x0600000 0x8000000>;
+		};
+	};
+};
