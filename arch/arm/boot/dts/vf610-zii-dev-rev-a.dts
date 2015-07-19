@@ -78,7 +78,8 @@
 				reg = <5>;
 				label = "dsa";
 				phy-mode = "rgmii-txid";
-				link = <&switch1port6>;
+				link = <&switch1port6
+					&switch2port9>;
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
@@ -168,7 +169,8 @@
 			switch2port9: port@9 {
 				reg = <9>;
 				label = "dsa";
-				link = <&switch1port4>;
+				link = <&switch1port4
+					&switch0port5>;
 			};
 		};
 	};
