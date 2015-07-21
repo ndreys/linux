@@ -198,6 +198,7 @@
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
+					link-gpios = <&gpio6 2>;
 				};
 			};
 
@@ -207,6 +208,8 @@
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
+					link-gpios = <&gpio6 3>;
+
 				};
 			};
 
@@ -273,7 +276,7 @@
 };
 
 &i2c0 {
-	pca9505@20 {
+	gpio6: pca9505@20 {
 		compatible = "nxp,pca9554";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pca9554_opt>;
