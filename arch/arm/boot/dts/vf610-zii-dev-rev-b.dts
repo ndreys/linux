@@ -251,10 +251,16 @@
 				VF610_PAD_PTC8__ENET_RMII0_TXEN	0x30d2
 			>;
 		};
+
 		pinctrl_leds_debug: pinctrl-leds-debug {
 			fsl,pins = <
 				 VF610_PAD_PTD20__GPIO_74	0x31c2
 				 >;
+		};
+		pinctrl_pca9554_opt: pinctrl-pca95540-opt {
+			fsl,pins = <
+				VF610_PAD_PTB18__GPIO_40	0x219d
+			>;
 		};
 	};
 };
@@ -264,4 +270,15 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec0>;
 	status = "okay";
+};
+
+&i2c0 {
+	pca9505@20 {
+		compatible = "nxp,pca9554";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pca9554_opt>;
+		reg = <0x22>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
+	};
 };
