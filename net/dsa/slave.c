@@ -967,6 +967,10 @@ static int dsa_slave_master_changed(struct net_device *dev)
 	struct dsa_slave_priv *p = netdev_priv(dev);
 	int err = 0;
 
+	if (master && master->rtnl_link_ops)
+		netdev_info(dev, "kind %s\n",
+			    master->rtnl_link_ops->kind);
+
 	if (master && master->rtnl_link_ops &&
 	    !strcmp(master->rtnl_link_ops->kind, "bridge"))
 		err = dsa_slave_bridge_port_join(dev, master);
@@ -981,6 +985,9 @@ int dsa_slave_netdevice_event(struct notifier_block *unused,
 {
 	struct net_device *dev;
 	int err = 0;
+
+	netdev_info(netdev_notifier_info_to_dev(ptr), "dsa_slave_netdevice_event %ld\n",
+		event);
 
 	switch (event) {
 	case NETDEV_CHANGEUPPER:
