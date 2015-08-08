@@ -2016,6 +2016,7 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	 * Reference Manual has an error on this, and gets fixed on i.MX6Q
 	 * document.
 	 */
+#if 0
 	mii_speed = DIV_ROUND_UP(clk_get_rate(fep->clk_ipg), 5000000);
 	if (fep->quirks & FEC_QUIRK_ENET_MAC)
 		mii_speed--;
@@ -2026,7 +2027,10 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_out;
 	}
-
+#else
+	dev_info(&pdev->dev, "SLOWING DOWN MDIO CLOCK FOR BROKEN HARDWARE\n");
+	mii_speed = 63;
+#endif
 	/*
 	 * The i.MX28 and i.MX6 types have another filed in the MSCR (aka
 	 * MII_SPEED) register that defines the MDIO output hold time. Earlier
