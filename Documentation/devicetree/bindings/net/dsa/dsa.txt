@@ -63,6 +63,9 @@ Optionnal property:
 			  Documentation/devicetree/bindings/net/ethernet.txt
 			  for details.
 
+- nvmem			: phandle to an SFP EEPROM using the NVMEM framework
+- nvmem-names		: Must be "module_eeprom"
+
 Optional subnodes:
 - fixed-link		: Fixed-link subnode describing a link to a non-MDIO
 			  managed entity. See
@@ -99,6 +102,8 @@ Example:
 			port@5 {
 				reg = <5>;
 				label = "cpu";
+				nvmem = <&sfp0>;
+				nvmem-names = "module_eeprom";
 			};
 
 			switch0port6: port@6 {

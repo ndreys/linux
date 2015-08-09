@@ -18,7 +18,13 @@
 #include <net/rtnetlink.h>
 #include <net/switchdev.h>
 #include <linux/if_bridge.h>
+#include <linux/nvmem-consumer.h>
 #include "dsa_priv.h"
+
+#define SFF_8472_SWAP		0x5C
+#define SFF_8472_COMP		0x5E
+#define SFF_8472_UNSUP		0x00
+#define SFF_ADDRESSING_MODE	0x04
 
 /* slave mii_bus handling ***************************************************/
 static int dsa_slave_phy_read(struct mii_bus *bus, int addr, int reg)
@@ -555,6 +561,69 @@ static int dsa_slave_set_eeprom(struct net_device *dev,
 	return -EOPNOTSUPP;
 }
 
+static int dsa_slave_get_module_info(struct net_device *dev,
+				     struct ethtool_modinfo *modinfo)
+{
+	struct dsa_slave_priv *p = netdev_priv(dev);
+	struct dsa_switch *ds = p->parent;
+	struct dsa_chip_data *cd = ds->pd;
+	struct nvmem_device *nvmem = cd->module_nvmem[p->port];
+	u8 sff8472_rev, addr_mode;
+	bool page_swap = false;
+	int ret;
+
+	if (nvmem) {
+		ret = nvmem_device_read(nvmem, SFF_8472_COMP, 1, &sff8472_rev);
+		if (ret < 0)
+			return ret;
+
+		ret = nvmem_device_read(nvmem, SFF_8472_SWAP, 1, &addr_mode);
+		if (ret < 0)
+			return ret;
+
+		if (addr_mode & SFF_ADDRESSING_MODE)
+			page_swap = true;
+
+		if (sff8472_rev == SFF_8472_UNSUP || page_swap) {
+			modinfo->type = ETH_MODULE_SFF_8079;
+			modinfo->eeprom_len = ETH_MODULE_SFF_8079_LEN;
+		} else {
+			modinfo->type = ETH_MODULE_SFF_8472;
+			modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
+		}
+		return 0;
+	}
+
+	return -EOPNOTSUPP;
+}
+
+static int dsa_slave_get_module_eeprom(struct net_device *dev,
+				       struct ethtool_eeprom *ee, u8 *data)
+{
+	struct dsa_slave_priv *p = netdev_priv(dev);
+	struct dsa_switch *ds = p->parent;
+	struct dsa_chip_data *cd = ds->pd;
+	unsigned int start_addr;
+	size_t xfer_size;
+	int ret;
+
+	if (cd->module_nvmem[p->port]) {
+		start_addr = ee->offset;
+		if (start_addr + ee->len > ETH_MODULE_SFF_8079_LEN)
+			xfer_size = ETH_MODULE_SFF_8079_LEN - start_addr;
+		else
+			xfer_size = ee->len;
+
+		ret = nvmem_device_read(cd->module_nvmem[p->port],
+					start_addr, xfer_size, data);
+		if (ret < 0)
+			return ret;
+		return 0;
+	}
+
+	return -EOPNOTSUPP;
+}
+
 static void dsa_slave_get_strings(struct net_device *dev,
 				  uint32_t stringset, uint8_t *data)
 {
@@ -676,6 +745,8 @@ static const struct ethtool_ops dsa_slave_ethtool_ops = {
 	.get_eeprom_len		= dsa_slave_get_eeprom_len,
 	.get_eeprom		= dsa_slave_get_eeprom,
 	.set_eeprom		= dsa_slave_set_eeprom,
+	.get_module_info	= dsa_slave_get_module_info,
+	.get_module_eeprom	= dsa_slave_get_module_eeprom,
 	.get_strings		= dsa_slave_get_strings,
 	.get_ethtool_stats	= dsa_slave_get_ethtool_stats,
 	.get_sset_count		= dsa_slave_get_sset_count,

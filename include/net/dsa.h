@@ -64,6 +64,13 @@ struct dsa_chip_data {
 	 * NULL if there is only one switch chip.
 	 */
 	s8		*rtable;
+
+	/*
+	 * A port may have an SFP module or similar attached to it,
+	 * and these modules often have an embedded EEPROM. Represent
+	 * these using the NVMEM framework.
+	 */
+	struct nvmem_device *module_nvmem[DSA_MAX_PORTS];
 };
 
 struct dsa_platform_data {

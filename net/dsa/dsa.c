@@ -21,6 +21,7 @@
 #include <linux/of_mdio.h>
 #include <linux/of_platform.h>
 #include <linux/of_net.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/sysfs.h>
 #include "dsa_priv.h"
 
@@ -622,6 +623,25 @@ static int dsa_of_probe_links(struct dsa_platform_data *pd,
 	return 0;
 }
 
+static int dsa_of_probe_module_eeprom(struct dsa_platform_data *pd,
+				      struct dsa_chip_data *cd,
+				      int chip_index, int port_index,
+				      struct device_node *port)
+{
+	struct nvmem_device *nvmem;
+
+	nvmem = of_nvmem_device_get(port, "module_eeprom");
+	if (IS_ERR(nvmem)) {
+		if (PTR_ERR(nvmem) == -EINVAL)
+			/* Does not exist, but it is optional */
+			return 0;
+		return PTR_ERR(nvmem);
+	}
+	cd->module_nvmem[port_index] = nvmem;
+
+	return 0;
+}
+
 static void dsa_of_free_platform_data(struct dsa_platform_data *pd)
 {
 	int i;
@@ -741,6 +761,10 @@ static int dsa_of_probe(struct device *dev)
 			if (ret)
 				goto out_free_chip;
 
+			ret = dsa_of_probe_module_eeprom(pd, cd, chip_index,
+							 port_index, port);
+			if (ret)
+				goto out_free_chip;
 		}
 	}
 
