@@ -13,6 +13,13 @@ menuconfig NVMEM
 	  If unsure, say no.
 
 if NVMEM
+config NVMEM_COMPAT
+       bool "Enable /sys compatibility with old eeprom drivers"
+       help
+	 Older EEPROM drivers, such as AT24, AT25, provide access to
+	 the eeprom via a file called "eeprom" in /sys under the
+	 device node. Enabling this option makes the NVMEM core
+	 provide this file to retain backwards compatibility
 
 config QCOM_QFPROM
 	tristate "QCOM QFPROM Support"
