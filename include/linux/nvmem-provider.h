@@ -45,4 +45,14 @@ static inline int nvmem_unregister(struct nvmem_device *nvmem)
 
 #endif /* CONFIG_NVMEM */
 
+#if IS_ENABLED(CONFIG_NVMEM) && IS_ENABLED(CONFIG_NVMEM_COMPAT)
+struct nvmem_device *nvmem_register_compat(const struct nvmem_config *config,
+					   struct device *base_dev);
+#else
+static inline struct nvmem_device *
+nvmem_register_compat(const struct nvmem_config *c, struct device *base_dev)
+{
+	return ERR_PTR(-ENOSYS);
+}
+#endif  /* CONFIG_NVMEM && CONFIG_NVMEM_COMPAT */
 #endif  /* ifndef _LINUX_NVMEM_PROVIDER_H */
