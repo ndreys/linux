@@ -182,6 +182,19 @@ struct dsa_switch_driver mv88e6131_switch_driver = {
 	.get_ethtool_stats	= mv88e6xxx_get_ethtool_stats,
 	.get_sset_count		= mv88e6xxx_get_sset_count,
 	.adjust_link		= mv88e6xxx_adjust_link,
+	.get_regs_len		= mv88e6xxx_get_regs_len,
+	.get_regs		= mv88e6xxx_get_regs,
+	.port_join_bridge	= mv88e6xxx_port_bridge_join,
+	.port_leave_bridge	= mv88e6xxx_port_bridge_leave,
+	.port_stp_update	= mv88e6xxx_port_stp_update,
+	.port_pvid_get		= mv88e6xxx_port_pvid_get,
+	.port_vlan_add		= mv88e6xxx_port_vlan_add,
+	.port_vlan_del		= mv88e6xxx_port_vlan_del,
+	.vlan_getnext		= mv88e6xxx_vlan_getnext,
+	.port_fdb_prepare	= mv88e6xxx_port_fdb_prepare,
+	.port_fdb_add		= mv88e6xxx_port_fdb_add,
+	.port_fdb_del		= mv88e6xxx_port_fdb_del,
+	.port_fdb_dump		= mv88e6xxx_port_fdb_dump,
 };
 
 MODULE_ALIAS("platform:mv88e6085");
