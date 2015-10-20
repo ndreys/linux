@@ -116,11 +116,87 @@
 	at24c04@50 {
 		compatible = "atmel,24c04";
 		reg = <0x50>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		lru_part_number: lru-part-number@0 {
+			reg = <0 20>;
+		};
+
+		lru_serial_number: lru-serial-number@20 {
+			reg = <20 10>;
+		};
+
+		lru_date_of_manufacture: lru-date-of-manufacture@30 {
+			reg = <30 7>;
+		};
+
+		lru_mod: lru-mod@37 {
+			reg = <37 4>;
+		};
+
+		board_part_number: board-part-number@41 {
+			reg = <41 20>;
+		};
+
+		board_serial_number: board-serial-number@61 {
+			reg = <61 10>;
+		};
+
+		board_date_of_manufacture: board-date-of-manufacture@71 {
+			reg = <71 7>;
+		};
+
+		board_initial_rev: board-initial-rev@78 {
+			reg = <78 5>;
+		};
+
+		board_update_dom: board-update-dom@83 {
+			reg = <83 5>;
+		};
+
+		board_update_rev: board-update-rev@88 {
+			reg = <88 5>;
+		};
 	};
 
 	at24c04@52 {
 		compatible = "atmel,24c04";
 		reg = <0x52>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		if_board_part_number: board-part-number@0 {
+			reg = <0 20>;
+		};
+
+		if_board_serial_number: board-serial-number@20 {
+			reg = <20 10>;
+		};
+
+		if_board_date_of_manufacture: board-date-of-manufacture@30 {
+			reg = <30 7>;
+		};
+
+		if_board_initial_rev: board-initial-rev@38 {
+			reg = <37 5>;
+		};
+
+		if_board_update_dom: board-update-dom@43 {
+			reg = <43 5>;
+		};
+
+		if_board_update_rev: board-update-rev@48 {
+			reg = <48 5>;
+		};
+
+		if_mod: if-mod@53 {
+			reg = <52 4>;
+		};
+
+		if_lru_identifier: if-lru-identifer@ {
+			reg = <56 1>;
+		};
 	};
 
 	ds1682@6b {
