@@ -231,6 +231,7 @@ int mc13xxx_get_flags(struct mc13xxx *mc13xxx)
 }
 EXPORT_SYMBOL(mc13xxx_get_flags);
 
+#define MC13XXX_ADC0_ADIN7_SEL_SHIFT	4
 #define MC13XXX_ADC1_CHAN0_SHIFT	5
 #define MC13XXX_ADC1_CHAN1_SHIFT	8
 #define MC13783_ADC1_ATO_SHIFT		11
@@ -279,8 +280,14 @@ int mc13xxx_adc_do_conversion(struct mc13xxx *mc13xxx, unsigned int mode,
 	adc0 = MC13XXX_ADC0_ADINC1 | MC13XXX_ADC0_ADINC2;
 	adc1 = MC13XXX_ADC1_ADEN | MC13XXX_ADC1_ADTRIGIGN | MC13XXX_ADC1_ASC;
 
-	if (channel > 7)
+	if ((channel > 7) && (channel < 16))
 		adc1 |= MC13XXX_ADC1_ADSEL;
+	else if (channel >= 16) {
+		/* channels mapped through ADIN7 */
+		unsigned int sub_channel = channel - 16;
+		adc0 |= (sub_channel & 0x03) << MC13XXX_ADC0_ADIN7_SEL_SHIFT;
+		channel = 7;
+	}
 
 	switch (mode) {
 	case MC13XXX_ADC_MODE_TS:
