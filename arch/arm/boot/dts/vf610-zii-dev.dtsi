@@ -57,6 +57,68 @@
 			gpio = <&gpio0 6 0>;
 		};
 	};
+
+	nameplate {
+		compatible = "zii,nameplate";
+		status = "okay";
+
+		nvmem-cells = <&lru_part_number
+			   &lru_serial_number
+			   &lru_date_of_manufacture
+			   &lru_mod
+			   &board_part_number
+			   &board_serial_number
+			   &board_date_of_manufacture
+			   &board_initial_rev
+			   &board_update_dom
+			   &board_update_rev
+			   &if_board_part_number
+			   &if_board_serial_number
+			   &if_board_date_of_manufacture
+			   &if_board_initial_rev
+			   &if_board_update_dom
+			   &if_board_update_rev
+			   &if_mod
+			   &if_lru_identifier>;
+		nvmem-cell-names = "lru_part_number",
+			   "lru_serial_number",
+			   "lru_date_of_manufacture",
+			   "lru_mod",
+			   "board_part_number",
+			   "board_serial_number",
+			   "board_date_of_manufacture",
+			   "board_initial_rev",
+			   "board_update_dom",
+			   "board_update_rev",
+			   "if_board_part_number",
+			   "if_board_serial_number",
+			   "if_board_date_of_manufacture",
+			   "if_board_initial_rev",
+			   "if_board_update_dom",
+			   "if_board_update_rev",
+			   "if_mod",
+			   "if_lru_identifier";
+
+		strings = "lru_part_number",
+			   "lru_serial_number",
+			   "lru_date_of_manufacture",
+			   "board_part_number",
+			   "board_serial_number",
+			   "board_date_of_manufacture",
+			   "board_initial_rev",
+			   "board_update_dom",
+			   "board_update_rev",
+			   "if_board_part_number",
+			   "if_board_serial_number",
+			   "if_board_date_of_manufacture",
+			   "if_board_initial_rev",
+			   "if_board_update_dom",
+			   "if_board_update_rev";
+
+		integers = "lru_mod",
+			   "if_mod",
+			   "if_lru_identifier";
+	};
 };
 
 &adc0 {
