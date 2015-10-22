@@ -347,6 +347,10 @@
 #define GLOBAL2_QOS_WEIGHT	0x1c
 #define GLOBAL2_MISC		0x1d
 
+/* Fiber/SERDES Registers are located at SMI address F, page 1 */
+#define REG_FIBER_SERDES	0x0f
+#define PAGE_FIBER_SERDES	0x01
+
 struct mv88e6xxx_atu_entry {
 	u16	fid;
 	u8	state;
@@ -406,6 +410,8 @@ struct mv88e6xxx_priv_state {
 	u8 port_state[DSA_MAX_PORTS];
 
 	struct work_struct bridge_work;
+
+	struct dentry *dbgfs;
 };
 
 struct mv88e6xxx_hw_stat {
