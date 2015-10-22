@@ -600,6 +600,8 @@ struct mv88e6xxx_priv_state {
 
 	/* set to size of eeprom if supported by the switch */
 	int		eeprom_len;
+
+	struct dentry *dbgfs;
 };
 
 enum stat_type {
