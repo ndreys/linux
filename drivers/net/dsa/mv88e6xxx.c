@@ -2605,6 +2605,8 @@ int mv88e6xxx_setup_ports(struct dsa_switch *ds)
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_setup_ports);
 
+#include "mv88e6xxx_debugfs.c"
+
 static int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps)
 {
 	mutex_init(&ps->smi_mutex);
@@ -2622,6 +2624,8 @@ int mv88e6xxx_setup_global(struct dsa_switch *ds)
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int err;
 	int i;
+
+	mv88e6xxx_init_debugfs(ps);
 
 	/* Set the default address aging time to 5 minutes, and
 	 * enable address learn messages to be sent to all message
