@@ -105,4 +105,13 @@ config EEPROM_DIGSY_MTC_CFG
 
 	  If unsure, say N.
 
+config EEPROM_ZII_NAMEPLATE
+	bool "Export ZII nameplate information in /sys"
+	depends on EEPROM_AT24 && OF
+	help
+	  This option enables access to the nameplate EEPROMs
+	  of ZII boards in /sys..
+
+	  If unsure, say N.
+
 endmenu
