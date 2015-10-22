@@ -643,6 +643,8 @@ struct mv88e6xxx_priv_port {
 };
 
 struct mv88e6xxx_chip {
+	struct dentry *dbgfs;
+
 	const struct mv88e6xxx_info *info;
 
 	/* The dsa_switch this private structure is related to */

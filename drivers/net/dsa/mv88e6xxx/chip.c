@@ -2870,6 +2870,8 @@ static int mv88e6xxx_g1_setup(struct mv88e6xxx_chip *chip)
 	return 0;
 }
 
+#include "debugfs.c"
+
 static int mv88e6xxx_setup(struct dsa_switch *ds)
 {
 	struct mv88e6xxx_chip *chip = ds->priv;
@@ -2903,6 +2905,8 @@ static int mv88e6xxx_setup(struct dsa_switch *ds)
 		if (err)
 			goto unlock;
 	}
+
+	mv88e6xxx_init_debugfs(chip);
 
 unlock:
 	mutex_unlock(&chip->reg_lock);
