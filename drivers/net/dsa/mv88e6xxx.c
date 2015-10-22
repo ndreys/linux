@@ -3107,6 +3107,8 @@ static int mv88e6xxx_setup_global(struct mv88e6xxx_priv_state *ps)
 	return err;
 }
 
+#include "mv88e6xxx_debugfs.c"
+
 static int mv88e6xxx_setup(struct dsa_switch *ds)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
@@ -3134,6 +3136,8 @@ static int mv88e6xxx_setup(struct dsa_switch *ds)
 		if (err)
 			goto unlock;
 	}
+
+	mv88e6xxx_init_debugfs(ps);
 
 unlock:
 	mutex_unlock(&ps->smi_mutex);
@@ -3738,7 +3742,6 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev)
 	ps->reset = devm_gpiod_get(&mdiodev->dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(ps->reset)) {
 		err = PTR_ERR(ps->reset);
-		dev_err(dev, "gpio %d\n", err);
 		if (err == -ENOENT) {
 			/* Optional, so not an error */
 			ps->reset = NULL;
@@ -3758,7 +3761,6 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev)
 					 ARRAY_SIZE(mv88e6xxx_table));
 	if (!ps->info)
 		return -ENODEV;
-	}
 
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_EEPROM) &&
 	    !of_property_read_u32(np, "eeprom-length", &eeprom_len))

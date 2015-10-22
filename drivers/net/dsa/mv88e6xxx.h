@@ -720,6 +720,7 @@ struct mv88e6xxx_priv_state {
 
 	/* And the MDIO bus itself */
 	struct mii_bus *mdio_bus;
+	struct dentry *dbgfs;
 };
 
 enum stat_type {
