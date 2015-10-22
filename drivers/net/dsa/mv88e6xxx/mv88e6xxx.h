@@ -799,6 +799,8 @@ struct mv88e6xxx_chip {
 
 	/* And the MDIO bus itself */
 	struct mii_bus *mdio_bus;
+
+	struct dentry *dbgfs;
 };
 
 struct mv88e6xxx_ops {
