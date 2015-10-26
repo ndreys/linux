@@ -17,6 +17,9 @@
 #define UINT64_MAX		(u64)(~((u64)0))
 #endif
 
+/* Private default VLANs for unbridged ports isolation */
+#define PORT_PRIV_VID_BASE	4000
+
 #define SMI_CMD			0x00
 #define SMI_CMD_BUSY		BIT(15)
 #define SMI_CMD_CLAUSE_22	BIT(12)
@@ -467,6 +470,8 @@ int mv88e6xxx_phy_write_indirect(struct dsa_switch *ds, int addr, int regnum,
 int mv88e6xxx_get_eee(struct dsa_switch *ds, int port, struct ethtool_eee *e);
 int mv88e6xxx_set_eee(struct dsa_switch *ds, int port,
 		      struct phy_device *phydev, struct ethtool_eee *e);
+int mv88e6xxx_port_bridge_join(struct dsa_switch *ds, int port, u32 members);
+int mv88e6xxx_port_bridge_leave(struct dsa_switch *ds, int port, u32 members);
 int mv88e6xxx_port_stp_update(struct dsa_switch *ds, int port, u8 state);
 int mv88e6xxx_port_vlan_prepare(struct dsa_switch *ds, int port,
 				const struct switchdev_obj_port_vlan *vlan,
