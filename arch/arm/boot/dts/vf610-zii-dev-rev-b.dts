@@ -85,6 +85,7 @@
 			#size-cells = <0>;
 			reg = <0x00 0>;
 			eeprom-length = <512>;
+			reset-gpios = <&gpio5 1 GPIO_ACTIVE_LOW>;
 
 			port@0 {
 				reg = <0>;
@@ -131,6 +132,7 @@
 			reg = <0x00 1>;
 			eeprom-length = <512>;
 			mii-bus = <&mdio_mux_2>;
+			reset-gpios = <&gpio5 4 GPIO_ACTIVE_LOW>;
 
 			port@0 {
 				reg = <0>;
@@ -176,6 +178,7 @@
 			#size-cells = <0>;
 			reg = <0x00 2>;
 			mii-bus = <&mdio_mux_4>;
+			reset-gpios = <&gpio5 5 GPIO_ACTIVE_LOW>;
 
 			port@0 {
 				reg = <0>;
