@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/of_mdio.h>
 #include <linux/of_platform.h>
+#include <linux/of_irq.h>
 #include <linux/of_net.h>
 #include <linux/of_gpio.h>
 #include <linux/sysfs.h>
@@ -667,6 +668,7 @@ static int dsa_of_probe(struct device *dev)
 	unsigned long flags;
 	u32 eeprom_len;
 	int ret;
+	int irq;
 
 	mdio = of_parse_phandle(np, "dsa,mii-bus", 0);
 	if (!mdio)
@@ -727,6 +729,12 @@ static int dsa_of_probe(struct device *dev)
 
 		if (!of_property_read_u32(child, "eeprom-length", &eeprom_len))
 			cd->eeprom_len = eeprom_len;
+
+		irq = of_irq_get(child, 0);
+		if (irq == -EPROBE_DEFER)
+			goto out_free_chip;
+		if (irq > 0)
+			cd->irq = irq;
 
 		mdio = of_parse_phandle(child, "mii-bus", 0);
 		if (mdio) {

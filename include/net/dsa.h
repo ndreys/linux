@@ -59,6 +59,12 @@ struct dsa_chip_data {
 	struct device_node *port_dn[DSA_MAX_PORTS];
 
 	/*
+	 * The switch may have an interrupt line, which can be used
+	 * to indicate events have occurred in the switch.
+	 */
+	int irq;
+
+	/*
 	 * An array (with nr_chips elements) of which element [a]
 	 * indicates which port on this switch should be used to
 	 * send packets to that are destined for switch a.  Can be
