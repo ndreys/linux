@@ -97,7 +97,11 @@ static int mv88e6352_setup(struct dsa_switch *ds)
 	if (ret < 0)
 		return ret;
 
-	return mv88e6xxx_setup_ports(ds);
+	ret = mv88e6xxx_setup_ports(ds);
+	if (ret < 0)
+		return ret;
+
+	return mv88e6xxx_setup_irqs(ds);
 }
 
 static int mv88e6352_read_eeprom_word(struct dsa_switch *ds, int addr)
