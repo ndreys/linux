@@ -97,7 +97,11 @@ static int mv88e6123_61_65_setup(struct dsa_switch *ds)
 	if (ret < 0)
 		return ret;
 
-	return mv88e6xxx_setup_ports(ds);
+	ret = mv88e6xxx_setup_ports(ds);
+	if (ret < 0)
+		return ret;
+
+	return mv88e6xxx_setup_irqs(ds);
 }
 
 struct dsa_switch_driver mv88e6123_61_65_switch_driver = {
