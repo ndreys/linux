@@ -13,6 +13,7 @@
 #include <linux/netdevice.h>
 #include <linux/phy.h>
 #include <linux/phy_fixed.h>
+#include <linux/of_irq.h>
 #include <linux/of_net.h>
 #include <linux/of_mdio.h>
 #include <linux/mdio.h>
@@ -921,6 +922,10 @@ static int dsa_slave_phy_connect(struct dsa_slave_priv *p,
 	/* Use already configured phy mode */
 	if (p->phy_interface == PHY_INTERFACE_MODE_NA)
 		p->phy_interface = p->phy->interface;
+
+	if (p->phy_irq)
+		p->phy->irq = p->phy_irq;
+
 	phy_connect_direct(slave_dev, p->phy, dsa_slave_adjust_link,
 			   p->phy_interface);
 
@@ -935,13 +940,17 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 	struct device_node *phy_dn, *port_dn;
 	bool phy_is_fixed = false;
 	u32 phy_flags = 0;
-	int mode, ret;
+	int mode, ret, irq;
 
 	port_dn = cd->port_dn[p->port];
 	mode = of_get_phy_mode(port_dn);
 	if (mode < 0)
 		mode = PHY_INTERFACE_MODE_NA;
 	p->phy_interface = mode;
+
+	irq = irq_of_parse_and_map(port_dn, 0);
+	if (irq > 0)
+		p->phy_irq = irq;
 
 	phy_dn = of_parse_phandle(port_dn, "phy-handle", 0);
 	if (of_phy_is_fixed_link(port_dn)) {

@@ -55,6 +55,9 @@ Optionnal property:
 			  Documentation/devicetree/bindings/net/ethernet.txt
 			  for details.
 
+- interrupt-parent	: property with a value describing the phy
+- interrupts		  interrupt number. See Documentation/devicetree/bindings/net/phy.txt
+
 - phy-mode		: String representing the connection to the designated
 			  PHY node specified by the 'phy-handle' property. See
 			  Documentation/devicetree/bindings/net/ethernet.txt

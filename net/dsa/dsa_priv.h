@@ -46,6 +46,7 @@ struct dsa_slave_priv {
 	int			old_link;
 	int			old_pause;
 	int			old_duplex;
+	int			phy_irq;
 
 	struct net_device	*bridge_dev;
 #ifdef CONFIG_NET_POLL_CONTROLLER
