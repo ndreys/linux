@@ -114,6 +114,44 @@ int of_mdio_parse_addr(struct device *dev, const struct device_node *np)
 }
 EXPORT_SYMBOL(of_mdio_parse_addr);
 
+int of_mdio_parse_bus_and_addr(struct device *dev, const struct device_node *np,
+			       struct mii_bus **mii_bus, int *addr)
+{
+	struct device_node *bus;
+	int ret;
+
+	bus = of_parse_phandle(np, "mii-bus", 0);
+	if (!bus) {
+		dev_err(dev, "%s has invalid mii-bus property",
+			np->full_name);
+		return -EINVAL;
+	}
+
+	*mii_bus = of_mdio_find_bus(bus);
+	if (!*mii_bus) {
+		ret = -EPROBE_DEFER;
+		goto out;
+	}
+
+	ret = of_property_read_u32(np, "addr", addr);
+	if (ret < 0) {
+		dev_err(dev, "%s has invalid PHY address\n", np->full_name);
+		goto out;
+	}
+
+	/* A PHY must have a reg property in the range [0-31] */
+	if (*addr >= PHY_MAX_ADDR) {
+		dev_err(dev, "%s PHY address %i is too large\n",
+			np->full_name, *addr);
+		ret = -EINVAL;
+	}
+out:
+	of_node_put(bus);
+
+	return ret;
+}
+EXPORT_SYMBOL(of_mdio_parse_bus_and_addr);
+
 /**
  * of_mdiobus_register - Register mii_bus and create PHYs from the device tree
  * @mdio: pointer to mii_bus structure
