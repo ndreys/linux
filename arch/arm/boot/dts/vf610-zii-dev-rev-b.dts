@@ -77,13 +77,13 @@
 		#size-cells = <0>;
 
 		dsa,ethernet = <&fec1>;
-		dsa,mii-bus = <&mdio_mux_1>;
 
 		/* 6352 - Primary - 7 ports */
 		switch0: switch@2 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x00 0>;
+			reg = <0 0>;
+			switch = <&switchdev0>;
 			eeprom-length = <512>;
 
 			port@0 {
@@ -121,16 +121,15 @@
 					full-duplex;
 				};
 			};
-
 		};
 
 		/* 6352 - Secondary - 7 ports */
 		switch1: switch@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x00 1>;
+			switch = <&switchdev1>;
+			reg = <0 1>;
 			eeprom-length = <512>;
-			mii-bus = <&mdio_mux_2>;
 
 			port@0 {
 				reg = <0>;
@@ -174,8 +173,8 @@
 		switch2: switch@6 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x00 2>;
-			mii-bus = <&mdio_mux_4>;
+			switch = <&switchdev2>;
+			reg = <0 2>;
 
 			port@0 {
 				reg = <0>;
@@ -225,6 +224,27 @@
 				};
 			};
 		};
+	};
+
+	/* Primary switch */
+	switchdev0: switchdev0 {
+		compatible = "marvell,mv88e6352";
+		mii-bus = <&mdio_mux_1>;
+		addr = <0>;
+	};
+
+	/* Secondary switch */
+	switchdev1: switchdev1 {
+		compatible = "marvell,mv88e6352";
+		mii-bus = <&mdio_mux_2>;
+		addr = <0>;
+	};
+
+	/* 6185 10-port switch */
+	switchdev2: switchdev2 {
+		compatible = "marvell,mv88e6131";
+		mii-bus = <&mdio_mux_4>;
+		addr = <0>;
 	};
 };
 
