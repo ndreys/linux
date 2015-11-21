@@ -9,6 +9,7 @@
  * (at your option) any later version.
  */
 
+#include <linux/component.h>
 #include <linux/ctype.h>
 #include <linux/device.h>
 #include <linux/hwmon.h>
@@ -28,7 +29,7 @@
 #include "dsa_priv.h"
 
 char dsa_driver_version[] = "0.1";
-
+static const struct component_master_ops dsa_ops;
 
 /* switch driver registration ***********************************************/
 static DEFINE_MUTEX(dsa_switch_drivers_mutex);
@@ -813,13 +814,12 @@ static inline void dsa_of_remove(struct device *dev,
 #endif
 
 static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
-			 struct device *parent, struct dsa_platform_data *pd)
+			 struct device *parent)
 {
 	int i;
 	unsigned configured = 0;
+	struct dsa_platform_data *pd = dst->pd;
 
-	dst->pd = pd;
-	dst->master_netdev = dev;
 	dst->cpu_switch = -1;
 	dst->cpu_port = -1;
 
@@ -855,9 +855,22 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 	return 0;
 }
 
+static int dsa_bind(struct device *dev)
+{
+	struct dsa_switch_tree *dst = dev_get_drvdata(dev);
+	int ret;
+
+	ret = component_bind_all(dev, dst);
+	if (ret)
+		return ret;
+
+	return dsa_setup_dst(dst, dst->master_netdev, dev);
+}
+
 static int dsa_probe(struct platform_device *pdev)
 {
 	struct dsa_platform_data *pd = pdev->dev.platform_data;
+	struct component_match *match = NULL;
 	struct net_device *dev;
 	struct dsa_switch_tree *dst;
 	int ret;
@@ -904,15 +917,13 @@ static int dsa_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+	dst->pd = pd;
+	dst->master_netdev = dev;
+
 	platform_set_drvdata(pdev, dst);
 
-	ret = dsa_setup_dst(dst, dev, &pdev->dev, pd);
-	if (ret) {
-		dev_put(dev);
-		goto out;
-	}
 
-	return 0;
+	return component_master_add_with_match(&pdev->dev, &dsa_ops, match);
 
 out:
 	dsa_of_remove(&pdev->dev, pd);
@@ -934,19 +945,30 @@ static void dsa_remove_dst(struct dsa_switch_tree *dst)
 	dev_put(dst->master_netdev);
 }
 
-static int dsa_remove(struct platform_device *pdev)
+static void dsa_unbind(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct dsa_switch_tree *dst = platform_get_drvdata(pdev);
 	struct dsa_platform_data *pd = pdev->dev.platform_data;
 
 	dsa_remove_dst(dst);
 	dsa_of_remove(&pdev->dev, pd);
-
-	return 0;
 }
+
+static const struct component_master_ops dsa_ops = {
+	.bind = dsa_bind,
+	.unbind = dsa_unbind,
+};
 
 static void dsa_shutdown(struct platform_device *pdev)
 {
+}
+
+static int dsa_remove(struct platform_device *pdev)
+{
+	component_master_del(&pdev->dev, &dsa_ops);
+
+	return 0;
 }
 
 static int dsa_switch_rcv(struct sk_buff *skb, struct net_device *dev,
