@@ -300,7 +300,7 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 	/*
 	 * Do basic register setup.
 	 */
-	ret = drv->setup(ds);
+	ret = drv->setup(ds, parent);
 	if (ret < 0)
 		goto out;
 
