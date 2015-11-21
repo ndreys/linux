@@ -2640,8 +2640,8 @@ static int __init mv88e6xxx_init(void)
 #if IS_ENABLED(CONFIG_NET_DSA_MV88E6131)
 	register_switch_driver(&mv88e6131_switch_driver);
 #endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6123_61_65)
-	register_switch_driver(&mv88e6123_61_65_switch_driver);
+#if IS_ENABLED(CONFIG_NET_DSA_MV88E6123)
+	register_switch_driver(&mv88e6123_switch_driver);
 #endif
 #if IS_ENABLED(CONFIG_NET_DSA_MV88E6352)
 	register_switch_driver(&mv88e6352_switch_driver);
