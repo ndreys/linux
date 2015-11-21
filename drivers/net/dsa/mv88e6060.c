@@ -172,7 +172,7 @@ static int mv88e6060_setup_port(struct dsa_switch *ds, int p)
 	return 0;
 }
 
-static int mv88e6060_setup(struct dsa_switch *ds)
+static int mv88e6060_setup(struct dsa_switch *ds, struct device *dev)
 {
 	int i;
 	int ret;
