@@ -388,6 +388,12 @@ struct mv88e6xxx_priv_state {
 	 */
 	struct mutex	smi_mutex;
 
+	/* The MII bus and the address on the bus that is used to
+	 * communication with the switch
+	 */
+	struct mii_bus *bus;
+	int sw_addr;
+
 #ifdef CONFIG_NET_DSA_MV88E6XXX_NEED_PPU
 	/* Handles automatic disabling and re-enabling of the PHY
 	 * polling unit.

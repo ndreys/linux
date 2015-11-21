@@ -94,15 +94,12 @@ static int __mv88e6xxx_reg_read(struct mii_bus *bus, int sw_addr, int addr,
 
 static int _mv88e6xxx_reg_read(struct dsa_switch *ds, int addr, int reg)
 {
-	struct mii_bus *bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int ret;
 
 	assert_smi_lock(ds);
 
-	if (bus == NULL)
-		return -EINVAL;
-
-	ret = __mv88e6xxx_reg_read(bus, ds->pd->sw_addr, addr, reg);
+	ret = __mv88e6xxx_reg_read(ps->bus, ps->sw_addr, addr, reg);
 	if (ret < 0)
 		return ret;
 
@@ -159,17 +156,14 @@ static int __mv88e6xxx_reg_write(struct mii_bus *bus, int sw_addr, int addr,
 static int _mv88e6xxx_reg_write(struct dsa_switch *ds, int addr, int reg,
 				u16 val)
 {
-	struct mii_bus *bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 
 	assert_smi_lock(ds);
-
-	if (bus == NULL)
-		return -EINVAL;
 
 	dev_dbg(ds->master_dev, "-> addr: 0x%.2x reg: 0x%.2x val: 0x%.4x\n",
 		addr, reg, val);
 
-	return __mv88e6xxx_reg_write(bus, ds->pd->sw_addr, addr, reg, val);
+	return __mv88e6xxx_reg_write(ps->bus, ps->sw_addr, addr, reg, val);
 }
 
 int mv88e6xxx_reg_write(struct dsa_switch *ds, int addr, int reg, u16 val)
@@ -2197,6 +2191,8 @@ int mv88e6xxx_setup_common(struct dsa_switch *ds, struct device *dev)
 
 	ds->priv = ps;
 	ps->ds = ds;
+	ps->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	ps->sw_addr = ds->pd->sw_addr;
 
 	mutex_init(&ps->smi_mutex);
 
