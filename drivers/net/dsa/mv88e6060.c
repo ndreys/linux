@@ -19,12 +19,9 @@
 
 static int reg_read(struct dsa_switch *ds, int addr, int reg)
 {
-	struct mii_bus *bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
-	if (bus == NULL)
-		return -EINVAL;
-
-	return mdiobus_read_nested(bus, ds->pd->sw_addr + addr, reg);
+	return mdiobus_read_nested(priv->bus, priv->sw_addr + addr, reg);
 }
 
 #define REG_READ(addr, reg)					\
@@ -40,12 +37,9 @@ static int reg_read(struct dsa_switch *ds, int addr, int reg)
 
 static int reg_write(struct dsa_switch *ds, int addr, int reg, u16 val)
 {
-	struct mii_bus *bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
-	if (bus == NULL)
-		return -EINVAL;
-
-	return mdiobus_write_nested(bus, ds->pd->sw_addr + addr, reg, val);
+	return mdiobus_write_nested(priv->bus, priv->sw_addr + addr, reg, val);
 }
 
 #define REG_WRITE(addr, reg, val)				\
@@ -176,6 +170,15 @@ static int mv88e6060_setup(struct dsa_switch *ds, struct device *dev)
 {
 	int i;
 	int ret;
+	struct mv88e6060_priv *priv;
+
+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	ds->priv = priv;
+	priv->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+	priv->sw_addr = ds->pd->sw_addr;
 
 	ret = mv88e6060_switch_reset(ds);
 	if (ret < 0)
