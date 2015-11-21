@@ -926,7 +926,7 @@ static void bcm_sf2_identify_ports(struct bcm_sf2_priv *priv,
 	}
 }
 
-static int bcm_sf2_sw_setup(struct dsa_switch *ds)
+static int bcm_sf2_sw_setup(struct dsa_switch *ds, struct device *dev)
 {
 	const char *reg_names[BCM_SF2_REGS_NUM] = BCM_SF2_REGS_NAME;
 	struct bcm_sf2_priv *priv = ds_to_priv(ds);

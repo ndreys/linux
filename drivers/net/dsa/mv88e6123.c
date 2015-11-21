@@ -68,7 +68,7 @@ static int mv88e6123_setup_global(struct dsa_switch *ds)
 	return 0;
 }
 
-static int mv88e6123_setup(struct dsa_switch *ds)
+static int mv88e6123_setup(struct dsa_switch *ds, struct device *dev)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int ret;
