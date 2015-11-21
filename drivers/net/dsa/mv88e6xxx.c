@@ -281,7 +281,7 @@ static void mv88e6xxx_ppu_reenable_work(struct work_struct *ugly)
 
 	ps = container_of(ugly, struct mv88e6xxx_priv_state, ppu_work);
 	if (mutex_trylock(&ps->ppu_mutex)) {
-		struct dsa_switch *ds = ((struct dsa_switch *)ps) - 1;
+		struct dsa_switch *ds = ps->ds;
 
 		if (mv88e6xxx_ppu_enable(ds) == 0)
 			ps->ppu_disabled = 0;
@@ -2187,9 +2187,16 @@ int mv88e6xxx_setup_ports(struct dsa_switch *ds)
 	return 0;
 }
 
-int mv88e6xxx_setup_common(struct dsa_switch *ds)
+int mv88e6xxx_setup_common(struct dsa_switch *ds, struct device *dev)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	struct mv88e6xxx_priv_state *ps;
+
+	ps = devm_kzalloc(dev, sizeof(*ps), GFP_KERNEL);
+	if (!ps)
+		return -ENOMEM;
+
+	ds->priv = ps;
+	ps->ds = ds;
 
 	mutex_init(&ps->smi_mutex);
 

@@ -929,13 +929,17 @@ static void bcm_sf2_identify_ports(struct bcm_sf2_priv *priv,
 static int bcm_sf2_sw_setup(struct dsa_switch *ds, struct device *dev)
 {
 	const char *reg_names[BCM_SF2_REGS_NUM] = BCM_SF2_REGS_NAME;
-	struct bcm_sf2_priv *priv = ds_to_priv(ds);
+	struct bcm_sf2_priv *priv;
 	struct device_node *dn;
 	void __iomem **base;
 	unsigned int port;
 	unsigned int i;
 	u32 reg, rev;
 	int ret;
+
+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
 
 	spin_lock_init(&priv->indir_lock);
 	mutex_init(&priv->stats_mutex);
@@ -1365,7 +1369,6 @@ static int bcm_sf2_sw_set_wol(struct dsa_switch *ds, int port,
 
 static struct dsa_switch_driver bcm_sf2_switch_driver = {
 	.tag_protocol		= DSA_TAG_PROTO_BRCM,
-	.priv_size		= sizeof(struct bcm_sf2_priv),
 	.probe			= bcm_sf2_sw_probe,
 	.setup			= bcm_sf2_sw_setup,
 	.set_addr		= bcm_sf2_sw_set_addr,

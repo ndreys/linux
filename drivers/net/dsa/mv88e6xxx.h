@@ -379,6 +379,9 @@ struct mv88e6xxx_vtu_stu_entry {
 };
 
 struct mv88e6xxx_priv_state {
+	/* The dsa_switch this private structure is related to */
+	struct dsa_switch *ds;
+
 	/* When using multi-chip addressing, this mutex protects
 	 * access to the indirect access registers.  (In single-chip
 	 * mode, this mutex is effectively useless.)
@@ -431,7 +434,7 @@ char *mv88e6xxx_lookup_name(struct device *host_dev, int sw_addr,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num);
 int mv88e6xxx_setup_ports(struct dsa_switch *ds);
-int mv88e6xxx_setup_common(struct dsa_switch *ds);
+int mv88e6xxx_setup_common(struct dsa_switch *ds, struct device *dev);
 int mv88e6xxx_setup_global(struct dsa_switch *ds);
 int mv88e6xxx_reg_read(struct dsa_switch *ds, int addr, int reg);
 int mv88e6xxx_reg_write(struct dsa_switch *ds, int addr, int reg, u16 val);
