@@ -77,13 +77,14 @@ static int mv88e6352_setup_global(struct dsa_switch *ds)
 
 static int mv88e6352_setup(struct dsa_switch *ds, struct device *dev)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	struct mv88e6xxx_priv_state *ps;
 	int ret;
 
-	ret = mv88e6xxx_setup_common(ds);
+	ret = mv88e6xxx_setup_common(ds, dev);
 	if (ret < 0)
 		return ret;
 
+	ps = ds_to_priv(ds);
 	ps->num_ports = 7;
 
 	mutex_init(&ps->eeprom_mutex);
@@ -301,7 +302,6 @@ static int mv88e6352_set_eeprom(struct dsa_switch *ds,
 
 struct dsa_switch_driver mv88e6352_switch_driver = {
 	.tag_protocol		= DSA_TAG_PROTO_EDSA,
-	.priv_size		= sizeof(struct mv88e6xxx_priv_state),
 	.probe			= mv88e6352_probe,
 	.setup			= mv88e6352_setup,
 	.set_addr		= mv88e6xxx_set_addr_indirect,
