@@ -871,18 +871,25 @@ static int dsa_bind(struct device *dev)
 	return dsa_setup_dst(dst, dst->master_netdev, dev);
 }
 
+static int compare_of(struct device *dev, void *data)
+{
+	return dev->of_node == data;
+}
+
 static int dsa_probe(struct platform_device *pdev)
 {
 	struct dsa_platform_data *pd = pdev->dev.platform_data;
+	struct device_node *np = pdev->dev.of_node;
 	struct component_match *match = NULL;
+	struct device_node *chip;
 	struct net_device *dev;
 	struct dsa_switch_tree *dst;
-	int ret;
+	int i, ret;
 
 	pr_notice_once("Distributed Switch Architecture driver version %s\n",
 		       dsa_driver_version);
 
-	if (pdev->dev.of_node) {
+	if (np) {
 		pd = devm_kzalloc(&pdev->dev, sizeof(*pd), GFP_KERNEL);
 		if (!pd)
 			return -ENOMEM;
@@ -926,6 +933,12 @@ static int dsa_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dst);
 
+	for (i = 0; i < pd->nr_chips; i++) {
+		chip = pd->chip[i].of_chip;
+		if (chip)
+			component_match_add(&pdev->dev, &match, compare_of,
+					    chip);
+	}
 
 	return component_master_add_with_match(&pdev->dev, &dsa_ops, match);
 
