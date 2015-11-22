@@ -655,7 +655,7 @@ static void dsa_of_free_platform_data(struct dsa_platform_data *pd)
 static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 {
 	struct device_node *np = dev->of_node;
-	struct device_node *child, *mdio, *ethernet, *port;
+	struct device_node *child, *chip, *mdio, *ethernet, *port;
 	struct mii_bus *mdio_bus, *mdio_bus_switch;
 	struct net_device *ethernet_dev;
 	struct dsa_chip_data *cd;
@@ -704,6 +704,10 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 		cd = &pd->chip[chip_index];
 
 		cd->of_node = child;
+
+		chip = of_parse_phandle(child, "switch", 0);
+		if (chip)
+			cd->of_chip = chip;
 
 		/* When assigning the host device, increment its refcount */
 		cd->host_dev = get_device(&mdio_bus->dev);

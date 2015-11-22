@@ -27,6 +27,8 @@ Each of these switch child nodes should have the following required properties:
 
 A switch child node has the following optional property:
 
+- switch		: A phandle to a switch device.
+
 - eeprom-length		: Set to the length of an EEPROM connected to the
 			  switch. Must be set if the switch can not detect
 			  the presence and/or size of a connected EEPROM,

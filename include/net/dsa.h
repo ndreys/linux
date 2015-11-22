@@ -48,6 +48,9 @@ struct dsa_chip_data {
 	 */
 	struct device_node *of_node;
 
+	/* Device tree node pointer for the switch chip device. */
+	struct device_node *of_chip;
+
 	/*
 	 * The names of the switch's ports.  Use "cpu" to
 	 * designate the switch port that the cpu is connected to,
