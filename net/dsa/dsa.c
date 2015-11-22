@@ -981,6 +981,55 @@ static const struct component_master_ops dsa_ops = {
 	.unbind = dsa_unbind,
 };
 
+static int dsa_find_chip_index(struct dsa_switch_tree *dst,
+			       struct device_node *np)
+{
+	struct dsa_platform_data *pd = dst->pd;
+	struct dsa_chip_data *cd;
+	int i;
+
+	for (i = 0; i < pd->nr_chips; i++) {
+		cd = &pd->chip[i];
+		if (cd->of_chip == np)
+			return i;
+	}
+	return -ENODEV;
+}
+
+int dsa_switch_register(struct dsa_switch_tree *dst, struct dsa_switch *ds,
+			struct device_node *np, const char *name)
+{
+	struct dsa_platform_data *pd = dst->pd;
+	int index = dsa_find_chip_index(dst, np);
+
+	if (index < 0)
+		return index;
+
+	netdev_info(dst->master_netdev, "[%d]: detected a %s switch\n", index, name);
+
+	if (dst->ds[index])
+		return -EINVAL;
+
+	ds->index = index;
+	ds->pd = &pd->chip[index];
+	ds->dst = dst;
+	dst->ds[index] = ds;
+	ds->tag_protocol = ds->drv->tag_protocol;
+	ds->master_dev = &dst->master_netdev->dev;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(dsa_switch_register);
+
+void dsa_switch_unregister(struct dsa_switch *ds)
+{
+#ifdef CONFIG_PM_SLEEP
+	dsa_switch_suspend(ds);
+#endif
+	dsa_switch_destroy(ds);
+}
+EXPORT_SYMBOL_GPL(dsa_switch_unregister);
+
 static void dsa_shutdown(struct platform_device *pdev)
 {
 }
