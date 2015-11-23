@@ -772,7 +772,7 @@ static int dsa_of_probe(struct device *dev)
 		}
 		gpio = of_get_named_gpio_flags(child, "reset-gpios", 0,
 					       &of_flags);
-		if (gpio_is_valid(gpio)) {
+		if (IS_ENABLED(CONFIG_GPIOLIB) && gpio_is_valid(gpio)) {
 			flags = (of_flags == OF_GPIO_ACTIVE_LOW ?
 				 GPIOF_ACTIVE_LOW : 0);
 			ret = devm_gpio_request_one(dev, gpio, flags,

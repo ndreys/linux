@@ -2339,7 +2339,7 @@ int mv88e6xxx_switch_reset(struct dsa_switch *ds, bool ppu_active)
 	usleep_range(2000, 4000);
 
 	/* If there is a gpio connected to the reset pin, toggle it */
-	if (gpiod) {
+	if (IS_ENABLED(CONFIG_GPIOLIB) && gpiod) {
 		gpiod_set_value_cansleep(gpiod, 1);
 		usleep_range(10000, 20000);
 		gpiod_set_value_cansleep(gpiod, 0);
