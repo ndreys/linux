@@ -436,7 +436,7 @@ struct mv88e6xxx_hw_stat {
 };
 
 int mv88e6xxx_switch_reset(struct dsa_switch *ds, bool ppu_active);
-char *mv88e6xxx_lookup_name(struct device *host_dev, int sw_addr,
+char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num);
 int mv88e6xxx_setup_ports(struct dsa_switch *ds);
