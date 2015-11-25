@@ -1,6 +1,7 @@
 /*
  * net/dsa/mv88e6131.c - Marvell 88e6095/6095f/6131 switch chip support
  * Copyright (c) 2008-2009 Marvell Semiconductor
+ * Copyright (c) 2015 Andrew Lunn <andrew@lunn.ch>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,9 +9,11 @@
  * (at your option) any later version.
  */
 
+#include <linux/component.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/list.h>
+#include <linux/mdio.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/phy.h>
@@ -173,7 +176,47 @@ struct dsa_switch_driver mv88e6131_switch_driver = {
 	.adjust_link		= mv88e6xxx_adjust_link,
 };
 
-MODULE_ALIAS("platform:mv88e6085");
-MODULE_ALIAS("platform:mv88e6095");
-MODULE_ALIAS("platform:mv88e6095f");
-MODULE_ALIAS("platform:mv88e6131");
+static int mv88e6131_bind(struct device *dev,
+			  struct device *master, void *data)
+{
+	struct dsa_switch_tree *dst = data;
+
+	return mv88e6xxx_bind(dev, dst, &mv88e6131_switch_driver,
+			      mv88e6131_table,
+			      ARRAY_SIZE(mv88e6131_table));
+}
+
+static const struct component_ops mv88e6131_component_ops = {
+	.bind = mv88e6131_bind,
+	.unbind = mv88e6xxx_unbind,
+};
+
+static void mv88e6131_remove(struct mdio_device *mdiodev)
+{
+	component_del(&mdiodev->dev, &mv88e6131_component_ops);
+}
+
+static int mv88e6131_probe(struct mdio_device *mdiodev)
+{
+	return component_add(&mdiodev->dev, &mv88e6131_component_ops);
+}
+
+static const struct of_device_id mv88e6131_of_match[] = {
+	{ .compatible = "marvell,mv88e6131" },
+	{ /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(of, mv88e6131_of_match);
+
+static struct mdio_driver mv88e6131_driver = {
+	.probe	= mv88e6131_probe,
+	.remove = mv88e6131_remove,
+	.mdiodrv.driver = {
+		.name = "mv88e6131",
+		.of_match_table = mv88e6131_of_match,
+	},
+};
+
+mv88e6xxx_module_driver(mv88e6131_driver, mv88e6131_switch_driver);
+
+MODULE_DESCRIPTION("Driver for Marvell 6131 family ethernet switch chips");
+MODULE_LICENSE("GPL");
