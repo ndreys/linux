@@ -695,6 +695,7 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 
 	ethernet = of_parse_phandle(np, "dsa,ethernet", 0);
 	if (!ethernet) {
+		dev_dbg(dev, "Missing mandatory dsa,ethernet property\n");
 		ret = -EINVAL;
 		goto out_put_mdio;
 	}
@@ -726,8 +727,10 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 		if (chip) {
 			cd->of_chip = chip;
 		} else {
-			if (!mdio)
+			if (!mdio) {
+				dev_dbg(dev, "Missing required dsa,mii-bus property\n");
 				return -EINVAL;
+			}
 
 			mdio_bus = of_mdio_find_bus(mdio);
 			if (!mdio_bus)
@@ -965,7 +968,6 @@ static int dsa_probe(struct platform_device *pdev)
 					    chip);
 	}
 
-
 	return component_master_add_with_match(&pdev->dev, &dsa_ops, match);
 
 out:
@@ -1027,13 +1029,17 @@ int dsa_switch_register(struct dsa_switch_tree *dst, struct dsa_switch *ds,
 	struct dsa_platform_data *pd = dst->pd;
 	int index = dsa_find_chip_index(dst, np);
 
-	if (index < 0)
+	if (index < 0) {
+		netdev_dbg(dst->master_netdev, "Registration for unknown switch\n");
 		return index;
+	}
 
 	netdev_info(dst->master_netdev, "[%d]: detected a %s switch\n", index, name);
 
-	if (dst->ds[index])
+	if (dst->ds[index]) {
+		netdev_dbg(dst->master_netdev, "Device already registered\n");
 		return -EINVAL;
+	}
 
 	ds->index = index;
 	ds->pd = &pd->chip[index];
