@@ -3049,40 +3049,51 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_drv_probe);
 
-static int __init mv88e6xxx_init(void)
+int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
+		    const struct mv88e6xxx_switch_id *table,
+		    unsigned int table_size)
 {
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6131)
-	register_switch_driver(&mv88e6131_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6123)
-	register_switch_driver(&mv88e6123_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6352)
-	register_switch_driver(&mv88e6352_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6171)
-	register_switch_driver(&mv88e6171_switch_driver);
-#endif
+	struct device *dev = &mdiodev->dev;
+	struct mv88e6xxx_priv_state *ps;
+	struct dsa_switch *ds;
+	const char *name;
+
+	ds = devm_kzalloc(dev, sizeof(*ds) + sizeof(*ps), GFP_KERNEL);
+	if (!ds)
+		return -ENOMEM;
+
+	ps = (struct mv88e6xxx_priv_state *)(ds + 1);
+	ds->priv = ps;
+	ps->ds = ds;
+	ps->bus = mdiodev->bus;
+	ps->sw_addr = mdiodev->addr;
+
+	get_device(&ps->bus->dev);
+
+	ds->drv = ops;
+
+	name = mv88e6xxx_lookup_name(ps->bus, ps->sw_addr, table, table_size);
+	if (!name) {
+		dev_err(dev, "Failed to find switch");
+		return -ENODEV;
+	}
+
+	dev_set_drvdata(dev, ds);
+
 	return 0;
 }
-module_init(mv88e6xxx_init);
+EXPORT_SYMBOL_GPL(mv88e6xxx_probe);
 
-static void __exit mv88e6xxx_cleanup(void)
+void mv88e6xxx_remove(struct mdio_device *mdiodev)
 {
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6171)
-	unregister_switch_driver(&mv88e6171_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6352)
-	unregister_switch_driver(&mv88e6352_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6123_61_65)
-	unregister_switch_driver(&mv88e6123_61_65_switch_driver);
-#endif
-#if IS_ENABLED(CONFIG_NET_DSA_MV88E6131)
-	unregister_switch_driver(&mv88e6131_switch_driver);
-#endif
+	struct device *dev = &mdiodev->dev;
+	struct dsa_switch *ds = dev_get_drvdata(&mdiodev->dev);
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
+	devm_kfree(dev, ds);
+	put_device(&ps->bus->dev);
 }
-module_exit(mv88e6xxx_cleanup);
+EXPORT_SYMBOL_GPL(mv88e6xxx_remove);
 
 MODULE_AUTHOR("Lennert Buytenhek <buytenh@wantstofly.org>");
 MODULE_DESCRIPTION("Driver for Marvell 88E6XXX ethernet switch chips");

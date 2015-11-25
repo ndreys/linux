@@ -528,6 +528,11 @@ int mv88e6xxx_port_fdb_dump(struct dsa_switch *ds, int port,
 int mv88e6xxx_phy_page_read(struct dsa_switch *ds, int port, int page, int reg);
 int mv88e6xxx_phy_page_write(struct dsa_switch *ds, int port, int page,
 			     int reg, int val);
+int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
+		    const struct mv88e6xxx_switch_id *table,
+		    unsigned int table_size);
+void mv88e6xxx_remove(struct mdio_device *mdiodev);
+
 
 extern struct dsa_switch_driver mv88e6131_switch_driver;
 extern struct dsa_switch_driver mv88e6123_switch_driver;
