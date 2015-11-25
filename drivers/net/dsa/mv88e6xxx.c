@@ -2606,15 +2606,11 @@ int mv88e6xxx_get_temp_alarm(struct dsa_switch *ds, bool *alarm)
 }
 #endif /* CONFIG_NET_DSA_HWMON */
 
-char *mv88e6xxx_lookup_name(struct device *host_dev, int sw_addr,
+char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num)
 {
-	struct mii_bus *bus = dsa_host_dev_to_mii_bus(host_dev);
 	int i, ret;
-
-	if (!bus)
-		return NULL;
 
 	ret = __mv88e6xxx_reg_read(bus, sw_addr, REG_PORT(0), PORT_SWITCH_ID);
 	if (ret < 0)
@@ -2628,7 +2624,8 @@ char *mv88e6xxx_lookup_name(struct device *host_dev, int sw_addr,
 	/* Look up only the product number */
 	for (i = 0; i < num; ++i) {
 		if (table[i].id == (ret & PORT_SWITCH_ID_PROD_NUM_MASK)) {
-			dev_warn(host_dev, "unknown revision %d, using base switch 0x%x\n",
+			dev_warn(&bus->dev,
+				 "unknown revision %d, using base switch 0x%x\n",
 				 ret & PORT_SWITCH_ID_REV_MASK,
 				 ret & PORT_SWITCH_ID_PROD_NUM_MASK);
 			return table[i].name;
