@@ -1,0 +1,17 @@
+Marvell DSA Switch Device Tree Bindings
+---------------------------------------
+
+Required properties:
+- compatible		: Should be one of "marvell,mv88e6123",
+			  "marvell,mv88e6131", "marvell,mv88e6171",
+			  "marvell,mv88e6352" or "marvell,mv88e6060"
+- mii-bus		: phandle to MII bus the switch is on
+- addr			: Address on the MII bus for the switch
+
+Example:
+
+	switchdev0: switchdev0 {
+		compatible = "marvell,mv88e6352";
+		mii-bus = <&mdio_mux_1>;
+		addr = <0>;
+	};
