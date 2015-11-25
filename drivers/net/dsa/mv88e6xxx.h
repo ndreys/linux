@@ -439,6 +439,11 @@ int mv88e6xxx_switch_reset(struct dsa_switch *ds, bool ppu_active);
 char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num);
+int mv88e6xxx_bind(struct device *dev, struct dsa_switch_tree *dst,
+		   struct dsa_switch_driver *ops,
+		   const struct mv88e6xxx_switch_id *table,
+		   unsigned int table_size);
+void mv88e6xxx_unbind(struct device *dev, struct device *master, void *data);
 int mv88e6xxx_setup_ports(struct dsa_switch *ds);
 int mv88e6xxx_setup_common(struct dsa_switch *ds, struct device *dev);
 int mv88e6xxx_setup_global(struct dsa_switch *ds);
