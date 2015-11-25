@@ -2,6 +2,7 @@
  * net/dsa/mv88e6352.c - Marvell 88e6352 switch chip support
  *
  * Copyright (c) 2014 Guenter Roeck
+ * Copyright (c) 2015 Andrew Lunn <andrew@lunn.ch>
  *
  * Derived from mv88e6123_61_65.c
  * Copyright (c) 2008-2009 Marvell Semiconductor
@@ -12,6 +13,7 @@
  * (at your option) any later version.
  */
 
+#include <linux/component.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/list.h>
@@ -339,8 +341,50 @@ struct dsa_switch_driver mv88e6352_switch_driver = {
 	.port_fdb_dump		= mv88e6xxx_port_fdb_dump,
 };
 
-MODULE_ALIAS("platform:mv88e6172");
-MODULE_ALIAS("platform:mv88e6176");
-MODULE_ALIAS("platform:mv88e6320");
-MODULE_ALIAS("platform:mv88e6321");
 MODULE_ALIAS("platform:mv88e6352");
+
+static int mv88e6352_bind(struct device *dev,
+			  struct device *master, void *data)
+{
+	struct dsa_switch_tree *dst = data;
+
+	return mv88e6xxx_bind(dev, dst, &mv88e6352_switch_driver,
+			      mv88e6352_table,
+			      ARRAY_SIZE(mv88e6352_table));
+}
+
+static const struct component_ops mv88e6352_component_ops = {
+	.bind = mv88e6352_bind,
+	.unbind = mv88e6xxx_unbind,
+};
+
+static int mv88e6352_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &mv88e6352_component_ops);
+
+	return 0;
+}
+
+static int mv88e6352_probe(struct platform_device *pdev)
+{
+	return component_add(&pdev->dev, &mv88e6352_component_ops);
+}
+
+static const struct of_device_id mv88e6352_of_match[] = {
+	{ .compatible = "marvell,mv88e6352" },
+	{ /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(of, mv88e6352_of_match);
+
+static struct platform_driver mv88e6352_driver = {
+	.probe  = mv88e6352_probe,
+	.remove = mv88e6352_remove,
+	.driver = {
+		.name = "mv88e6352",
+		.of_match_table = mv88e6352_of_match,
+	},
+};
+module_platform_driver(mv88e6352_driver);
+
+MODULE_DESCRIPTION("Driver for Marvell 6352 family ethernet switch chips");
+MODULE_LICENSE("GPL");
