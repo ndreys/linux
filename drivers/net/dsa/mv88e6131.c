@@ -27,7 +27,9 @@ static const struct mv88e6xxx_switch_id mv88e6131_table[] = {
 
 static char *mv88e6131_drv_probe(struct device *host_dev, int sw_addr)
 {
-	return mv88e6xxx_lookup_name(host_dev, sw_addr, mv88e6131_table,
+	struct mii_bus *bus = dsa_host_dev_to_mii_bus(host_dev);
+
+	return mv88e6xxx_lookup_name(bus, sw_addr, mv88e6131_table,
 				     ARRAY_SIZE(mv88e6131_table));
 }
 
