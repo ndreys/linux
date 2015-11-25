@@ -8,11 +8,12 @@ Required properties:
 			  Second cell is used only when cascading/chaining.
 - #size-cells		: Must be 0
 - dsa,ethernet		: Should be a phandle to a valid Ethernet device node
-- dsa,mii-bus		: Should be a phandle to a valid MDIO bus device node
 
 Optional properties:
 - interrupts		: property with a value describing the switch
 			  interrupt number (not supported by the driver)
+- dsa,mii-bus		: Should be a phandle to a valid MDIO bus device node.
+			  Required when not all switches are devices.
 
 A DSA node can contain multiple switch chips which are therefore child nodes of
 the parent DSA node. The maximum number of allowed child nodes is 4

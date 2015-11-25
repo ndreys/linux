@@ -662,8 +662,8 @@ static void dsa_of_free_platform_data(struct dsa_platform_data *pd)
 static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 {
 	struct device_node *np = dev->of_node;
-	struct device_node *child, *chip, *mdio, *ethernet, *port;
-	struct mii_bus *mdio_bus, *mdio_bus_switch;
+	struct device_node *child, *chip, *mdio, *switch_mdio, *ethernet, *port;
+	struct mii_bus *mdio_bus = NULL, *mdio_bus_switch;
 	struct net_device *ethernet_dev;
 	struct dsa_chip_data *cd;
 	const char *port_name;
@@ -676,12 +676,6 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 	int ret = 0;
 
 	mdio = of_parse_phandle(np, "dsa,mii-bus", 0);
-	if (!mdio)
-		return -EINVAL;
-
-	mdio_bus = of_mdio_find_bus(mdio);
-	if (!mdio_bus)
-		return -EPROBE_DEFER;
 
 	ethernet = of_parse_phandle(np, "dsa,ethernet", 0);
 	if (!ethernet) {
@@ -713,11 +707,22 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 		cd->of_node = child;
 
 		chip = of_parse_phandle(child, "switch", 0);
-		if (chip)
+		if (chip) {
 			cd->of_chip = chip;
+		} else {
+			if (!mdio)
+				return -EINVAL;
 
-		/* When assigning the host device, increment its refcount */
-		cd->host_dev = get_device(&mdio_bus->dev);
+			mdio_bus = of_mdio_find_bus(mdio);
+			if (!mdio_bus)
+				return -EPROBE_DEFER;
+
+			/*
+			 * When assigning the host device, increment
+			 * its refcount
+			 */
+			cd->host_dev = get_device(&mdio_bus->dev);
+		}
 
 		sw_addr = of_get_property(child, "reg", NULL);
 		if (!sw_addr)
@@ -730,9 +735,9 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 		if (!of_property_read_u32(child, "eeprom-length", &eeprom_len))
 			cd->eeprom_len = eeprom_len;
 
-		mdio = of_parse_phandle(child, "mii-bus", 0);
-		if (mdio) {
-			mdio_bus_switch = of_mdio_find_bus(mdio);
+		switch_mdio = of_parse_phandle(child, "mii-bus", 0);
+		if (switch_mdio) {
+			mdio_bus_switch = of_mdio_find_bus(switch_mdio);
 			if (!mdio_bus_switch) {
 				ret = -EPROBE_DEFER;
 				goto out_free_chip;
@@ -791,7 +796,8 @@ static int dsa_of_probe(struct device *dev, struct dsa_platform_data *pd)
 
 	/* The individual chips hold their own refcount on the mdio bus,
 	 * so drop ours */
-	put_device(&mdio_bus->dev);
+	if (mdio_bus)
+		put_device(&mdio_bus->dev);
 
 	return 0;
 
