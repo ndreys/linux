@@ -426,7 +426,6 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	struct dsa_chip_data *pd = dst->pd->chip + index;
 	struct dsa_switch_driver *drv;
 	struct dsa_switch *ds;
-	int ret;
 	char *name;
 
 	/*
@@ -456,17 +455,11 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	ds->tag_protocol = drv->tag_protocol;
 	ds->master_dev = host_dev;
 
-	ret = dsa_switch_setup_one(ds, parent);
-	if (ret)
-		return ERR_PTR(ret);
-
 	return ds;
 }
 
 static void dsa_switch_finish(struct dsa_switch *ds, struct device *parent)
 {
-	dsa_switch_finish_one(ds);
-
 	devm_kfree(parent, ds);
 }
 
@@ -836,22 +829,28 @@ static inline void dsa_of_remove(struct device *dev,
 static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 			 struct device *parent)
 {
-	int i;
+	int i, ret;
 	unsigned configured = 0;
+	struct dsa_switch *ds;
 	struct dsa_platform_data *pd = dst->pd;
 
 	dst->cpu_switch = -1;
 	dst->cpu_port = -1;
 
 	for (i = 0; i < pd->nr_chips; i++) {
-		struct dsa_switch *ds;
-
 		ds = dsa_switch_setup(dst, i, parent, pd->chip[i].host_dev);
 		if (IS_ERR(ds)) {
 			netdev_err(dev, "[%d]: couldn't create dsa switch instance (error %ld)\n",
 				   i, PTR_ERR(ds));
 			continue;
 		}
+	}
+
+	for (i = 0; i < pd->nr_chips; i++) {
+		ds = dst->ds[i];
+		ret = dsa_switch_setup_one(ds, parent);
+		if (ret)
+			return ret;
 
 		dst->ds[i] = ds;
 
@@ -879,6 +878,7 @@ static void dsa_finish_dst(struct dsa_switch_tree *dst, struct device *parent,
 			   struct dsa_platform_data *pd)
 {
 	struct net_device *dev = dst->master_netdev;
+	struct dsa_switch *ds;
 	int i;
 
 	dev->dsa_ptr = NULL;
@@ -888,7 +888,12 @@ static void dsa_finish_dst(struct dsa_switch_tree *dst, struct device *parent,
 	wmb();
 
 	for (i = 0; i < pd->nr_chips; i++) {
-		struct dsa_switch *ds = dst->ds[i];
+		ds = dst->ds[i];
+		dsa_switch_finish_one(ds);
+	}
+
+	for (i = 0; i < pd->nr_chips; i++) {
+		ds = dst->ds[i];
 
 		dsa_switch_finish(ds, parent);
 		dst->ds[i] = NULL;
