@@ -823,7 +823,6 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 			 struct device *parent)
 {
 	int i, ret;
-	unsigned configured = 0;
 	struct dsa_switch *ds;
 	struct dsa_platform_data *pd = dst->pd;
 
@@ -831,11 +830,16 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 	dst->cpu_port = -1;
 
 	for (i = 0; i < pd->nr_chips; i++) {
-		ds = dsa_switch_setup(dst, i, parent, pd->chip[i].host_dev);
-		if (IS_ERR(ds)) {
-			netdev_err(dev, "[%d]: couldn't create dsa switch instance (error %ld)\n",
-				   i, PTR_ERR(ds));
-			continue;
+		if (!dst->ds[i]) {
+			ds = dsa_switch_setup(dst, i, parent,
+					      pd->chip[i].host_dev);
+			if (IS_ERR(ds)) {
+				netdev_err(dev, "[%d]: couldn't create dsa switch instance (error %ld)\n",
+					   i, PTR_ERR(ds));
+				return PTR_ERR(ds);
+			}
+
+			dst->ds[i] = ds;
 		}
 	}
 
@@ -844,17 +848,7 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 		ret = dsa_switch_setup_one(ds, parent);
 		if (ret)
 			return ret;
-
-		dst->ds[i] = ds;
-
-		++configured;
 	}
-
-	/*
-	 * If no switch was found, exit cleanly
-	 */
-	if (!configured)
-		return -EPROBE_DEFER;
 
 	/*
 	 * If we use a tagging format that doesn't have an ethertype
