@@ -830,19 +830,25 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 			 struct device *parent)
 {
 	int i, ret;
-	unsigned configured = 0;
 	struct dsa_switch *ds;
+	struct dsa_chip_data *cd;
 	struct dsa_platform_data *pd = dst->pd;
 
 	dst->cpu_switch = -1;
 	dst->cpu_port = -1;
 
 	for (i = 0; i < pd->nr_chips; i++) {
-		ds = dsa_switch_setup(dst, i, parent, pd->chip[i].host_dev);
-		if (IS_ERR(ds)) {
-			netdev_err(dev, "[%d]: couldn't create dsa switch instance (error %ld)\n",
-				   i, PTR_ERR(ds));
-			continue;
+		cd = &pd->chip[i];
+		if (!cd->of_chip) {
+			ds = dsa_switch_setup(dst, i, parent,
+					      pd->chip[i].host_dev);
+			if (IS_ERR(ds)) {
+				netdev_err(dev, "[%d]: couldn't create dsa switch instance (error %ld)\n",
+					   i, PTR_ERR(ds));
+				return PTR_ERR(ds);
+			}
+
+			dst->ds[i] = ds;
 		}
 	}
 
@@ -851,17 +857,7 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 		ret = dsa_switch_setup_one(ds, parent);
 		if (ret)
 			return ret;
-
-		dst->ds[i] = ds;
-
-		++configured;
 	}
-
-	/*
-	 * If no switch was found, exit cleanly
-	 */
-	if (!configured)
-		return -EPROBE_DEFER;
 
 	/*
 	 * If we use a tagging format that doesn't have an ethertype
@@ -878,6 +874,7 @@ static void dsa_finish_dst(struct dsa_switch_tree *dst, struct device *parent,
 			   struct dsa_platform_data *pd)
 {
 	struct net_device *dev = dst->master_netdev;
+	struct dsa_chip_data *cd;
 	struct dsa_switch *ds;
 	int i;
 
@@ -893,9 +890,11 @@ static void dsa_finish_dst(struct dsa_switch_tree *dst, struct device *parent,
 	}
 
 	for (i = 0; i < pd->nr_chips; i++) {
-		ds = dst->ds[i];
-
-		dsa_switch_finish(ds, parent);
+		cd = &pd->chip[i];
+		if (!cd->of_chip) {
+			ds = dst->ds[i];
+			dsa_switch_finish(ds, parent);
+		}
 		dst->ds[i] = NULL;
 	}
 }
