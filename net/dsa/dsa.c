@@ -391,7 +391,7 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	if (drv == NULL) {
 		netdev_err(dst->master_netdev, "[%d]: could not detect attached switch\n",
 			   index);
-		return ERR_PTR(-EINVAL);
+		return ERR_PTR(-EPROBE_DEFER);
 	}
 	netdev_info(dst->master_netdev, "[%d]: detected a %s switch\n",
 		    index, name);
