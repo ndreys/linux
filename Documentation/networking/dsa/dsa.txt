@@ -398,6 +398,54 @@ Switch configuration
   on the management interface and "hardcode"/"force" this MAC address for the
   CPU/management interface as an optimization
 
+Call flow
+---------
+
+With the ability for switch devices to be true linux devices, the call
+flow is somewhat complex. The component framework is used to link the
+dsa framework as the master, with switch devices, as slaves.
+
+A switch device should add itself as a component in its probe
+function.
+
+The DSA framework can either be configured using a platform_data
+structure or from the device tree. If device tree is being used, the
+dsa framework probe function will allocate a platform_data structure,
+and populate it using the device tree, via the dsa_of_probe()
+function.  Within the DSA device tree, switch devices are represented
+by a phandle to the switch device. These phandles are saved into the
+platform data so that when switch slaves register themselves, they can
+be correctly positioned in the DSA cluster.
+
+The DSA probe function then creates a dsa_switch_tree structure which
+is the overarching structure representing a switch cluster. The probe
+function then looks in the platform data for the phandles to slave
+devices, and adds a component match based on the phandle. The
+component master is then created. This causes the component framework
+to link slaves to the master.
+
+If all the slave switch can be found, the masters bind function is
+called, dsa_bind(). This in tern causes the switch slaves bind
+function to be called.
+
+The switches bind function allocated memory for its own private use,
+and for a dsa_switch structure, which represents one switch in a DSA
+cluster. The switch then registers with the DSA framework using
+dsa_switch_register().
+
+dsa_switch_register() looks in the platform data and finds the
+position within the cluster for the switch which is registering. The
+switches dsa_switch structure is then attached to the dsa_switch_tree
+structure in the correct place.
+
+Once all slave switches have registered, dsa_setup_dst() is used to
+complete the construction of the dsa_switch_tree structure. This
+starts by setting up switches which are not slave devices. The MDIO
+address of the switch is passed to each switch driver to see if it can
+drive the switch. If it can, a dsa_switch structure is allocated to
+represent the switch and linked into the dsa_switch_tree at the
+correct location.
+
 PHY devices and link management
 -------------------------------
 
