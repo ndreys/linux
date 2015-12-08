@@ -165,7 +165,22 @@ static struct platform_driver mv88e6171_driver = {
 		.of_match_table = mv88e6171_of_match,
 	},
 };
-module_platform_driver(mv88e6171_driver);
+
+static int __init mv88e6171_init(void)
+{
+	register_switch_driver(&mv88e6171_switch_driver);
+
+	return platform_driver_register(&mv88e6171_driver);
+}
+
+static void __exit mv88e6171_exit(void)
+{
+	platform_driver_unregister(&mv88e6171_driver);
+	unregister_switch_driver(&mv88e6171_switch_driver);
+}
+
+module_init(mv88e6171_init);
+module_exit(mv88e6171_exit);
 
 MODULE_DESCRIPTION("Driver for Marvell 6171 family ethernet switch chips");
 MODULE_LICENSE("GPL");

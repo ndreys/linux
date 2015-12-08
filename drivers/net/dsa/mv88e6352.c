@@ -384,7 +384,22 @@ static struct platform_driver mv88e6352_driver = {
 		.of_match_table = mv88e6352_of_match,
 	},
 };
-module_platform_driver(mv88e6352_driver);
+
+static int __init mv88e6352_init(void)
+{
+	register_switch_driver(&mv88e6352_switch_driver);
+
+	return platform_driver_register(&mv88e6352_driver);
+}
+
+static void __exit mv88e6352_exit(void)
+{
+	platform_driver_unregister(&mv88e6352_driver);
+	unregister_switch_driver(&mv88e6352_switch_driver);
+}
+
+module_init(mv88e6352_init);
+module_exit(mv88e6352_exit);
 
 MODULE_DESCRIPTION("Driver for Marvell 6352 family ethernet switch chips");
 MODULE_LICENSE("GPL");
