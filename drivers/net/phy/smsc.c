@@ -24,6 +24,15 @@
 #include <linux/netdevice.h>
 #include <linux/smscphy.h>
 
+struct smsc_hw_stat {
+	const char *string;
+	u8 reg;
+};
+
+static struct smsc_hw_stat smsc_hw_stats[] = {
+	{ "phy_packet_symbol_errors", 26},
+};
+
 static int smsc_phy_config_intr(struct phy_device *phydev)
 {
 	int rc = phy_write (phydev, MII_LAN83C185_IM,
@@ -149,6 +158,45 @@ static int lan87xx_read_status(struct phy_device *phydev)
 	return err;
 }
 
+static int smsc_get_sset_count(struct phy_device *phydev)
+{
+	return ARRAY_SIZE(smsc_hw_stats);
+}
+
+static void smsc_get_strings(struct phy_device *phydev, u8 *data)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(smsc_hw_stats); i++) {
+		memcpy(data + i * ETH_GSTRING_LEN,
+		       smsc_hw_stats[i].string, ETH_GSTRING_LEN);
+	}
+}
+
+#ifndef UINT64_MAX
+#define UINT64_MAX              (u64)(~((u64)0))
+#endif
+static u64 smsc_get_stat(struct phy_device *phydev, int i)
+{
+	struct smsc_hw_stat stat = smsc_hw_stats[i];
+	u64 val;
+
+	val = phy_read(phydev, stat.reg);
+	if (val < 0)
+		val = UINT64_MAX;
+
+	return val;
+}
+
+static void smsc_get_stats(struct phy_device *phydev,
+			   struct ethtool_stats *stats, u64 *data)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(smsc_hw_stats); i++)
+		data[i] = smsc_get_stat(phydev, i);
+}
+
 static struct phy_driver smsc_phy_driver[] = {
 {
 	.phy_id		= 0x0007c0a0, /* OUI=0x00800f, Model#=0x0a */
@@ -195,6 +243,11 @@ static struct phy_driver smsc_phy_driver[] = {
 	.suspend	= genphy_suspend,
 	.resume		= genphy_resume,
 
+	/* Statistics */
+	.get_sset_count = smsc_get_sset_count,
+	.get_strings = smsc_get_strings,
+	.get_stats = smsc_get_stats,
+
 	.driver		= { .owner = THIS_MODULE, }
 }, {
 	.phy_id		= 0x0007c0c0, /* OUI=0x00800f, Model#=0x0c */
@@ -217,6 +270,11 @@ static struct phy_driver smsc_phy_driver[] = {
 
 	.suspend	= genphy_suspend,
 	.resume		= genphy_resume,
+
+	/* Statistics */
+	.get_sset_count = smsc_get_sset_count,
+	.get_strings = smsc_get_strings,
+	.get_stats = smsc_get_stats,
 
 	.driver		= { .owner = THIS_MODULE, }
 }, {
@@ -262,6 +320,11 @@ static struct phy_driver smsc_phy_driver[] = {
 
 	.suspend	= genphy_suspend,
 	.resume		= genphy_resume,
+
+	/* Statistics */
+	.get_sset_count = smsc_get_sset_count,
+	.get_strings = smsc_get_strings,
+	.get_stats = smsc_get_stats,
 
 	.driver		= { .owner = THIS_MODULE, }
 } };
