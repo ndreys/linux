@@ -473,7 +473,7 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 
 	pd->gpio_reset = of_get_named_gpio_flags(pd->of_node, "reset-gpios", 0, &flags);
 	if (gpio_is_valid(pd->gpio_reset)) {
-		ret = devm_gpio_request_one(host_dev, pd->gpio_reset,
+		ret = devm_gpio_request_one(parent, pd->gpio_reset,
 					    flags, "switch_reset");
 		if (ret) {
 			dev_err(host_dev, "failed to request reset gpio %d: %d\n",
