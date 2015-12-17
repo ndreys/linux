@@ -55,21 +55,23 @@ static int mc13783_adc_read(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	unsigned int channel = attr->index;
 	unsigned int sample[4];
+	unsigned int acc = 0;
+	int i;
 	int ret;
 
 	ret = mc13xxx_adc_do_conversion(priv->mc13xxx,
-			MC13XXX_ADC_MODE_MULT_CHAN,
+			MC13XXX_ADC_MODE_SINGLE_CHAN,
 			channel, 0, 0, sample);
 	if (ret)
 		return ret;
 
-	/* ADIN7 subchannels */
-	if (channel >= 16)
-		channel = 7;
+	for (i = 0; i < 4; i++) {
+		acc += (sample[i] >> 2 & 0x3ff);
+		acc += (sample[i] >> 14 & 0x3ff);
+	}
 
-	channel &= 0x7;
-
-	*val = (sample[channel % 4] >> (channel > 3 ? 14 : 2)) & 0x3ff;
+	/* div 8 */
+	*val = (acc >> 3);
 
 	return 0;
 }
