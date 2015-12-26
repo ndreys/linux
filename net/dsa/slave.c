@@ -1086,7 +1086,7 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 		}
 	} else {
 		netdev_info(slave_dev, "attached PHY at address %d [%s]\n",
-			    p->phy->addr, p->phy->drv->name);
+			    p->phy->mdio.addr, p->phy->drv->name);
 	}
 
 	return 0;

@@ -1973,7 +1973,7 @@ static int fec_enet_mii_probe(struct net_device *ndev)
 	fep->full_duplex = 0;
 
 	netdev_info(ndev, "Freescale FEC PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
-		    fep->phy_dev->drv->name, dev_name(&fep->phy_dev->dev),
+		    fep->phy_dev->drv->name, dev_name(&fep->phy_dev->mdio.dev),
 		    fep->phy_dev->irq);
 
 	return 0;

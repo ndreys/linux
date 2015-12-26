@@ -68,7 +68,7 @@ int lan88xx_suspend(struct phy_device *phydev)
 
 static int lan88xx_probe(struct phy_device *phydev)
 {
-	struct device *dev = &phydev->dev;
+	struct device *dev = &phydev->mdio.dev;
 	struct lan88xx_priv *priv;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -90,7 +90,7 @@ static int lan88xx_probe(struct phy_device *phydev)
 
 static void lan88xx_remove(struct phy_device *phydev)
 {
-	struct device *dev = &phydev->dev;
+	struct device *dev = &phydev->mdio.dev;
 	struct lan88xx_priv *priv = phydev->priv;
 
 	if (priv)

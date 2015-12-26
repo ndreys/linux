@@ -357,13 +357,11 @@ struct phy_c45_device_ids {
  * handling, as well as handling shifts in PHY hardware state
  */
 struct phy_device {
+	struct mdio_device mdio;
+
 	/* Information about the PHY type */
 	/* And management functions */
 	struct phy_driver *drv;
-
-	struct mii_bus *bus;
-
-	struct device dev;
 
 	u32 phy_id;
 
@@ -379,9 +377,6 @@ struct phy_device {
 	u32 dev_flags;
 
 	phy_interface_t interface;
-
-	/* Bus address of the PHY (0-31) */
-	int addr;
 
 	/*
 	 * forced speed & duplex (no autoneg)
@@ -431,7 +426,8 @@ struct phy_device {
 
 	void (*adjust_link)(struct net_device *dev);
 };
-#define to_phy_device(d) container_of(d, struct phy_device, dev)
+#define to_phy_device(d) container_of(to_mdio_device(d), \
+				      struct phy_device, mdio)
 
 /* struct phy_driver: Driver structure for a particular PHY type
  *
@@ -615,7 +611,7 @@ static inline int phy_read_mmd(struct phy_device *phydev, int devad, u32 regnum)
 	if (!phydev->is_c45)
 		return -EOPNOTSUPP;
 
-	return mdiobus_read(phydev->bus, phydev->addr,
+	return mdiobus_read(phydev->mdio.bus, phydev->mdio.addr,
 			    MII_ADDR_C45 | (devad << 16) | (regnum & 0xffff));
 }
 
@@ -643,7 +639,7 @@ int phy_read_mmd_indirect(struct phy_device *phydev, int prtad,
  */
 static inline int phy_read(struct phy_device *phydev, u32 regnum)
 {
-	return mdiobus_read(phydev->bus, phydev->addr, regnum);
+	return mdiobus_read(phydev->mdio.bus, phydev->mdio.addr, regnum);
 }
 
 /**
@@ -658,7 +654,7 @@ static inline int phy_read(struct phy_device *phydev, u32 regnum)
  */
 static inline int phy_write(struct phy_device *phydev, u32 regnum, u16 val)
 {
-	return mdiobus_write(phydev->bus, phydev->addr, regnum, val);
+	return mdiobus_write(phydev->mdio.bus, phydev->mdio.addr, regnum, val);
 }
 
 /**
@@ -721,7 +717,7 @@ static inline int phy_write_mmd(struct phy_device *phydev, int devad,
 
 	regnum = MII_ADDR_C45 | ((devad & 0x1f) << 16) | (regnum & 0xffff);
 
-	return mdiobus_write(phydev->bus, phydev->addr, regnum, val);
+	return mdiobus_write(phydev->mdio.bus, phydev->mdio.addr, regnum, val);
 }
 
 /**
@@ -773,15 +769,15 @@ static inline int phy_read_status(struct phy_device *phydev)
 
 #define phydev_err(_phydev, format, args...)	\
 do {						\
-	dev_err(&_phydev->dev, format, ##args);	\
+	dev_err(&_phydev->mdio.dev, format, ##args);	\
 } while (0)
 
 #define phydev_dbg(_phydev, format, args...)	\
 do {						\
-	dev_dbg(&_phydev->dev, format, ##args);	\
+	dev_dbg(&_phydev->mdio.dev, format, ##args);	\
 } while (0)
 
-#define phydev_name(_phydev) dev_name(&_phydev->dev)
+#define phydev_name(_phydev) dev_name(&_phydev->mdio.dev)
 
 int genphy_config_init(struct phy_device *phydev);
 int genphy_setup_forced(struct phy_device *phydev);
