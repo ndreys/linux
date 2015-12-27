@@ -783,6 +783,8 @@ static inline int phy_read_status(struct phy_device *phydev)
 #define phydev_dbg(_phydev, format, args...)	\
 	dev_dbg(&_phydev->dev, format, ##args)
 
+#define phydev_name(_phydev) dev_name(&_phydev->dev)
+
 int genphy_config_init(struct phy_device *phydev);
 int genphy_setup_forced(struct phy_device *phydev);
 int genphy_restart_aneg(struct phy_device *phydev);
