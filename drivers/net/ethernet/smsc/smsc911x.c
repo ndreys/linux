@@ -1031,10 +1031,6 @@ static int smsc911x_mii_probe(struct net_device *dev)
 		return ret;
 	}
 
-	netdev_info(dev,
-		    "attached PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
-		    phydev->drv->name, phydev_name(phydev), phydev->irq);
-
 	/* mask with MAC supported features */
 	phydev->supported &= (PHY_BASIC_FEATURES | SUPPORTED_Pause |
 			      SUPPORTED_Asym_Pause);

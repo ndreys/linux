@@ -662,6 +662,10 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 	phydev->attached_dev = dev;
 	dev->phydev = phydev;
 
+	netdev_info(dev,
+		    "attached PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
+		    phydev->drv->name, phydev_name(phydev), phydev->irq);
+
 	phydev->dev_flags = flags;
 
 	phydev->interface = interface;
