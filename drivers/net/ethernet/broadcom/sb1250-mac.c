@@ -2390,10 +2390,6 @@ static int sbmac_mii_probe(struct net_device *dev)
 			      SUPPORTED_Asym_Pause;
 	phy_dev->advertising = phy_dev->supported;
 
-	pr_info("%s: attached PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
-		dev->name, phy_dev->drv->name,
-		dev_name(&phy_dev->dev), phy_dev->irq);
-
 	sc->phy_dev = phy_dev;
 
 	return 0;

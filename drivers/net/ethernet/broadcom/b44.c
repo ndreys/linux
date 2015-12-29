@@ -2315,9 +2315,6 @@ static int b44_register_phy_one(struct b44 *bp)
 	bp->old_link = 0;
 	bp->phy_addr = phydev->addr;
 
-	dev_info(sdev->dev, "attached PHY driver [%s] (mii_bus:phy_addr=%s)\n",
-		 phydev->drv->name, phydev_name(phydev));
-
 	return 0;
 
 err_out_mdiobus_unregister:

@@ -17898,13 +17898,7 @@ static int tg3_init_one(struct pci_dev *pdev,
 		    tg3_bus_string(tp, str),
 		    dev->dev_addr);
 
-	if (tp->phy_flags & TG3_PHYFLG_IS_CONNECTED) {
-		struct phy_device *phydev;
-		phydev = tp->mdio_bus->phy_map[tp->phy_addr];
-		netdev_info(dev,
-			    "attached PHY driver [%s] (mii_bus:phy_addr=%s)\n",
-			    phydev->drv->name, phydev_name(phydev));
-	} else {
+	if (!(tp->phy_flags & TG3_PHYFLG_IS_CONNECTED)) {
 		char *ethtype;
 
 		if (tp->phy_flags & TG3_PHYFLG_10_100_ONLY)
