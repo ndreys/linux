@@ -256,6 +256,14 @@ config MDIO_BCM_IPROC
 	  This module provides a driver for the MDIO busses found in the
 	  Broadcom iProc SoC's.
 
+comment "MDIO devices"
+
+config MDIO_NOP
+       tristate "linux MDIO NOP driver"
+       help
+         MDIO driver which does nothing, other than test the MDIO framework.
+	 Say No, unless you are testing the framework.
+
 endif # PHYLIB
 
 config MICREL_KS8995MA
