@@ -68,6 +68,11 @@
 			reg = <8>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+
+			nop: nop@4 {
+			     compatible = "linux,mdio-nop";
+			     reg = <4>;
+			};
 		};
 	};
 
