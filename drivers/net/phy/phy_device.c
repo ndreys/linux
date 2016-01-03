@@ -1541,8 +1541,9 @@ static int phy_remove(struct device *dev)
 /**
  * phy_driver_register - register a phy_driver with the PHY layer
  * @new_driver: new phy_driver to register
+ * @owner: module owning this PHY
  */
-int phy_driver_register(struct phy_driver *new_driver)
+int phy_driver_register(struct phy_driver *new_driver, struct module *owner)
 {
 	int retval;
 
@@ -1550,6 +1551,7 @@ int phy_driver_register(struct phy_driver *new_driver)
 	new_driver->driver.bus = &mdio_bus_type;
 	new_driver->driver.probe = phy_probe;
 	new_driver->driver.remove = phy_remove;
+	new_driver->driver.owner = owner;
 
 	retval = driver_register(&new_driver->driver);
 	if (retval) {
@@ -1565,12 +1567,13 @@ int phy_driver_register(struct phy_driver *new_driver)
 }
 EXPORT_SYMBOL(phy_driver_register);
 
-int phy_drivers_register(struct phy_driver *new_driver, int n)
+int phy_drivers_register(struct phy_driver *new_driver, int n,
+			 struct module *owner)
 {
 	int i, ret = 0;
 
 	for (i = 0; i < n; i++) {
-		ret = phy_driver_register(new_driver + i);
+		ret = phy_driver_register(new_driver + i, owner);
 		if (ret) {
 			while (i-- > 0)
 				phy_driver_unregister(new_driver + i);
@@ -1611,7 +1614,6 @@ static struct phy_driver genphy_driver[] = {
 	.read_status	= genphy_read_status,
 	.suspend	= genphy_suspend,
 	.resume		= genphy_resume,
-	.driver		= { .owner = THIS_MODULE, },
 }, {
 	.phy_id         = 0xffffffff,
 	.phy_id_mask    = 0xffffffff,
@@ -1623,7 +1625,6 @@ static struct phy_driver genphy_driver[] = {
 	.read_status    = gen10g_read_status,
 	.suspend        = gen10g_suspend,
 	.resume         = gen10g_resume,
-	.driver         = {.owner = THIS_MODULE, },
 } };
 
 static int __init phy_init(void)
@@ -1635,7 +1636,7 @@ static int __init phy_init(void)
 		return rc;
 
 	rc = phy_drivers_register(genphy_driver,
-				  ARRAY_SIZE(genphy_driver));
+				  ARRAY_SIZE(genphy_driver), THIS_MODULE);
 	if (rc)
 		mdio_bus_exit();
 
