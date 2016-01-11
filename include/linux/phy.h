@@ -589,6 +589,10 @@ struct phy_driver {
 	void (*get_strings)(struct phy_device *dev, u8 *data);
 	void (*get_stats)(struct phy_device *dev,
 			  struct ethtool_stats *stats, u64 *data);
+
+	/* Make use of the PHY packet generator */
+	int (*pkt_gen)(struct phy_device *dev,
+		       struct ethtool_phy_pkt_gen *pkt_gen);
 };
 #define to_phy_driver(d) container_of(to_mdio_common_driver(d),		\
 				      struct phy_driver, mdiodrv)

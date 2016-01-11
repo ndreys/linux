@@ -1540,6 +1540,25 @@ static int ethtool_get_phy_stats(struct net_device *dev, void __user *useraddr)
 	return ret;
 }
 
+static int ethtool_phy_pkt_gen(struct net_device *dev, void __user *useraddr)
+{
+	struct phy_device *phydev = dev->phydev;
+	struct ethtool_phy_pkt_gen pkt_gen;
+	int err;
+
+	if (!phydev || !phydev->drv->pkt_gen)
+		return -EOPNOTSUPP;
+
+	if (copy_from_user(&pkt_gen, useraddr, sizeof(pkt_gen)))
+		return -EFAULT;
+
+	mutex_lock(&phydev->lock);
+	err = phydev->drv->pkt_gen(phydev, &pkt_gen);
+	mutex_unlock(&phydev->lock);
+
+	return err;
+}
+
 static int ethtool_get_perm_addr(struct net_device *dev, void __user *useraddr)
 {
 	struct ethtool_perm_addr epaddr;
@@ -2133,6 +2152,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
 		break;
 	case ETHTOOL_GPHYSTATS:
 		rc = ethtool_get_phy_stats(dev, useraddr);
+		break;
+	case ETHTOOL_PHY_PKT_GEN:
+		rc = ethtool_phy_pkt_gen(dev, useraddr);
 		break;
 	default:
 		rc = -EOPNOTSUPP;

@@ -1167,6 +1167,31 @@ struct ethtool_ts_info {
 	__u32	rx_reserved[3];
 };
 
+enum ethtool_phy_pkg_gen_flags {
+	ETH_PKT_RANDOM	= (1 << 0),
+	ETH_PKT_ERROR	= (1 << 1),
+};
+
+/**
+ * struct ethtool_phy_pkt_get - command to request the phy to generate packets.
+ * @cmd: command number = %ETHTOOL_PHY_PKT_GEN
+ * @count: number of packets to generate
+ * @len: length of generated packets
+ * @ipg: inter packet gap in bytes.
+ * @flags: a bitmask of flags from &enum ethtool_phy_pkg_gen_flags
+ *
+ * PHY drivers may not support all of these parameters. If the
+ * requested parameter value cannot be supported an error should be
+ * returned.
+ */
+struct ethtool_phy_pkt_gen {
+	__u32	cmd;
+	__u32	count;
+	__u32	len;
+	__u32	ipg;
+	__u32	flags;
+};
+
 /*
  * %ETHTOOL_SFEATURES changes features present in features[].valid to the
  * values of corresponding bits in features[].requested. Bits in .requested
@@ -1284,6 +1309,7 @@ enum ethtool_sfeatures_retval_bits {
 #define ETHTOOL_GTUNABLE	0x00000048 /* Get tunable configuration */
 #define ETHTOOL_STUNABLE	0x00000049 /* Set tunable configuration */
 #define ETHTOOL_GPHYSTATS	0x0000004a /* get PHY-specific statistics */
+#define ETHTOOL_PHY_PKT_GEN	0x0000004b /* Gnerate packets in the PHY */
 
 /* compatibility with older code */
 #define SPARC_ETH_GSET		ETHTOOL_GSET
