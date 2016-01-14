@@ -531,8 +531,8 @@
 
 		reset-gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;
 
-		touchscreen-size-x = <480>;
-		touchscreen-size-y = <272>;
+		touch-size-x = <480>;
+		touch-size-y = <272>;
 	};
 
 	tlv320aic3106: tlv320aic3106@1b {

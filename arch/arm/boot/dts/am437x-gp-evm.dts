@@ -608,8 +608,8 @@
 				      <&am43xx_pinmux 0x264>;
 		interrupt-names = "tsc", "wakeup";
 
-		touchscreen-size-x = <1024>;
-		touchscreen-size-y = <600>;
+		touch-size-x = <1024>;
+		touch-size-y = <600>;
 		wakeup-source;
 	};
 

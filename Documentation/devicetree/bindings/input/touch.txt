@@ -1,0 +1,29 @@
+General Touchscreen and Touchpad Properties:
+
+Optional properties for Touchscreens:
+ - touch-size-x 		: horizontal resolution of touchscreen
+				 (in pixels)
+ - touch-size-y 		: vertical resolution of touchscreen
+				  (in pixels)
+ - touch-max-pressure		: maximum reported pressure (arbitrary range
+				  dependent on the controller)
+ - touch-fuzz-x 		: horizontal noise value of the absolute input
+				  device (in pixels)
+ - touch-fuzz-y 		: vertical noise value of the absolute input
+				  device (in pixels)
+ - touch-fuzz-pressure		: pressure noise value of the absolute input
+				  device (arbitrary range dependent on the
+				  controller)
+ - touch-inverted-x		: X axis is inverted (boolean)
+ - touch-inverted-y		: Y axis is inverted (boolean)
+ - touch-swapped-x-y		: X and Y axis are swapped (boolean)
+				  Swapping is done after inverting the axis
+
+Deprecated properties for Touchscreens:
+ - x-size			: deprecated name for touch-size-x
+ - y-size			: deprecated name for touch-size-y
+ - moving-threshold		: deprecated name for a combination of
+				  touch-fuzz-x and touch-fuzz-y
+ - contact-threshold		: deprecated name for touch-fuzz-pressure
+ - x-invert			: deprecated name for touch-inverted-x
+ - y-invert			: deprecated name for touch-inverted-y

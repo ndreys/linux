@@ -404,18 +404,18 @@ static int iproc_get_tsc_config(struct device *dev, struct iproc_ts_priv *priv)
 	}
 
 	/* Parse optional properties. */
-	of_property_read_u32(np, "touchscreen-size-x", &priv->cfg_params.max_x);
-	of_property_read_u32(np, "touchscreen-size-y", &priv->cfg_params.max_y);
+	of_property_read_u32(np, "touch-size-x", &priv->cfg_params.max_x);
+	of_property_read_u32(np, "touch-size-y", &priv->cfg_params.max_y);
 
-	of_property_read_u32(np, "touchscreen-fuzz-x",
+	of_property_read_u32(np, "touch-fuzz-x",
 			     &priv->cfg_params.fuzz_x);
-	of_property_read_u32(np, "touchscreen-fuzz-y",
+	of_property_read_u32(np, "touch-fuzz-y",
 			     &priv->cfg_params.fuzz_y);
 
 	priv->cfg_params.invert_x =
-		of_property_read_bool(np, "touchscreen-inverted-x");
+		of_property_read_bool(np, "touch-inverted-x");
 	priv->cfg_params.invert_y =
-		of_property_read_bool(np, "touchscreen-inverted-y");
+		of_property_read_bool(np, "touch-inverted-y");
 
 	return 0;
 }

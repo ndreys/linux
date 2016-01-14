@@ -868,12 +868,12 @@
 		reset-gpios = <&gpio4 8 GPIO_ACTIVE_HIGH>; /* 104 */
 		interrupts-extended = <&gpio4 4 IRQ_TYPE_EDGE_RISING>; /* 100 */
 
-		touchscreen-fuzz-x = <4>;
-		touchscreen-fuzz-y = <7>;
-		touchscreen-fuzz-pressure = <2>;
-		touchscreen-size-x = <4096>;
-		touchscreen-size-y = <4096>;
-		touchscreen-max-pressure = <2048>;
+		touch-fuzz-x = <4>;
+		touch-fuzz-y = <7>;
+		touch-fuzz-pressure = <2>;
+		touch-size-x = <4096>;
+		touch-size-y = <4096>;
+		touch-max-pressure = <2048>;
 
 		ti,x-plate-ohms = <280>;
 		ti,esd-recovery-timeout-ms = <8000>;

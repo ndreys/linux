@@ -488,8 +488,8 @@
 
 		attb-gpio = <&gpio1 17 GPIO_ACTIVE_HIGH>;
 
-		touchscreen-size-x = <1024>;
-		touchscreen-size-y = <600>;
+		touch-size-x = <1024>;
+		touch-size-y = <600>;
 	};
 
 	tlv320aic3111: tlv320aic3111@18 {
