@@ -393,11 +393,89 @@ void ipu_ic_csi_mem_wr_en(struct ipu_ic_priv *priv, bool mem_wr_en)
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
+enum ipu_ic_task_state {
+	IC_TASK_STATE_IDLE,
+	IC_TASK_STATE_ACTIVE,
+	IC_TASK_STATE_WAITING,
+	IC_TASK_STATE_MAX,
+};
+
+static inline enum ipu_ic_task_state ipu_ic_task_state(struct ipu_ic *ic)
+{
+	struct ipu_ic_priv *priv = ic->priv;
+	u32 stat;
+
+	stat = readl(priv->ipu->cm_reg + IPU_PROC_TASK_STAT);
+
+	switch (ic->task) {
+	case IC_TASK_ENCODER:
+		return stat & 0x0003;
+	case IC_TASK_VIEWFINDER:
+		return (stat & 0x000c) >> 2;
+	case IC_TASK_POST_PROCESSOR:
+		return (stat & 0x0030) >> 4;
+	default:
+		return IC_TASK_STATE_IDLE;
+	}
+}
+
+static const char *ipu_ic_task_name[IC_NUM_TASKS] = {
+	[IC_TASK_VIEWFINDER] = "viewfinder",
+	[IC_TASK_ENCODER] = "encoder",
+	[IC_TASK_POST_PROCESSOR] = "post processing",
+};
+
+static const char *ipu_ic_task_state_name[IC_TASK_STATE_MAX + 1] = {
+	[IC_TASK_STATE_IDLE] = "idle",
+	[IC_TASK_STATE_ACTIVE] = "active",
+	[IC_TASK_STATE_WAITING] = "waiting",
+};
+
+static int ipu_ic_task_wait_state(struct ipu_ic *ic, unsigned int state,
+				  unsigned int msecs)
+{
+	unsigned long timeout = jiffies + msecs_to_jiffies(msecs);
+	int cur_state;
+	int i = 0;
+
+	while ((cur_state = ipu_ic_task_state(ic)) != state) {
+		if (time_after(jiffies, timeout)) {
+			printk(KERN_DEBUG
+			       "Timeout waiting for %s task to become %s (currently %s) (%d)\n",
+			       ipu_ic_task_name[ic->task],
+			       ipu_ic_task_state_name[state],
+			       ipu_ic_task_state_name[cur_state], i);
+			return -ETIMEDOUT;
+		}
+		cpu_relax();
+		i++;
+	}
+
+	if (i > 10)
+		printk(KERN_DEBUG "Waited %d iterations for %s task to become %s\n",
+		       i,
+		       ipu_ic_task_name[ic->task],
+		       ipu_ic_task_state_name[state]);
+
+	return 0;
+}
+
+
 void ipu_ic_task_enable(struct ipu_ic *ic)
 {
 	struct ipu_ic_priv *priv = ic->priv;
 	unsigned long flags;
 	u32 ic_conf;
+	int state;
+
+	if (ic->task != IC_TASK_VIEWFINDER) {
+		state = ipu_ic_task_state(ic);
+		if (state != IC_TASK_STATE_IDLE) {
+			printk(KERN_DEBUG "%s: %s task is initially %s\n",
+			       __func__, ipu_ic_task_name[ic->task],
+			       ipu_ic_task_state_name[state]);
+		}
+	}
 
 	spin_lock_irqsave(&priv->lock, flags);
 
@@ -810,8 +888,10 @@ static struct image_convert_ctx *ipu_image_convert_next(struct ipu_ic *ic)
 	ipu_idmac_enable_channel(ic->input_channel);
 	ipu_idmac_enable_channel(ic->output_channel);
 
+	/* Enable task for a single shot */
 	ipu_ic_task_enable(ic);
 
+	/* Mark buffers as ready */
 	ipu_idmac_select_buffer(ic->input_channel, 0);
 	ipu_idmac_select_buffer(ic->output_channel, 0);
 
@@ -842,8 +922,13 @@ static void ipu_image_convert_work(struct work_struct *work)
 			ret = wait_for_completion_interruptible_timeout(
 					&ic->complete, msecs_to_jiffies(100));
 			if (!ret) {
+				enum ipu_ic_task_state state;
+
+				state = ipu_ic_task_state(ic);
 				dev_err(priv->ipu->dev,
-					"IC image conversion timed out\n");
+					"%s task timed out (currently %s)\n",
+					ipu_ic_task_name[ic->task],
+					ipu_ic_task_state_name[state]);
 				task_error = -ETIMEDOUT;
 			}
 		}
@@ -875,6 +960,17 @@ static void ipu_image_convert_work(struct work_struct *work)
 static irqreturn_t ipu_image_convert_handler(int irq, void *context)
 {
 	struct ipu_ic *ic = context;
+
+	/* This check currently always fails for VDI + IC viewfinder task */
+	if (ic->task != IC_TASK_VIEWFINDER) {
+		int state;
+
+		state = ipu_ic_task_state(ic);
+		if (state == IC_TASK_STATE_ACTIVE) {
+			printk(KERN_DEBUG "EOF while %s task active\n",
+			       ipu_ic_task_name[ic->task]);
+		}
+	}
 
 	complete(&ic->complete);
 
