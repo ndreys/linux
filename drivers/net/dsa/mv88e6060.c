@@ -24,7 +24,8 @@ static int reg_read(struct dsa_switch *ds, int addr, int reg)
 {
 	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
-	return mdiobus_read_nested(priv->bus, priv->sw_addr + addr, reg);
+	return mdiobus_read_nested(priv->mdiodev->bus,
+				   priv->mdiodev->addr + addr, reg);
 }
 
 #define REG_READ(addr, reg)					\
@@ -42,7 +43,8 @@ static int reg_write(struct dsa_switch *ds, int addr, int reg, u16 val)
 {
 	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
-	return mdiobus_write_nested(priv->bus, priv->sw_addr + addr, reg, val);
+	return mdiobus_write_nested(priv->mdiodev->bus,
+				    priv->mdiodev->addr + addr, reg, val);
 }
 
 #define REG_WRITE(addr, reg, val)				\
@@ -179,6 +181,7 @@ static int mv88e6060_setup(struct dsa_switch *ds, struct device *dev)
 {
 	int i;
 	int ret;
+	struct mdio_device *mdiodev;
 	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
 	if (!priv) {
@@ -187,13 +190,18 @@ static int mv88e6060_setup(struct dsa_switch *ds, struct device *dev)
 		if (!priv)
 			return -ENOMEM;
 
+		mdiodev = devm_kzalloc(dev, sizeof(*mdiodev), GFP_KERNEL);
+		if (!mdiodev)
+			return -ENOMEM;
+
 		ds->priv = priv;
 
-		priv->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
-		if (!priv->bus)
+		mdiodev->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+		if (!mdiodev->bus)
 			return -ENODEV;
 
-		priv->sw_addr = ds->pd->sw_addr;
+		mdiodev->addr = ds->pd->sw_addr;
+		priv->mdiodev = mdiodev;
 	}
 
 	ret = mv88e6060_switch_reset(ds);
@@ -280,14 +288,11 @@ static int mv88e6060_bind(struct device *dev,
 
 	priv = (struct mv88e6060_priv *)(ds + 1);
 	ds->priv = priv;
-	priv->bus = mdiodev->bus;
-	priv->sw_addr = mdiodev->addr;
-
-	get_device(&priv->bus->dev);
+	priv->mdiodev = mdiodev;
 
 	ds->drv = &mv88e6060_switch_driver;
 
-	name = mv88e6060_name(priv->bus, priv->sw_addr);
+	name = mv88e6060_name(priv->mdiodev->bus, priv->mdiodev->addr);
 	if (!name) {
 		dev_err(dev, "Failed to find switch");
 		return -ENODEV;
@@ -303,10 +308,8 @@ static void mv88e6060_unbind(struct device *dev, struct device *master,
 			     void *data)
 {
 	struct dsa_switch *ds = dev_get_drvdata(dev);
-	struct mv88e6060_priv *priv = ds_to_priv(ds);
 
 	dsa_switch_unregister(ds);
-	put_device(&priv->bus->dev);
 }
 
 static const struct component_ops mv88e6060_component_ops = {

@@ -389,11 +389,8 @@ struct mv88e6xxx_priv_state {
 	 */
 	struct mutex	smi_mutex;
 
-	/* The MII bus and the address on the bus that is used to
-	 * communication with the switch
-	 */
-	struct mii_bus *bus;
-	int sw_addr;
+	/* Which mdio device is this switch? */
+	struct mdio_device *mdiodev;
 
 #ifdef CONFIG_NET_DSA_MV88E6XXX_NEED_PPU
 	/* Handles automatic disabling and re-enabling of the PHY
@@ -444,7 +441,7 @@ struct mv88e6xxx_hw_stat {
 };
 
 int mv88e6xxx_switch_reset(struct dsa_switch *ds, bool ppu_active);
-char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
+char *mv88e6xxx_lookup_name(struct mdio_device *mdiodev,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num);
 int mv88e6xxx_bind(struct device *dev, struct dsa_switch_tree *dst,

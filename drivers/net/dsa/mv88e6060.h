@@ -115,8 +115,7 @@ struct mv88e6060_priv {
 	 * single address which contains two registers used for
 	 * indirect access to more registers.
 	 */
-	struct mii_bus *bus;
-	int sw_addr;
+	struct mdio_device *mdiodev;
 };
 
 #endif
