@@ -23,6 +23,74 @@
 #include <linux/string.h>
 #include <linux/unistd.h>
 
+/**
+ * mdiodev_read_nested - Nested version of the mdiodev_read function
+ * @mdiodev: the mdio device to read
+ * @regnum: register number to read
+ *
+ * In case of nested MDIO bus access avoid lockdep false positives by
+ * using mutex_lock_nested().
+ *
+ * NOTE: MUST NOT be called from interrupt context,
+ * because the bus read/write functions may wait for an interrupt
+ * to conclude the operation.
+ */
+int mdiodev_read_nested(struct mdio_device *mdiodev, u32 regnum)
+{
+	return mdiobus_read_nested(mdiodev->bus, mdiodev->addr, regnum);
+}
+EXPORT_SYMBOL(mdiodev_read_nested);
+
+/**
+ * mdiodev_read - Convenience function for reading a given MII mgmt register
+ * @mdiodev: the mdio device to read
+ * @regnum: register number to read
+ *
+ * NOTE: MUST NOT be called from interrupt context,
+ * because the bus read/write functions may wait for an interrupt
+ * to conclude the operation.
+ */
+int mdiodev_read(struct mdio_device *mdiodev, u32 regnum)
+{
+	return mdiobus_read(mdiodev->bus, mdiodev->addr, regnum);
+}
+EXPORT_SYMBOL(mdiodev_read);
+
+/**
+ * mdiodev_write_nested - Nested version of the mdiodev_write function
+ * @mdiodev: the mdio device to read
+ * @regnum: register number to write
+ * @val: value to write to @regnum
+ *
+ * In case of nested MDIO bus access avoid lockdep false positives by
+ * using mutex_lock_nested().
+ *
+ * NOTE: MUST NOT be called from interrupt context,
+ * because the bus read/write functions may wait for an interrupt
+ * to conclude the operation.
+ */
+int mdiodev_write_nested(struct mdio_device *mdiodev, u32 regnum, u16 val)
+{
+	return mdiobus_write_nested(mdiodev->bus, mdiodev->addr, regnum, val);
+}
+EXPORT_SYMBOL(mdiodev_write_nested);
+
+/**
+ * mdiodev_write - Convenience function for writing a given MII mgmt register
+ * @mdiodev: the mdio device to read
+ * @regnum: register number to write
+ * @val: value to write to @regnum
+ *
+ * NOTE: MUST NOT be called from interrupt context,
+ * because the bus read/write functions may wait for an interrupt
+ * to conclude the operation.
+ */
+int mdiodev_write(struct mdio_device *mdiodev, u32 regnum, u16 val)
+{
+	return mdiobus_write(mdiodev->bus, mdiodev->addr, regnum, val);
+}
+EXPORT_SYMBOL(mdiodev_write);
+
 void mdio_device_free(struct mdio_device *mdiodev)
 {
 	put_device(&mdiodev->dev);
