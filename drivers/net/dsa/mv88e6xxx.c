@@ -46,13 +46,13 @@ static void assert_smi_lock(struct dsa_switch *ds)
  * an indirect addressing mechanism needs to be used to access its
  * registers.
  */
-static int mv88e6xxx_reg_wait_ready(struct mii_bus *bus, int sw_addr)
+static int mv88e6xxx_reg_wait_ready(struct mdio_device *mdiodev)
 {
 	int ret;
 	int i;
 
 	for (i = 0; i < 16; i++) {
-		ret = mdiobus_read_nested(bus, sw_addr, SMI_CMD);
+		ret = mdiodev_read_nested(mdiodev, SMI_CMD);
 		if (ret < 0)
 			return ret;
 
@@ -63,32 +63,31 @@ static int mv88e6xxx_reg_wait_ready(struct mii_bus *bus, int sw_addr)
 	return -ETIMEDOUT;
 }
 
-static int __mv88e6xxx_reg_read(struct mii_bus *bus, int sw_addr, int addr,
-				int reg)
+static int __mv88e6xxx_reg_read(struct mdio_device *mdiodev, int addr, int reg)
 {
 	int ret;
 
-	if (sw_addr == 0)
-		return mdiobus_read_nested(bus, addr, reg);
+	if (mdiodev->addr == 0)
+		return mdiobus_read_nested(mdiodev->bus, addr, reg);
 
 	/* Wait for the bus to become free. */
-	ret = mv88e6xxx_reg_wait_ready(bus, sw_addr);
+	ret = mv88e6xxx_reg_wait_ready(mdiodev);
 	if (ret < 0)
 		return ret;
 
 	/* Transmit the read command. */
-	ret = mdiobus_write_nested(bus, sw_addr, SMI_CMD,
+	ret = mdiodev_write_nested(mdiodev, SMI_CMD,
 				   SMI_CMD_OP_22_READ | (addr << 5) | reg);
 	if (ret < 0)
 		return ret;
 
 	/* Wait for the read command to complete. */
-	ret = mv88e6xxx_reg_wait_ready(bus, sw_addr);
+	ret = mv88e6xxx_reg_wait_ready(mdiodev);
 	if (ret < 0)
 		return ret;
 
 	/* Read the data. */
-	ret = mdiobus_read_nested(bus, sw_addr, SMI_DATA);
+	ret = mdiodev_read_nested(mdiodev, SMI_DATA);
 	if (ret < 0)
 		return ret;
 
@@ -102,7 +101,7 @@ static int _mv88e6xxx_reg_read(struct dsa_switch *ds, int addr, int reg)
 
 	assert_smi_lock(ds);
 
-	ret = __mv88e6xxx_reg_read(ps->bus, ps->sw_addr, addr, reg);
+	ret = __mv88e6xxx_reg_read(ps->mdiodev, addr, reg);
 	if (ret < 0)
 		return ret;
 
@@ -125,32 +124,32 @@ int mv88e6xxx_reg_read(struct dsa_switch *ds, int addr, int reg)
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_reg_read);
 
-static int __mv88e6xxx_reg_write(struct mii_bus *bus, int sw_addr, int addr,
+static int __mv88e6xxx_reg_write(struct mdio_device *mdiodev, int addr,
 				 int reg, u16 val)
 {
 	int ret;
 
-	if (sw_addr == 0)
-		return mdiobus_write_nested(bus, addr, reg, val);
+	if (mdiodev->addr == 0)
+		return mdiobus_write_nested(mdiodev->bus, addr, reg, val);
 
 	/* Wait for the bus to become free. */
-	ret = mv88e6xxx_reg_wait_ready(bus, sw_addr);
+	ret = mv88e6xxx_reg_wait_ready(mdiodev);
 	if (ret < 0)
 		return ret;
 
 	/* Transmit the data to write. */
-	ret = mdiobus_write_nested(bus, sw_addr, SMI_DATA, val);
+	ret = mdiodev_write_nested(mdiodev, SMI_DATA, val);
 	if (ret < 0)
 		return ret;
 
 	/* Transmit the write command. */
-	ret = mdiobus_write_nested(bus, sw_addr, SMI_CMD,
+	ret = mdiodev_write_nested(mdiodev, SMI_CMD,
 				   SMI_CMD_OP_22_WRITE | (addr << 5) | reg);
 	if (ret < 0)
 		return ret;
 
 	/* Wait for the write command to complete. */
-	ret = mv88e6xxx_reg_wait_ready(bus, sw_addr);
+	ret = mv88e6xxx_reg_wait_ready(mdiodev);
 	if (ret < 0)
 		return ret;
 
@@ -167,7 +166,7 @@ static int _mv88e6xxx_reg_write(struct dsa_switch *ds, int addr, int reg,
 	dev_dbg(ds->master_dev, "-> addr: 0x%.2x reg: 0x%.2x val: 0x%.4x\n",
 		addr, reg, val);
 
-	return __mv88e6xxx_reg_write(ps->bus, ps->sw_addr, addr, reg, val);
+	return __mv88e6xxx_reg_write(ps->mdiodev, addr, reg, val);
 }
 
 int mv88e6xxx_reg_write(struct dsa_switch *ds, int addr, int reg, u16 val)
@@ -2230,20 +2229,26 @@ EXPORT_SYMBOL_GPL(mv88e6xxx_setup_ports);
 int mv88e6xxx_setup_common(struct dsa_switch *ds, struct device *dev)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	struct mdio_device *mdiodev;
 
 	if (!ps) {
+		/* Old method when dsa create the switch */
 		ps = devm_kzalloc(dev, sizeof(*ps), GFP_KERNEL);
 		if (!ps)
 			return -ENOMEM;
 
+		mdiodev = devm_kzalloc(dev, sizeof(*mdiodev), GFP_KERNEL);
+		if (!mdiodev)
+			return -ENOMEM;
+
 		ds->priv = ps;
 		ps->ds = ds;
-
-		ps->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
-		if (!ps->bus)
+		mdiodev->bus = dsa_host_dev_to_mii_bus(ds->master_dev);
+		if (!mdiodev->bus)
 			return -ENODEV;
 
-		ps->sw_addr = ds->pd->sw_addr;
+		mdiodev->addr = ds->pd->sw_addr;
+		ps->mdiodev = mdiodev;
 	}
 
 	mutex_init(&ps->smi_mutex);
@@ -2671,16 +2676,16 @@ int mv88e6xxx_get_temp_alarm(struct dsa_switch *ds, bool *alarm)
 EXPORT_SYMBOL_GPL(mv88e6xxx_get_temp_alarm);
 #endif /* CONFIG_NET_DSA_HWMON */
 
-char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
+char *mv88e6xxx_lookup_name(struct mdio_device *mdiodev,
 			    const struct mv88e6xxx_switch_id *table,
 			    unsigned int num)
 {
 	int i, ret;
 
-	if (!bus)
+	if (!mdiodev->bus)
 		return NULL;
 
-	ret = __mv88e6xxx_reg_read(bus, sw_addr, REG_PORT(0), PORT_SWITCH_ID);
+	ret = __mv88e6xxx_reg_read(mdiodev, REG_PORT(0), PORT_SWITCH_ID);
 	if (ret < 0)
 		return NULL;
 
@@ -2692,7 +2697,7 @@ char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 	/* Look up only the product number */
 	for (i = 0; i < num; ++i) {
 		if (table[i].id == (ret & PORT_SWITCH_ID_PROD_NUM_MASK)) {
-			dev_warn(&bus->dev,
+			dev_warn(&mdiodev->bus->dev,
 				 "unknown revision %d, using base switch 0x%x\n",
 				 ret & PORT_SWITCH_ID_REV_MASK,
 				 ret & PORT_SWITCH_ID_PROD_NUM_MASK);
@@ -2723,14 +2728,11 @@ int mv88e6xxx_bind(struct device *dev,
 	ps = (struct mv88e6xxx_priv_state *)(ds + 1);
 	ds->priv = ps;
 	ps->ds = ds;
-	ps->bus = mdiodev->bus;
-	ps->sw_addr = mdiodev->addr;
-
-	get_device(&ps->bus->dev);
+	ps->mdiodev = mdiodev;
 
 	ds->drv = ops;
 
-	name = mv88e6xxx_lookup_name(ps->bus, ps->sw_addr, table, table_size);
+	name = mv88e6xxx_lookup_name(mdiodev, table, table_size);
 	if (!name) {
 		dev_err(dev, "Failed to find switch");
 		return -ENODEV;
@@ -2751,7 +2753,7 @@ void mv88e6xxx_unbind(struct device *dev, struct device *master, void *data)
 	dsa_switch_unregister(ds);
 	devm_kfree(dev, ds);
 
-	put_device(&ps->bus->dev);
+	put_device(&ps->mdiodev->bus->dev);
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_unbind);
 
