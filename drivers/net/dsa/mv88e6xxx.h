@@ -546,3 +546,26 @@ extern struct dsa_switch_driver mv88e6171_switch_driver;
 
 
 #endif
+
+/**
+ * mv88e6xxx_module_driver() - Helper macro for registering mv88e6xxx drivers
+ *
+ * Helper macro for mv88e6xxx drivers which do not do anything special
+ * in module init/exit. Each module may only use this macro once, and
+ * calling it replaces module_init() and module_exit().
+ */
+#define mv88e6xxx_module_driver(_mdio_driver, _switch_driver)		\
+static int __init mv88e6xxx_module_init(void)				\
+{									\
+	register_switch_driver(&_switch_driver);			\
+	return mdio_driver_register(&_mdio_driver);			\
+}									\
+module_init(mv88e6xxx_module_init);					\
+									\
+static void __exit mv88e6xxx_module_exit(void)				\
+{									\
+	mdio_driver_unregister(&_mdio_driver);				\
+	unregister_switch_driver(&_switch_driver);			\
+}									\
+module_exit(mv88e6xxx_module_exit)
+
