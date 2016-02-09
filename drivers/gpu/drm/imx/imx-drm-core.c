@@ -19,6 +19,7 @@
 #include <drm/drm_fb_cma_helper.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_of.h>
+#include <drm/imx_drm.h>
 #include <video/imx-ipu-v3.h>
 
 #include "imx-drm.h"
@@ -142,8 +143,41 @@ int imx_drm_encoder_parse_of(struct drm_device *drm,
 }
 EXPORT_SYMBOL_GPL(imx_drm_encoder_parse_of);
 
+static int imx_drm_ioctl_gem_new(struct drm_device *dev, void *data,
+		struct drm_file *file)
+{
+	struct drm_imx_gem_new *args = data;
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_gem_object *gem_obj;
+	int ret;
+
+	/* no valid flags defined */
+	if (args->flags)
+		return -EINVAL;
+
+	cma_obj = drm_gem_cma_create(dev, args->size);
+	if (IS_ERR(cma_obj))
+		return PTR_ERR(cma_obj);
+
+	gem_obj = &cma_obj->base;
+
+	ret = drm_gem_handle_create(file, gem_obj, &args->handle);
+	if (ret)
+		goto err_handle_create;
+
+	/* drop reference from allocate - handle holds it now. */
+	drm_gem_object_put_unlocked(gem_obj);
+
+	return 0;
+
+err_handle_create:
+	dev->driver->gem_free_object(gem_obj);
+
+	return ret;
+}
+
 static const struct drm_ioctl_desc imx_drm_ioctls[] = {
-	/* none so far */
+	DRM_IOCTL_DEF_DRV(IMX_GEM_NEW, imx_drm_ioctl_gem_new, DRM_AUTH|DRM_RENDER_ALLOW),
 };
 
 static struct drm_driver imx_drm_driver = {
@@ -169,7 +203,7 @@ static struct drm_driver imx_drm_driver = {
 	.desc			= "i.MX DRM graphics",
 	.date			= "20120507",
 	.major			= 1,
-	.minor			= 0,
+	.minor			= 1,
 	.patchlevel		= 0,
 };
 
