@@ -374,6 +374,50 @@ out:
 	return ret;
 }
 
+static void dsa_switch_finish_one(struct dsa_switch *ds)
+{
+	struct device_node *port_dn;
+	struct phy_device *phydev;
+	struct dsa_chip_data *cd = ds->pd;
+	int port;
+
+#ifdef CONFIG_NET_DSA_HWMON
+	if (ds->hwmon_dev)
+		hwmon_device_unregister(ds->hwmon_dev);
+#endif
+
+	/* Disable configuration of the CPU and DSA ports */
+	for (port = 0; port < DSA_MAX_PORTS; port++) {
+		if (!(dsa_is_cpu_port(ds, port) || dsa_is_dsa_port(ds, port)))
+			continue;
+
+		port_dn = cd->port_dn[port];
+		if (of_phy_is_fixed_link(port_dn)) {
+			phydev = of_phy_find_device(port_dn);
+			if (phydev) {
+				int addr = phydev->mdio.addr;
+
+				phy_device_free(phydev);
+				of_node_put(port_dn);
+				fixed_phy_del(addr);
+			}
+		}
+	}
+
+	/* Destroy network devices for physical switch ports. */
+	for (port = 0; port < DSA_MAX_PORTS; port++) {
+		if (!(ds->phys_port_mask & (1 << port)))
+			continue;
+
+		if (!ds->ports[port])
+			continue;
+
+		dsa_slave_destroy(ds->ports[port]);
+	}
+
+	mdiobus_unregister(ds->slave_mii_bus);
+}
+
 static struct dsa_switch *
 dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 		 struct device *parent, struct device *host_dev)
@@ -416,50 +460,6 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 		return ERR_PTR(ret);
 
 	return ds;
-}
-
-static void dsa_switch_destroy(struct dsa_switch *ds)
-{
-	struct device_node *port_dn;
-	struct phy_device *phydev;
-	struct dsa_chip_data *cd = ds->pd;
-	int port;
-
-#ifdef CONFIG_NET_DSA_HWMON
-	if (ds->hwmon_dev)
-		hwmon_device_unregister(ds->hwmon_dev);
-#endif
-
-	/* Disable configuration of the CPU and DSA ports */
-	for (port = 0; port < DSA_MAX_PORTS; port++) {
-		if (!(dsa_is_cpu_port(ds, port) || dsa_is_dsa_port(ds, port)))
-			continue;
-
-		port_dn = cd->port_dn[port];
-		if (of_phy_is_fixed_link(port_dn)) {
-			phydev = of_phy_find_device(port_dn);
-			if (phydev) {
-				int addr = phydev->mdio.addr;
-
-				phy_device_free(phydev);
-				of_node_put(port_dn);
-				fixed_phy_del(addr);
-			}
-		}
-	}
-
-	/* Destroy network devices for physical switch ports. */
-	for (port = 0; port < DSA_MAX_PORTS; port++) {
-		if (!(ds->phys_port_mask & (1 << port)))
-			continue;
-
-		if (!ds->ports[port])
-			continue;
-
-		dsa_slave_destroy(ds->ports[port]);
-	}
-
-	mdiobus_unregister(ds->slave_mii_bus);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -928,7 +928,7 @@ static void dsa_remove_dst(struct dsa_switch_tree *dst)
 		struct dsa_switch *ds = dst->ds[i];
 
 		if (ds)
-			dsa_switch_destroy(ds);
+			dsa_switch_finish_one(ds);
 	}
 
 	dev_put(dst->master_netdev);
