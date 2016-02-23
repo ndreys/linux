@@ -462,6 +462,13 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	return ds;
 }
 
+static void dsa_switch_finish(struct dsa_switch *ds, struct device *parent)
+{
+	dsa_switch_finish_one(ds);
+
+	devm_kfree(parent, ds);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int dsa_switch_suspend(struct dsa_switch *ds)
 {
@@ -855,6 +862,26 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 	return 0;
 }
 
+static void dsa_finish_dst(struct dsa_switch_tree *dst, struct device *parent,
+			   struct dsa_platform_data *pd)
+{
+	struct net_device *dev = dst->master_netdev;
+	int i;
+
+	dev->dsa_ptr = NULL;
+	/* Ensure no more packets get sent to the tag receive
+	 * function.
+	 */
+	wmb();
+
+	for (i = 0; i < pd->nr_chips; i++) {
+		struct dsa_switch *ds = dst->ds[i];
+
+		dsa_switch_finish(ds, parent);
+		dst->ds[i] = NULL;
+	}
+}
+
 static int dsa_probe(struct platform_device *pdev)
 {
 	struct dsa_platform_data *pd = pdev->dev.platform_data;
@@ -920,27 +947,14 @@ out:
 	return ret;
 }
 
-static void dsa_remove_dst(struct dsa_switch_tree *dst)
-{
-	int i;
-
-	for (i = 0; i < dst->pd->nr_chips; i++) {
-		struct dsa_switch *ds = dst->ds[i];
-
-		if (ds)
-			dsa_switch_finish_one(ds);
-	}
-
-	dev_put(dst->master_netdev);
-}
-
 static int dsa_remove(struct platform_device *pdev)
 {
 	struct dsa_switch_tree *dst = platform_get_drvdata(pdev);
 	struct dsa_platform_data *pd = pdev->dev.platform_data;
 
-	dsa_remove_dst(dst);
+	dsa_finish_dst(dst, &pdev->dev, pd);
 	dsa_of_remove(&pdev->dev, pd);
+	dev_put(dst->master_netdev);
 
 	return 0;
 }
