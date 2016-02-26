@@ -404,11 +404,9 @@ static void dsa_switch_finish_one(struct dsa_switch *ds)
 		if (of_phy_is_fixed_link(port_dn)) {
 			phydev = of_phy_find_device(port_dn);
 			if (phydev) {
-				int addr = phydev->mdio.addr;
-
 				phy_device_free(phydev);
 				of_node_put(port_dn);
-				fixed_phy_del(addr);
+				fixed_phy_unregister(phydev);
 			}
 		}
 	}
