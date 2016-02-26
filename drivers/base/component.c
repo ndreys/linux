@@ -237,6 +237,24 @@ static int component_match_realloc(struct device *dev,
 }
 
 /*
+ * Allocate a match array.
+ *
+ */
+static struct component_match *component_match_alloc(struct device *master)
+{
+	struct component_match *match;
+
+	match = devres_alloc(devm_component_match_release,
+				     sizeof(*match), GFP_KERNEL);
+	if (!match)
+		return ERR_PTR(-ENOMEM);
+
+	devres_add(master, match);
+
+	return match;
+}
+
+/*
  * Add a component to be matched, with a release function.
  *
  * The match array is first created or extended if necessary.
@@ -252,14 +270,9 @@ void component_match_add_release(struct device *master,
 		return;
 
 	if (!match) {
-		match = devres_alloc(devm_component_match_release,
-				     sizeof(*match), GFP_KERNEL);
-		if (!match) {
-			*matchptr = ERR_PTR(-ENOMEM);
+		match = component_match_alloc(master);
+		if (IS_ERR(match))
 			return;
-		}
-
-		devres_add(master, match);
 
 		*matchptr = match;
 	}
@@ -289,6 +302,12 @@ int component_master_add_with_match(struct device *dev,
 {
 	struct master *master;
 	int ret;
+
+	if (!match) {
+		match = component_match_alloc(dev);
+		if (IS_ERR(match))
+			return PTR_ERR(match);
+	}
 
 	/* Reallocate the match array for its true size */
 	ret = component_match_realloc(dev, match, match->num);
