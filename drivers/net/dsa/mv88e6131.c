@@ -51,7 +51,7 @@ static const char *mv88e6131_drv_probe(struct device *dsa_dev,
 {
 	return mv88e6xxx_drv_probe(dsa_dev, host_dev, sw_addr, priv,
 				   mv88e6131_table,
-				   ARRAY_SIZE(mv88e6131_table));
+				   ARRAY_SIZE(mv88e6131_table), 0x10);
 }
 
 static int mv88e6131_setup_global(struct dsa_switch *ds)

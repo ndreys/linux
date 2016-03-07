@@ -80,11 +80,15 @@
 #define PORT_SWITCH_ID_PROD_NUM_6175	0x175
 #define PORT_SWITCH_ID_PROD_NUM_6176	0x176
 #define PORT_SWITCH_ID_PROD_NUM_6185	0x1a7
-#define PORT_SWITCH_ID_PROD_NUM_6240	0x240
+#define PORT_SWITCH_ID_PROD_NUM_6190	0x190
+#define PORT_SWITCH_ID_PROD_NUM_6191	0x191
+#define PORT_SWITCH_ID_PROD_NUM_6240  	0x240
+#define PORT_SWITCH_ID_PROD_NUM_6290  	0x290
 #define PORT_SWITCH_ID_PROD_NUM_6321	0x310
 #define PORT_SWITCH_ID_PROD_NUM_6352	0x352
 #define PORT_SWITCH_ID_PROD_NUM_6350	0x371
 #define PORT_SWITCH_ID_PROD_NUM_6351	0x375
+#define PORT_SWITCH_ID_PROD_NUM_6390	0x390
 #define PORT_CONTROL		0x04
 #define PORT_CONTROL_USE_CORE_TAG	BIT(15)
 #define PORT_CONTROL_DROP_ON_LOCK	BIT(14)
@@ -210,6 +214,7 @@
 #define GLOBAL_STU_DATA_PORT_STATE_LEARNING	0x02
 #define GLOBAL_STU_DATA_PORT_STATE_FORWARDING	0x03
 #define GLOBAL_ATU_CONTROL	0x0a
+#define GLOBAL_ATU_CONTROL_AGE_SHIFT	4
 #define GLOBAL_ATU_CONTROL_LEARN2ALL	BIT(3)
 #define GLOBAL_ATU_OP		0x0b
 #define GLOBAL_ATU_OP_BUSY	BIT(15)
@@ -348,6 +353,7 @@ enum mv88e6xxx_family {
 	MV88E6XXX_FAMILY_6320,	/* 6320 6321 */
 	MV88E6XXX_FAMILY_6351,	/* 6171 6175 6350 6351 */
 	MV88E6XXX_FAMILY_6352,	/* 6172 6176 6240 6352 */
+	MV88E6XXX_FAMILY_6390,  /* 6390 6290 6190 6191*/
 };
 
 struct mv88e6xxx_info {
@@ -384,6 +390,9 @@ struct mv88e6xxx_priv_port {
 
 struct mv88e6xxx_priv_state {
 	const struct mv88e6xxx_info *info;
+
+	/* MDIO address offset for the port control registers */
+	unsigned int pcr_offset;
 
 	/* The dsa_switch this private structure is related to */
 	struct dsa_switch *ds;
@@ -453,7 +462,7 @@ int mv88e6xxx_switch_reset(struct mv88e6xxx_priv_state *ps, bool ppu_active);
 const char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 				int sw_addr, void **priv,
 				const struct mv88e6xxx_info *table,
-				unsigned int num);
+				unsigned int num, unsigned int pcr_offset);
 
 int mv88e6xxx_setup_ports(struct dsa_switch *ds);
 int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps);

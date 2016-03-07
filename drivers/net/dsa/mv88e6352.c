@@ -62,13 +62,51 @@ static const struct mv88e6xxx_info mv88e6352_table[] = {
 	}
 };
 
+static const struct mv88e6xxx_info mv88e6390_table[] = {
+	{
+		.prod_num = PORT_SWITCH_ID_PROD_NUM_6390,
+		.family = MV88E6XXX_FAMILY_6390,
+		.name = "Marvell 88E6390",
+		.num_databases = 4096,
+		.num_ports = 11,
+	},
+	{
+		.prod_num = PORT_SWITCH_ID_PROD_NUM_6290,
+		.family = MV88E6XXX_FAMILY_6390,
+		.name = "Marvell 88E6290",
+		.num_databases = 4096,
+		.num_ports = 11,
+	},
+	{
+		.prod_num = PORT_SWITCH_ID_PROD_NUM_6190,
+		.family = MV88E6XXX_FAMILY_6390,
+		.name = "Marvell 88E6190",
+		.num_databases = 4096,
+		.num_ports = 11,
+	},
+	{
+		.prod_num = PORT_SWITCH_ID_PROD_NUM_6191,
+		.family = MV88E6XXX_FAMILY_6390,
+		.name = "Marvell 88E6191",
+		.num_databases = 4096,
+		.num_ports = 11,
+	},
+};
+
 static const char *mv88e6352_drv_probe(struct device *dsa_dev,
 				       struct device *host_dev, int sw_addr,
 				       void **priv)
 {
-	return mv88e6xxx_drv_probe(dsa_dev, host_dev, sw_addr, priv,
+	const char * name;
+
+	name = mv88e6xxx_drv_probe(dsa_dev, host_dev, sw_addr, priv,
 				   mv88e6352_table,
-				   ARRAY_SIZE(mv88e6352_table));
+				   ARRAY_SIZE(mv88e6352_table), 0x10);
+	if (!name)
+		name = mv88e6xxx_drv_probe(dsa_dev, host_dev, sw_addr, priv,
+					   mv88e6390_table,
+					   ARRAY_SIZE(mv88e6390_table), 0x0);
+	return name;
 }
 
 static int mv88e6352_setup_global(struct dsa_switch *ds)
