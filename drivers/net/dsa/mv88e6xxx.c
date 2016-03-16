@@ -3197,6 +3197,12 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 
 	dev_set_drvdata(dev, ds);
 
+	err = dsa_register_switch(ds, mdiodev->dev.of_node);
+	if (err)
+		return err;
+
+	dev_info(dev, "Registered a %s switch\n", name);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_probe);
@@ -3206,6 +3212,8 @@ void mv88e6xxx_remove(struct mdio_device *mdiodev)
 	struct device *dev = &mdiodev->dev;
 	struct dsa_switch *ds = dev_get_drvdata(&mdiodev->dev);
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
+	dsa_unregister_switch(ds);
 
 	devm_kfree(dev, ds);
 	put_device(&ps->bus->dev);

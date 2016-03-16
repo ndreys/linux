@@ -85,6 +85,14 @@ struct dsa_platform_data {
 struct packet_type;
 
 struct dsa_switch_tree {
+	struct list_head	list;
+
+	/* Tree identifier */
+	u32 tree;
+
+	/* Number of switches attached to this tree */
+	struct kref refcount;
+
 	/*
 	 * Configuration data for the platform device that owns
 	 * this dsa switch tree instance.
@@ -346,4 +354,7 @@ static inline bool dsa_uses_tagged_protocol(struct dsa_switch_tree *dst)
 {
 	return dst->rcv != NULL;
 }
+
+void dsa_unregister_switch(struct dsa_switch *ds);
+int dsa_register_switch(struct dsa_switch *ds, struct device_node *np);
 #endif
