@@ -2672,9 +2672,9 @@ int mv88e6xxx_setup_global(struct dsa_switch *ds)
 	for (i = 0; i < 32; i++) {
 		int nexthop = 0x1f;
 
-		if (ds->pd->rtable &&
+		if (ds->cd->rtable &&
 		    i != ds->index && i < ds->dst->pd->nr_chips)
-			nexthop = ds->pd->rtable[i] & 0x1f;
+			nexthop = ds->cd->rtable[i] & 0x1f;
 
 		err = mv88e6xxx_reg_write(
 			ps, REG_GLOBAL2,
