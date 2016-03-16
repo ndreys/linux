@@ -3168,6 +3168,7 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 	ps = (struct mv88e6xxx_priv_state *)(ds + 1);
 	ds->priv = ps;
 	ps->dev = dev;
+	ds->dev = dev;
 	ps->ds = ds;
 	ps->bus = mdiodev->bus;
 	ps->sw_addr = mdiodev->addr;
