@@ -2700,7 +2700,7 @@ int mv88e6xxx_switch_reset(struct dsa_switch *ds, bool ppu_active)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	u16 is_reset = (ppu_active ? 0x8800 : 0xc800);
-	struct gpio_desc *gpiod = ds->pd->reset;
+	struct gpio_desc *gpiod = ps->reset;
 	unsigned long timeout;
 	int ret;
 	int i;
@@ -3057,6 +3057,7 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 	struct mv88e6xxx_priv_state *ps;
 	struct dsa_switch *ds;
 	const char *name;
+	int err;
 
 	ds = devm_kzalloc(dev, sizeof(*ds) + sizeof(*ps), GFP_KERNEL);
 	if (!ds)
@@ -3076,6 +3077,17 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 	if (!name) {
 		dev_err(dev, "Failed to find switch");
 		return -ENODEV;
+	}
+
+	ps->reset = devm_gpiod_get(&mdiodev->dev, "reset", GPIOD_ASIS);
+	err = PTR_ERR(ps->reset);
+	if (err) {
+		if (err == -ENOENT) {
+			/* Optional, so not an error */
+			ps->reset = NULL;
+		} else {
+			return err;
+		}
 	}
 
 	dev_set_drvdata(dev, ds);
