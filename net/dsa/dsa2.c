@@ -98,8 +98,8 @@ static bool dsa_ds_find_port(struct dsa_switch *ds,
 	return false;
 }
 
-static bool dsa_dst_find_port(struct dsa_switch_tree *dst,
-			      struct device_node *port)
+static struct dsa_switch *dsa_dst_find_port(struct dsa_switch_tree *dst,
+					    struct device_node *port)
 {
 	struct dsa_switch *ds;
 	u32 index;
@@ -110,29 +110,33 @@ static bool dsa_dst_find_port(struct dsa_switch_tree *dst,
 			continue;
 
 		if (dsa_ds_find_port(ds, port))
-			return true;
+			return ds;
 	}
 
-	return false;
+	return NULL;
 }
 
 static int dsa_port_complete(struct dsa_switch_tree *dst,
-			     struct device_node *port)
+			     struct dsa_switch *src_ds,
+			     struct device_node *port,
+			     u32 src_port)
 {
 	struct device_node *link;
 	int index;
-	bool found;
+	struct dsa_switch *dst_ds;
 
 	for (index = 0;; index++) {
 		link = of_parse_phandle(port, "link", index);
 		if (!link)
 			break;
 
-		found = dsa_dst_find_port(dst, link);
+		dst_ds = dsa_dst_find_port(dst, link);
 		of_node_put(link);
 
-		if (!found)
+		if (!dst_ds)
 			return 1;
+
+		src_ds->rtable[dst_ds->index] = src_port;
 
 		pr_debug("DSA: port %s to %s complete\n",
 			 port->full_name, link->full_name);
@@ -152,12 +156,15 @@ static int dsa_ds_complete(struct dsa_switch_tree *dst, struct dsa_switch *ds)
 {
 	struct device_node *port;
 	int err;
+	u32 reg;
 
 	for_each_available_child_of_node(ds->dev->of_node, port) {
 		if (!dsa_port_is_dsa(port))
 			continue;
 
-		err = dsa_port_complete(dst, port);
+		of_property_read_u32(port, "reg", &reg);
+
+		err = dsa_port_complete(dst, ds, port, reg);
 		if (err != 0)
 			return err;
 	}
