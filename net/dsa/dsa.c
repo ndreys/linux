@@ -456,10 +456,10 @@ static void dsa_switch_destroy(struct dsa_switch *ds)
 		if (!(ds->user_port_mask & (1 << port)))
 			continue;
 
-		if (!ds->ports[port])
+		if (!ds->ports[port].netdev)
 			continue;
 
-		dsa_slave_destroy(ds->ports[port]);
+		dsa_slave_destroy(ds->ports[port].netdev);
 	}
 
 	mdiobus_unregister(ds->slave_mii_bus);
@@ -475,7 +475,7 @@ static int dsa_switch_suspend(struct dsa_switch *ds)
 		if (!dsa_is_port_initialized(ds, i))
 			continue;
 
-		ret = dsa_slave_suspend(ds->ports[i]);
+		ret = dsa_slave_suspend(ds->ports[i].netdev);
 		if (ret)
 			return ret;
 	}
@@ -501,7 +501,7 @@ static int dsa_switch_resume(struct dsa_switch *ds)
 		if (!dsa_is_port_initialized(ds, i))
 			continue;
 
-		ret = dsa_slave_resume(ds->ports[i]);
+		ret = dsa_slave_resume(ds->ports[i].netdev);
 		if (ret)
 			return ret;
 	}

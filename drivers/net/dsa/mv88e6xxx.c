@@ -1124,7 +1124,7 @@ static int _mv88e6xxx_port_state(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "PortState %s (was %s)\n",
+		netdev_dbg(ds->ports[port].netdev, "PortState %s (was %s)\n",
 			   mv88e6xxx_port_state_names[state],
 			   mv88e6xxx_port_state_names[oldstate]);
 	}
@@ -1225,8 +1225,8 @@ static int _mv88e6xxx_port_pvid(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret < 0)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "DefaultVID %d (was %d)\n", *new,
-			   pvid);
+		netdev_dbg(ds->ports[port].netdev,
+			   "DefaultVID %d (was %d)\n", *new, pvid);
 	}
 
 	if (old)
@@ -1587,7 +1587,8 @@ static int _mv88e6xxx_port_fid(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret < 0)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "FID %d (was %d)\n", *new, fid);
+		netdev_dbg(ds->ports[port].netdev,
+			   "FID %d (was %d)\n", *new, fid);
 	}
 
 	if (old)
@@ -1768,7 +1769,7 @@ static int mv88e6xxx_port_check_hw_vlan(struct dsa_switch *ds, int port,
 			    ps->ports[port].bridge_dev)
 				break; /* same bridge, check next VLAN */
 
-			netdev_warn(ds->ports[port],
+			netdev_warn(ds->ports[port].netdev,
 				    "hardware VLAN %d already used by %s\n",
 				    vlan.vid,
 				    netdev_name(ps->ports[i].bridge_dev));
@@ -1815,7 +1816,7 @@ int mv88e6xxx_port_vlan_filtering(struct dsa_switch *ds, int port,
 		if (ret < 0)
 			goto unlock;
 
-		netdev_dbg(ds->ports[port], "802.1Q Mode %s (was %s)\n",
+		netdev_dbg(ds->ports[port].netdev, "802.1Q Mode %s (was %s)\n",
 			   mv88e6xxx_port_8021q_mode_names[new],
 			   mv88e6xxx_port_8021q_mode_names[old]);
 	}
@@ -2321,7 +2322,7 @@ static void mv88e6xxx_bridge_work(struct work_struct *work)
 	for (port = 0; port < ps->num_ports; ++port)
 		if (test_and_clear_bit(port, ps->port_state_update_mask) &&
 		    _mv88e6xxx_port_state(ps, port, ps->ports[port].state))
-			netdev_warn(ds->ports[port],
+			netdev_warn(ds->ports[port].netdev,
 				    "failed to update state to %s\n",
 				    mv88e6xxx_port_state_names[ps->ports[port].state]);
 
