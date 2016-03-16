@@ -124,6 +124,7 @@ struct dsa_switch_tree {
 
 struct dsa_port {
 	struct net_device	*netdev;
+	struct device_node	*dn;
 };
 
 struct dsa_switch {
