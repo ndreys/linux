@@ -1327,7 +1327,7 @@ static int _mv88e6xxx_port_state(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "PortState %s (was %s)\n",
+		netdev_dbg(ds->ports[port].netdev, "PortState %s (was %s)\n",
 			   mv88e6xxx_port_state_names[state],
 			   mv88e6xxx_port_state_names[oldstate]);
 	}
@@ -1429,8 +1429,8 @@ static int _mv88e6xxx_port_pvid(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret < 0)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "DefaultVID %d (was %d)\n", *new,
-			   pvid);
+		netdev_dbg(ds->ports[port].netdev,
+			   "DefaultVID %d (was %d)\n", *new, pvid);
 	}
 
 	if (old)
@@ -1845,7 +1845,8 @@ static int _mv88e6xxx_port_fid(struct mv88e6xxx_priv_state *ps, int port,
 		if (ret < 0)
 			return ret;
 
-		netdev_dbg(ds->ports[port], "FID %d (was %d)\n", *new, fid);
+		netdev_dbg(ds->ports[port].netdev,
+			   "FID %d (was %d)\n", *new, fid);
 	}
 
 	if (old)
@@ -2026,7 +2027,7 @@ static int mv88e6xxx_port_check_hw_vlan(struct dsa_switch *ds, int port,
 			    ps->ports[port].bridge_dev)
 				break; /* same bridge, check next VLAN */
 
-			netdev_warn(ds->ports[port],
+			netdev_warn(ds->ports[port].netdev,
 				    "hardware VLAN %d already used by %s\n",
 				    vlan.vid,
 				    netdev_name(ps->ports[i].bridge_dev));
@@ -2076,7 +2077,7 @@ static int mv88e6xxx_port_vlan_filtering(struct dsa_switch *ds, int port,
 		if (ret < 0)
 			goto unlock;
 
-		netdev_dbg(ds->ports[port], "802.1Q Mode %s (was %s)\n",
+		netdev_dbg(ds->ports[port].netdev, "802.1Q Mode %s (was %s)\n",
 			   mv88e6xxx_port_8021q_mode_names[new],
 			   mv88e6xxx_port_8021q_mode_names[old]);
 	}
@@ -2145,11 +2146,12 @@ static void mv88e6xxx_port_vlan_add(struct dsa_switch *ds, int port,
 
 	for (vid = vlan->vid_begin; vid <= vlan->vid_end; ++vid)
 		if (_mv88e6xxx_port_vlan_add(ps, port, vid, untagged))
-			netdev_err(ds->ports[port], "failed to add VLAN %d%c\n",
+			netdev_err(ds->ports[port].netdev,
+				   "failed to add VLAN %d%c\n",
 				   vid, untagged ? 'u' : 't');
 
 	if (pvid && _mv88e6xxx_port_pvid_set(ps, port, vlan->vid_end))
-		netdev_err(ds->ports[port], "failed to set PVID %d\n",
+		netdev_err(ds->ports[port].netdev, "failed to set PVID %d\n",
 			   vlan->vid_end);
 
 	mutex_unlock(&ps->smi_mutex);
@@ -2334,7 +2336,8 @@ static void mv88e6xxx_port_fdb_add(struct dsa_switch *ds, int port,
 
 	mutex_lock(&ps->smi_mutex);
 	if (_mv88e6xxx_port_fdb_load(ps, port, fdb->addr, fdb->vid, state))
-		netdev_err(ds->ports[port], "failed to load MAC address\n");
+		netdev_err(ds->ports[port].netdev,
+			   "failed to load MAC address\n");
 	mutex_unlock(&ps->smi_mutex);
 }
 
@@ -2535,7 +2538,8 @@ static void mv88e6xxx_port_bridge_leave(struct dsa_switch *ds, int port)
 	for (i = 0; i < ps->info->num_ports; ++i)
 		if (i == port || ps->ports[i].bridge_dev == bridge)
 			if (_mv88e6xxx_port_based_vlan_map(ps, i))
-				netdev_warn(ds->ports[i], "failed to remap\n");
+				netdev_warn(ds->ports[i].netdev,
+					    "failed to remap\n");
 
 	mutex_unlock(&ps->smi_mutex);
 }
@@ -2554,7 +2558,7 @@ static void mv88e6xxx_bridge_work(struct work_struct *work)
 	for (port = 0; port < ps->info->num_ports; ++port)
 		if (test_and_clear_bit(port, ps->port_state_update_mask) &&
 		    _mv88e6xxx_port_state(ps, port, ps->ports[port].state))
-			netdev_warn(ds->ports[port],
+			netdev_warn(ds->ports[port].netdev,
 				    "failed to update state to %s\n",
 				    mv88e6xxx_port_state_names[ps->ports[port].state]);
 
