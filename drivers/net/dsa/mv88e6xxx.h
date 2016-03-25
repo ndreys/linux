@@ -452,6 +452,15 @@ struct mv88e6xxx_priv_state {
 
 	/* set to size of eeprom if supported by the switch */
 	int		eeprom_len;
+
+	/* Ops for the MDIO bus */
+	const struct mv88e6xxx_mdio_ops *mdio_ops;
+
+	/* Device node for the MDIO bus */
+	struct device_node *mdio_np;
+
+	/* And the MDIO bus itself */
+	struct mii_bus *mdio_bus;
 };
 
 enum stat_type {
@@ -467,6 +476,14 @@ struct mv88e6xxx_hw_stat {
 	enum stat_type type;
 };
 
+struct mv88e6xxx_mdio_ops
+{
+	void (*mdio_init)(struct mv88e6xxx_priv_state *ps);
+	int (*mdio_read)(struct mv88e6xxx_priv_state *ps, int addr, int regnum);
+	int (*mdio_write)(struct mv88e6xxx_priv_state *ps, int addr, int regnum,
+			  u16 val);
+};
+
 int mv88e6xxx_switch_reset(struct mv88e6xxx_priv_state *ps, bool ppu_active);
 char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 			  int sw_addr, void **priv,
@@ -474,22 +491,12 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 			  unsigned int num);
 
 int mv88e6xxx_setup_ports(struct dsa_switch *ds);
-int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps);
 int mv88e6xxx_setup_global(struct dsa_switch *ds);
 int mv88e6xxx_reg_read(struct mv88e6xxx_priv_state *ps, int addr, int reg);
 int mv88e6xxx_reg_write(struct mv88e6xxx_priv_state *ps, int addr,
 			int reg, u16 val);
 int mv88e6xxx_set_addr_direct(struct dsa_switch *ds, u8 *addr);
 int mv88e6xxx_set_addr_indirect(struct dsa_switch *ds, u8 *addr);
-int mv88e6xxx_phy_read(struct dsa_switch *ds, int port, int regnum);
-int mv88e6xxx_phy_write(struct dsa_switch *ds, int port, int regnum, u16 val);
-int mv88e6xxx_phy_read_indirect(struct dsa_switch *ds, int port, int regnum);
-int mv88e6xxx_phy_write_indirect(struct dsa_switch *ds, int port, int regnum,
-				 u16 val);
-void mv88e6xxx_ppu_state_init(struct mv88e6xxx_priv_state *ps);
-int mv88e6xxx_phy_read_ppu(struct dsa_switch *ds, int addr, int regnum);
-int mv88e6xxx_phy_write_ppu(struct dsa_switch *ds, int addr,
-			    int regnum, u16 val);
 void mv88e6xxx_get_strings(struct dsa_switch *ds, int port, uint8_t *data);
 void mv88e6xxx_get_ethtool_stats(struct dsa_switch *ds, int port,
 				 uint64_t *data);

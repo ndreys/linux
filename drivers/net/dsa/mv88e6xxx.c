@@ -19,6 +19,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/of_mdio.h>
 #include <linux/gpio/consumer.h>
 #include <linux/phy.h>
 #include <net/dsa.h>
@@ -245,6 +246,14 @@ static int _mv88e6xxx_phy_write(struct mv88e6xxx_priv_state *ps, int addr,
 	return 0;
 }
 
+static int mv88e6xxx_port_to_phy_addr(struct mv88e6xxx_priv_state *ps,
+				      int port)
+{
+	if (port >= 0 && port < ps->num_ports)
+		return port;
+	return -EINVAL;
+}
+
 #ifdef CONFIG_NET_DSA_MV88E6XXX_NEED_PPU
 static int mv88e6xxx_ppu_disable(struct mv88e6xxx_priv_state *ps)
 {
@@ -356,7 +365,7 @@ static void mv88e6xxx_ppu_access_put(struct mv88e6xxx_priv_state *ps)
 	mutex_unlock(&ps->ppu_mutex);
 }
 
-void mv88e6xxx_ppu_state_init(struct mv88e6xxx_priv_state *ps)
+static void mv88e6xxx_ppu_state_init(struct mv88e6xxx_priv_state *ps)
 {
 	mutex_init(&ps->ppu_mutex);
 	INIT_WORK(&ps->ppu_work, mv88e6xxx_ppu_reenable_work);
@@ -364,12 +373,15 @@ void mv88e6xxx_ppu_state_init(struct mv88e6xxx_priv_state *ps)
 	ps->ppu_timer.data = (unsigned long)ps;
 	ps->ppu_timer.function = mv88e6xxx_ppu_reenable_timer;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_ppu_state_init);
 
-int mv88e6xxx_phy_read_ppu(struct dsa_switch *ds, int addr, int regnum)
+static int mv88e6xxx_mdio_read_ppu(struct mv88e6xxx_priv_state *ps, int port,
+				   int regnum)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
+
+	if (addr < 0)
+		return 0xffff;
 
 	ret = mv88e6xxx_ppu_access_get(ps);
 	if (ret >= 0) {
@@ -379,13 +391,15 @@ int mv88e6xxx_phy_read_ppu(struct dsa_switch *ds, int addr, int regnum)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_read_ppu);
 
-int mv88e6xxx_phy_write_ppu(struct dsa_switch *ds, int addr,
-			    int regnum, u16 val)
+static int mv88e6xxx_mdio_write_ppu(struct mv88e6xxx_priv_state *ps, int port,
+				    int regnum, u16 val)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
+
+	if (addr < 0)
+		return 0xffff;
 
 	ret = mv88e6xxx_ppu_access_get(ps);
 	if (ret >= 0) {
@@ -395,7 +409,6 @@ int mv88e6xxx_phy_write_ppu(struct dsa_switch *ds, int addr,
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_write_ppu);
 #endif
 
 static bool mv88e6xxx_6065_family(struct mv88e6xxx_priv_state *ps)
@@ -2592,7 +2605,7 @@ int mv88e6xxx_setup_ports(struct dsa_switch *ds)
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_setup_ports);
 
-int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps)
+static int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps)
 {
 	mutex_init(&ps->smi_mutex);
 
@@ -2603,7 +2616,6 @@ int mv88e6xxx_setup_common(struct mv88e6xxx_priv_state *ps)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_setup_common);
 
 int mv88e6xxx_setup_global(struct dsa_switch *ds)
 {
@@ -2874,18 +2886,9 @@ error:
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_phy_page_write);
 
-static int mv88e6xxx_port_to_phy_addr(struct mv88e6xxx_priv_state *ps,
-				      int port)
+static int mv88e6xxx_mdio_read_direct(struct mv88e6xxx_priv_state *ps,
+				      int port, int regnum)
 {
-	if (port >= 0 && port < ps->num_ports)
-		return port;
-	return -EINVAL;
-}
-
-int
-mv88e6xxx_phy_read(struct dsa_switch *ds, int port, int regnum)
-{
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
 
@@ -2897,12 +2900,10 @@ mv88e6xxx_phy_read(struct dsa_switch *ds, int port, int regnum)
 	mutex_unlock(&ps->smi_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_read);
 
-int
-mv88e6xxx_phy_write(struct dsa_switch *ds, int port, int regnum, u16 val)
+static int mv88e6xxx_mdio_write_direct(struct mv88e6xxx_priv_state *ps,
+				       int port, int regnum, u16 val)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
 
@@ -2914,12 +2915,10 @@ mv88e6xxx_phy_write(struct dsa_switch *ds, int port, int regnum, u16 val)
 	mutex_unlock(&ps->smi_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_write);
 
-int
-mv88e6xxx_phy_read_indirect(struct dsa_switch *ds, int port, int regnum)
+static int mv88e6xxx_mdio_read_indirect(struct mv88e6xxx_priv_state *ps,
+					int port, int regnum)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
 
@@ -2931,25 +2930,21 @@ mv88e6xxx_phy_read_indirect(struct dsa_switch *ds, int port, int regnum)
 	mutex_unlock(&ps->smi_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_read_indirect);
 
-int
-mv88e6xxx_phy_write_indirect(struct dsa_switch *ds, int port, int regnum,
-			     u16 val)
+static int mv88e6xxx_mdio_write_indirect(struct mv88e6xxx_priv_state *ps,
+					 int port, int regnum, u16 val)
 {
-	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 	int addr = mv88e6xxx_port_to_phy_addr(ps, port);
 	int ret;
 
 	if (addr < 0)
-		return addr;
+		return 0xffff;
 
 	mutex_lock(&ps->smi_mutex);
 	ret = _mv88e6xxx_phy_write_indirect(ps, addr, regnum, val);
 	mutex_unlock(&ps->smi_mutex);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mv88e6xxx_phy_write_indirect);
 
 #ifdef CONFIG_NET_DSA_HWMON
 
@@ -3119,6 +3114,125 @@ static int mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 	return -ENODEV;
 }
 
+static const struct mv88e6xxx_mdio_ops mv88e6xxx_mdio_ops_direct = {
+	.mdio_read		= mv88e6xxx_mdio_read_direct,
+	.mdio_write		= mv88e6xxx_mdio_write_direct,
+};
+
+static const struct mv88e6xxx_mdio_ops mv88e6xxx_mdio_ops_ppu = {
+	.mdio_init		= mv88e6xxx_ppu_state_init,
+	.mdio_read		= mv88e6xxx_mdio_read_ppu,
+	.mdio_write		= mv88e6xxx_mdio_write_ppu,
+};
+
+static const struct mv88e6xxx_mdio_ops mv88e6xxx_mdio_ops_indirect = {
+	.mdio_read		= mv88e6xxx_mdio_read_indirect,
+	.mdio_write		= mv88e6xxx_mdio_write_indirect,
+};
+
+static int mv88e6xxx_mdio_read(struct mii_bus *bus, int addr, int reg)
+{
+	struct mv88e6xxx_priv_state *ps = bus->priv;
+
+	if (ps->mdio_ops->mdio_read)
+		return ps->mdio_ops->mdio_read(ps, addr, reg);
+
+	return 0xffff;
+}
+
+static int mv88e6xxx_mdio_write(struct mii_bus *bus, int addr, int reg, u16 val)
+{
+	struct mv88e6xxx_priv_state *ps = bus->priv;
+
+	if (ps->mdio_ops->mdio_write)
+		return ps->mdio_ops->mdio_write(ps, addr, reg, val);
+
+	return 0;
+}
+
+static const struct mv88e6xxx_mdio_ops *
+mv88e6xxx_get_mdio_ops(struct mv88e6xxx_priv_state *ps)
+{
+	if (mv88e6xxx_6165_family(ps))
+	    return &mv88e6xxx_mdio_ops_direct;
+
+	if (mv88e6xxx_6097_family(ps) || mv88e6xxx_6095_family(ps) ||
+	    mv88e6xxx_6185_family(ps))
+		return &mv88e6xxx_mdio_ops_ppu;
+
+	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6320_family(ps) ||
+	    mv88e6xxx_6351_family(ps))
+		return &mv88e6xxx_mdio_ops_indirect;
+
+	WARN(true, "Unknown MDIO ops\n");
+
+	return NULL;
+}
+
+static int mv88e6xxx_mdio_register(struct mv88e6xxx_priv_state *ps,
+				   struct device_node *np)
+{
+	const struct mv88e6xxx_mdio_ops *ops = mv88e6xxx_get_mdio_ops(ps);
+	struct mii_bus *bus;
+	int err;
+
+	if (!ops)
+		return -EINVAL;
+
+	ps->mdio_ops = ops;
+
+	if (ops->mdio_init)
+		ops->mdio_init(ps);
+
+	if (np)
+		ps->mdio_np = of_get_child_by_name(np, "mdio-bus");
+
+	bus = devm_mdiobus_alloc(ps->dev);
+	if (!bus)
+		return -ENOMEM;
+
+	bus->priv = (void *)ps;
+	if (np) {
+		bus->name = np->full_name;
+		snprintf(bus->id, MII_BUS_ID_SIZE, "%s", np->full_name);
+	} else {
+		bus->name = dev_name(ps->dev);
+		snprintf(bus->id, MII_BUS_ID_SIZE, "%s-%s", ps->bus->id,
+			 dev_name(ps->dev));
+	}
+
+	bus->read = mv88e6xxx_mdio_read;
+	bus->write = mv88e6xxx_mdio_write;
+	bus->parent = ps->dev;
+
+	if (ps->mdio_np)
+		err = of_mdiobus_register(bus, ps->mdio_np);
+	else
+		err = mdiobus_register(bus);
+	if (err) {
+		dev_err(ps->dev, "Cannot register MDIO bus (%d)\n", err);
+		goto out;
+	}
+	ps->mdio_bus = bus;
+
+	return 0;
+
+out:
+	if (ps->mdio_np)
+		of_node_put(ps->mdio_np);
+        return err;
+}
+
+static void mv88e6xxx_mdio_unregister(struct mv88e6xxx_priv_state *ps)
+{
+	struct mii_bus *bus = ps->mdio_bus;
+
+	mdiobus_unregister(bus);
+
+	if (ps->mdio_np)
+		of_node_put(ps->mdio_np);
+}
+
 char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 			  int sw_addr, void **priv,
 			  const struct mv88e6xxx_switch_id *table,
@@ -3128,6 +3242,7 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 	struct mii_bus *bus = dsa_host_dev_to_mii_bus(host_dev);
 	char *name = NULL;
 	int entry;
+	int err;
 
 	if (!bus)
 		return NULL;
@@ -3142,9 +3257,19 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 		if (!ps->bus)
 			return NULL;
 		ps->sw_addr = sw_addr;
+		ps->dev = dsa_dev;
+
+		err = mv88e6xxx_setup_common(ps);
+		if (err)
+			return NULL;
 
 		name = table[entry].name;
 		ps->num_ports = table[entry].num_ports;
+
+		err = mv88e6xxx_mdio_register(ps, NULL);
+		if (err)
+			return NULL;
+
 	}
 	return name;
 }
@@ -3175,8 +3300,6 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 	ps->bus = mdiodev->bus;
 	ps->sw_addr = mdiodev->addr;
 
-	get_device(&ps->bus->dev);
-
 	ds->drv = ops;
 
 	entry = mv88e6xxx_lookup_name(ps->bus, ps->sw_addr, table, table_size);
@@ -3198,9 +3321,17 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 		}
 	}
 
+	err = mv88e6xxx_setup_common(ps);
+	if (err)
+		return err;
+
+	err = mv88e6xxx_mdio_register(ps, mdiodev->dev.of_node);
+	if (err)
+		return err;
+	ds->slave_mii_bus = ps->mdio_bus;
+
 	if (!of_property_read_u32(np, "eeprom-length", &eeprom_len))
 		ps->eeprom_len = eeprom_len;
-
 	dev_set_drvdata(dev, ds);
 
 	err = dsa_register_switch(ds, mdiodev->dev.of_node);
@@ -3220,9 +3351,9 @@ void mv88e6xxx_remove(struct mdio_device *mdiodev)
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
 
 	dsa_unregister_switch(ds);
+	mv88e6xxx_mdio_unregister(ps);
 
 	devm_kfree(dev, ds);
-	put_device(&ps->bus->dev);
 }
 EXPORT_SYMBOL_GPL(mv88e6xxx_remove);
 
