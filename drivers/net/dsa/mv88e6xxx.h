@@ -546,25 +546,6 @@ extern struct dsa_switch_driver mv88e6123_switch_driver;
 extern struct dsa_switch_driver mv88e6352_switch_driver;
 extern struct dsa_switch_driver mv88e6171_switch_driver;
 
-#define REG_READ(addr, reg)						\
-	({								\
-		int __ret;						\
-									\
-		__ret = mv88e6xxx_reg_read(ds, addr, reg);		\
-		if (__ret < 0)						\
-			return __ret;					\
-		__ret;							\
-	})
-
-#define REG_WRITE(addr, reg, val)					\
-	({								\
-		int __ret;						\
-									\
-		__ret = mv88e6xxx_reg_write(ds, addr, reg, val);	\
-		if (__ret < 0)						\
-			return __ret;					\
-	})
-
 /**
  * mv88e6xxx_module_driver() - Helper macro for registering mv88e6xxx drivers
  *
