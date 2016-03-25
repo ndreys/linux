@@ -25,18 +25,18 @@
 #include "mv88e6xxx.h"
 
 static const struct mv88e6xxx_switch_id mv88e6352_table[] = {
-	{ PORT_SWITCH_ID_6172, "Marvell 88E6172" },
-	{ PORT_SWITCH_ID_6176, "Marvell 88E6176" },
-	{ PORT_SWITCH_ID_6240, "Marvell 88E6240" },
-	{ PORT_SWITCH_ID_6320, "Marvell 88E6320" },
-	{ PORT_SWITCH_ID_6320_A1, "Marvell 88E6320 (A1)" },
-	{ PORT_SWITCH_ID_6320_A2, "Marvell 88e6320 (A2)" },
-	{ PORT_SWITCH_ID_6321, "Marvell 88E6321" },
-	{ PORT_SWITCH_ID_6321_A1, "Marvell 88E6321 (A1)" },
-	{ PORT_SWITCH_ID_6321_A2, "Marvell 88e6321 (A2)" },
-	{ PORT_SWITCH_ID_6352, "Marvell 88E6352" },
-	{ PORT_SWITCH_ID_6352_A0, "Marvell 88E6352 (A0)" },
-	{ PORT_SWITCH_ID_6352_A1, "Marvell 88E6352 (A1)" },
+	{ PORT_SWITCH_ID_6172,		"Marvell 88E6172",	7 },
+	{ PORT_SWITCH_ID_6176,		"Marvell 88E6176",	7 },
+	{ PORT_SWITCH_ID_6240,		"Marvell 88E6240",	7 },
+	{ PORT_SWITCH_ID_6320,		"Marvell 88E6320",	7 },
+	{ PORT_SWITCH_ID_6320_A1,	"Marvell 88E6320 (A1)", 7 },
+	{ PORT_SWITCH_ID_6320_A2,	"Marvell 88e6320 (A2)", 7 },
+	{ PORT_SWITCH_ID_6321,		"Marvell 88E6321",	7 },
+	{ PORT_SWITCH_ID_6321_A1,	"Marvell 88E6321 (A1)", 7 },
+	{ PORT_SWITCH_ID_6321_A2,	"Marvell 88e6321 (A2)", 7 },
+	{ PORT_SWITCH_ID_6352,		"Marvell 88E6352",	7 },
+	{ PORT_SWITCH_ID_6352_A0,	"Marvell 88E6352 (A0)", 7 },
+	{ PORT_SWITCH_ID_6352_A1,	"Marvell 88E6352 (A1)", 7 },
 };
 
 static char *mv88e6352_drv_probe(struct device *dsa_dev,
@@ -95,8 +95,6 @@ static int mv88e6352_setup(struct dsa_switch *ds)
 	ret = mv88e6xxx_setup_common(ps);
 	if (ret < 0)
 		return ret;
-
-	ps->num_ports = 7;
 
 	mutex_init(&ps->eeprom_mutex);
 

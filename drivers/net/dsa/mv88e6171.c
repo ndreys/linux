@@ -21,10 +21,10 @@
 #include "mv88e6xxx.h"
 
 static const struct mv88e6xxx_switch_id mv88e6171_table[] = {
-	{ PORT_SWITCH_ID_6171, "Marvell 88E6171" },
-	{ PORT_SWITCH_ID_6175, "Marvell 88E6175" },
-	{ PORT_SWITCH_ID_6350, "Marvell 88E6350" },
-	{ PORT_SWITCH_ID_6351, "Marvell 88E6351" },
+	{ PORT_SWITCH_ID_6171,	"Marvell 88E6171",	7 },
+	{ PORT_SWITCH_ID_6175,	"Marvell 88E6175",	7 },
+	{ PORT_SWITCH_ID_6350,	"Marvell 88E6350",	7 },
+	{ PORT_SWITCH_ID_6351,	"Marvell 88E6351",	7 },
 };
 
 static char *mv88e6171_drv_probe(struct device *dsa_dev,
@@ -85,8 +85,6 @@ static int mv88e6171_setup(struct dsa_switch *ds)
 	ret = mv88e6xxx_setup_common(ps);
 	if (ret < 0)
 		return ret;
-
-	ps->num_ports = 7;
 
 	ret = mv88e6xxx_switch_reset(ps, true);
 	if (ret < 0)

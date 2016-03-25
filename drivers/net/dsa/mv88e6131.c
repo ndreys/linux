@@ -21,11 +21,11 @@
 #include "mv88e6xxx.h"
 
 static const struct mv88e6xxx_switch_id mv88e6131_table[] = {
-	{ PORT_SWITCH_ID_6085, "Marvell 88E6085" },
-	{ PORT_SWITCH_ID_6095, "Marvell 88E6095/88E6095F" },
-	{ PORT_SWITCH_ID_6131, "Marvell 88E6131" },
-	{ PORT_SWITCH_ID_6131_B2, "Marvell 88E6131 (B2)" },
-	{ PORT_SWITCH_ID_6185, "Marvell 88E6185" },
+	{ PORT_SWITCH_ID_6085,		"Marvell 88E6085",		10 },
+	{ PORT_SWITCH_ID_6095,		"Marvell 88E6095/88E6095F",	11 },
+	{ PORT_SWITCH_ID_6131,		"Marvell 88E6131",		8 },
+	{ PORT_SWITCH_ID_6131_B2,	"Marvell 88E6131 (B2)",		8 },
+	{ PORT_SWITCH_ID_6185,		"Marvell 88E6185",		10 },
 };
 
 static char *mv88e6131_drv_probe(struct device *dsa_dev,
@@ -113,21 +113,6 @@ static int mv88e6131_setup(struct dsa_switch *ds)
 
 	mv88e6xxx_ppu_state_init(ps);
 
-	switch (ps->id) {
-	case PORT_SWITCH_ID_6085:
-	case PORT_SWITCH_ID_6185:
-		ps->num_ports = 10;
-		break;
-	case PORT_SWITCH_ID_6095:
-		ps->num_ports = 11;
-		break;
-	case PORT_SWITCH_ID_6131:
-	case PORT_SWITCH_ID_6131_B2:
-		ps->num_ports = 8;
-		break;
-	default:
-		return -ENODEV;
-	}
 
 	ret = mv88e6xxx_switch_reset(ps, false);
 	if (ret < 0)

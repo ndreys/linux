@@ -363,6 +363,7 @@
 struct mv88e6xxx_switch_id {
 	u16 id;
 	char *name;
+	int num_ports;
 };
 
 struct mv88e6xxx_atu_entry {

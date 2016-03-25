@@ -3087,23 +3087,23 @@ int mv88e6xxx_get_temp_alarm(struct dsa_switch *ds, bool *alarm)
 EXPORT_SYMBOL_GPL(mv88e6xxx_get_temp_alarm);
 #endif /* CONFIG_NET_DSA_HWMON */
 
-static char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
-				   const struct mv88e6xxx_switch_id *table,
-				   unsigned int num)
+static int mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
+				 const struct mv88e6xxx_switch_id *table,
+				 unsigned int num)
 {
 	int i, ret;
 
 	if (!bus)
-		return NULL;
+		return -EINVAL;
 
 	ret = __mv88e6xxx_reg_read(bus, sw_addr, REG_PORT(0), PORT_SWITCH_ID);
 	if (ret < 0)
-		return NULL;
+		return ret;
 
 	/* Look up the exact switch ID */
 	for (i = 0; i < num; ++i)
 		if (table[i].id == ret)
-			return table[i].name;
+			return i;
 
 	/* Look up only the product number */
 	for (i = 0; i < num; ++i) {
@@ -3112,11 +3112,11 @@ static char *mv88e6xxx_lookup_name(struct mii_bus *bus, int sw_addr,
 				 "unknown revision %d, using base switch 0x%x\n",
 				 ret & PORT_SWITCH_ID_REV_MASK,
 				 ret & PORT_SWITCH_ID_PROD_NUM_MASK);
-			return table[i].name;
+			return i;
 		}
 	}
 
-	return NULL;
+	return -ENODEV;
 }
 
 char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
@@ -3126,13 +3126,14 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 {
 	struct mv88e6xxx_priv_state *ps;
 	struct mii_bus *bus = dsa_host_dev_to_mii_bus(host_dev);
-	char *name;
+	char *name = NULL;
+	int entry;
 
 	if (!bus)
 		return NULL;
 
-	name = mv88e6xxx_lookup_name(bus, sw_addr, table, num);
-	if (name) {
+	entry = mv88e6xxx_lookup_name(bus, sw_addr, table, num);
+	if (entry >= 0) {
 		ps = devm_kzalloc(dsa_dev, sizeof(*ps), GFP_KERNEL);
 		if (!ps)
 			return NULL;
@@ -3141,6 +3142,9 @@ char *mv88e6xxx_drv_probe(struct device *dsa_dev, struct device *host_dev,
 		if (!ps->bus)
 			return NULL;
 		ps->sw_addr = sw_addr;
+
+		name = table[entry].name;
+		ps->num_ports = table[entry].num_ports;
 	}
 	return name;
 }
@@ -3154,6 +3158,7 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 	struct mv88e6xxx_priv_state *ps;
 	struct dsa_switch *ds;
 	const char *name;
+	int entry;
 	int err;
 
 	ds = devm_kzalloc(dev, sizeof(*ds) + sizeof(*ps), GFP_KERNEL);
@@ -3171,11 +3176,13 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 
 	ds->drv = ops;
 
-	name = mv88e6xxx_lookup_name(ps->bus, ps->sw_addr, table, table_size);
-	if (!name) {
+	entry = mv88e6xxx_lookup_name(ps->bus, ps->sw_addr, table, table_size);
+	if (entry < 0) {
 		dev_err(dev, "Failed to find switch");
-		return -ENODEV;
+		return entry;
 	}
+	name = table[entry].name;
+	ps->num_ports = table[entry].num_ports;
 
 	ps->reset = devm_gpiod_get(&mdiodev->dev, "reset", GPIOD_ASIS);
 	err = PTR_ERR(ps->reset);
