@@ -94,42 +94,47 @@
 
 				dsa,member = <0 0>;
 
-				port@0 {
-					reg = <0>;
-					label = "lan0";
-				};
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					port@0 {
+						reg = <0>;
+						label = "lan0";
+					};
 
-				port@1 {
-					reg = <1>;
-					label = "lan1";
-				};
+					port@1 {
+						reg = <1>;
+						label = "lan1";
+					};
 
-				port@2 {
-					reg = <2>;
-					label = "lan2";
-				};
+					port@2 {
+						reg = <2>;
+						label = "lan2";
+					};
 
-				switch0port5: port@5 {
-					reg = <5>;
-					label = "dsa";
-					phy-mode = "rgmii-txid";
-					link = <&switch1port6
-						&switch2port9>;
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
+					switch0port5: port@5 {
+						reg = <5>;
+						label = "dsa";
+						phy-mode = "rgmii-txid";
+						link = <&switch1port6
+							&switch2port9>;
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+						};
+					};
+
+					port@6 {
+						reg = <6>;
+						label = "cpu";
+						ethernet = <&fec1>;
+						fixed-link {
+							speed = <100>;
+							full-duplex;
+						};
 					};
 				};
-
-				port@6 {
-					reg = <6>;
-					label = "cpu";
-					fixed-link {
-						speed = <100>;
-						full-duplex;
-					};
-				};
-			 };
+			};
 		};
 
 		mdio_mux_2: mdio@2 {
@@ -145,43 +150,62 @@
 
 				dsa,member = <0 1>;
 
-				port@0 {
-					reg = <0>;
-					label = "lan3";
-				};
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					port@0 {
+						reg = <0>;
+						label = "lan3";
+						phy-handle = <&switch1phy0>;
+					};
 
-				port@1 {
-					reg = <1>;
-					label = "lan4";
-				};
+					port@1 {
+						reg = <1>;
+						label = "lan4";
+						phy-handle = <&switch1phy1>;
+					};
 
-				port@2 {
-					reg = <2>;
-					label = "lan5";
-				};
+					port@2 {
+						reg = <2>;
+						label = "lan5";
+						phy-handle = <&switch1phy2>;
+					};
 
-				switch1port5: port@5 {
-					reg = <5>;
-					label = "dsa";
-					link = <&switch2port9>;
-					phy-mode = "rgmii-txid";
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
+					switch1port5: port@5 {
+						reg = <5>;
+						label = "dsa";
+						link = <&switch2port9>;
+						phy-mode = "rgmii-txid";
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+						};
+					};
+
+					switch1port6: port@6 {
+						reg = <6>;
+						label = "dsa";
+						phy-mode = "rgmii-txid";
+						link = <&switch0port5>;
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+						};
 					};
 				};
-
-				switch1port6: port@6 {
-					reg = <6>;
-					label = "dsa";
-					phy-mode = "rgmii-txid";
-					link = <&switch0port5>;
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
+				mdio-bus {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					switch1phy0: switch1phy0@0 {
+						reg = <0>;
+					};
+					switch1phy1: switch1phy0@1 {
+						reg = <1>;
+					};
+					switch1phy2: switch1phy0@2 {
+						reg = <2>;
 					};
 				};
-
 			 };
 		};
 
@@ -197,52 +221,57 @@
 				reg = <0>;
 
 				dsa,member = <0 2>;
-				port@0 {
-					reg = <0>;
-					label = "lan6";
-				};
 
-				port@1 {
-					reg = <1>;
-					label = "lan7";
-				};
-
-				port@2 {
-					reg = <2>;
-					label = "lan8";
-				};
-
-				port@3 {
-					reg = <3>;
-					label = "optical3";
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
-						link-gpios = <&gpio6 2
-							      GPIO_ACTIVE_HIGH>;
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					port@0 {
+						reg = <0>;
+						label = "lan6";
 					};
-				};
 
-				port@4 {
-					reg = <4>;
-					label = "optical4";
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
-						link-gpios = <&gpio6 3
-							      GPIO_ACTIVE_HIGH>;
+					port@1 {
+						reg = <1>;
+						label = "lan7";
 					};
-				};
 
-				switch2port9: port@9 {
-					reg = <9>;
-					label = "dsa";
-					phy-mode = "rgmii-txid";
-					link = <&switch1port5
-						&switch0port5>;
-					fixed-link {
-						speed = <1000>;
-						full-duplex;
+					port@2 {
+						reg = <2>;
+						label = "lan8";
+					};
+
+					port@3 {
+						reg = <3>;
+						label = "optical3";
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+							link-gpios = <&gpio6 2
+							      GPIO_ACTIVE_HIGH>;
+						};
+					};
+
+					port@4 {
+						reg = <4>;
+						label = "optical4";
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+							link-gpios = <&gpio6 3
+							      GPIO_ACTIVE_HIGH>;
+						};
+					};
+
+					switch2port9: port@9 {
+						reg = <9>;
+						label = "dsa";
+						phy-mode = "rgmii-txid";
+						link = <&switch1port5
+							&switch0port5>;
+						fixed-link {
+							speed = <1000>;
+							full-duplex;
+						};
 					};
 				};
 			};

@@ -155,16 +155,18 @@ static int dsa_port_complete(struct dsa_switch_tree *dst,
 static int dsa_ds_complete(struct dsa_switch_tree *dst, struct dsa_switch *ds)
 {
 	struct device_node *port;
+	u32 index;
 	int err;
-	u32 reg;
 
-	for_each_available_child_of_node(ds->dev->of_node, port) {
+	for (index = 0; index < DSA_MAX_PORTS; index++) {
+		port = ds->ports[index].dn;
+		if (!port)
+			continue;
+
 		if (!dsa_port_is_dsa(port))
 			continue;
 
-		of_property_read_u32(port, "reg", &reg);
-
-		err = dsa_port_complete(dst, ds, port, reg);
+		err = dsa_port_complete(dst, ds, port, index);
 		if (err != 0)
 			return err;
 	}
@@ -200,13 +202,13 @@ static int dsa_dst_complete(struct dsa_switch_tree *dst)
 	return 0;
 }
 
-static int dsa_parse_children_dn(struct device_node *np, struct dsa_switch *ds)
+static int dsa_parse_ports_dn(struct device_node *ports, struct dsa_switch *ds)
 {
 	struct device_node *port;
 	int err;
 	u32 reg;
 
-	for_each_available_child_of_node(np, port) {
+	for_each_available_child_of_node(ports, port) {
 		err = of_property_read_u32(port, "reg", &reg);
 		if (err)
 			return err;
@@ -238,8 +240,23 @@ static int dsa_parse_member(struct device_node *np, u32 *tree, u32 *index)
 	return 0;
 }
 
+static struct device_node *dsa_get_ports(struct dsa_switch *ds,
+					 struct device_node *np)
+{
+	struct device_node *ports;
+
+	ports = of_get_child_by_name(np, "ports");
+        if (!ports) {
+                dev_err(ds->dev, "no ports child node found\n");
+                return ERR_PTR(-EINVAL);
+        }
+
+	return ports;
+}
+
 static int _dsa_register_switch(struct dsa_switch *ds, struct device_node *np)
 {
+	struct device_node *ports = dsa_get_ports(ds, np);
 	struct dsa_switch_tree *dst;
 	u32 tree, index;
 	int err;
@@ -248,7 +265,10 @@ static int _dsa_register_switch(struct dsa_switch *ds, struct device_node *np)
 	if (err)
 		return err;
 
-	err = dsa_parse_children_dn(np, ds);
+	if (IS_ERR(ports))
+		return PTR_ERR(ports);
+
+	err = dsa_parse_ports_dn(ports, ds);
 	if (err)
 		return err;
 
