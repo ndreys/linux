@@ -229,6 +229,7 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 {
 	struct dsa_switch_driver *drv = ds->drv;
 	struct dsa_switch_tree *dst = ds->dst;
+	struct device *dev = &dst->master_netdev->dev;
 	struct dsa_chip_data *cd = ds->cd;
 	bool valid_name_found = false;
 	int index = ds->index;
@@ -246,8 +247,7 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 
 		if (!strcmp(name, "cpu")) {
 			if (dst->cpu_switch != -1) {
-				netdev_err(dst->master_netdev,
-					   "multiple cpu ports?!\n");
+				dev_err(dev, "multiple cpu ports?!\n");
 				ret = -EINVAL;
 				goto out;
 			}
@@ -345,7 +345,7 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 
 		ret = dsa_slave_create(ds, parent, i, cd->port_names[i]);
 		if (ret < 0) {
-			netdev_err(dst->master_netdev, "[%d]: can't create dsa slave device for port %d(%s): %d\n",
+			dev_err(dev, "[%d]: can't create dsa slave device for port %d(%s): %d\n",
 				   index, i, cd->port_names[i], ret);
 			ret = 0;
 		}
@@ -354,8 +354,8 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 	/* Perform configuration of the CPU and DSA ports */
 	ret = dsa_cpu_dsa_setups(ds, dev);
 	if (ret < 0) {
-		netdev_err(dst->master_netdev, "[%d] : can't configure CPU and DSA ports\n",
-			   index);
+		dev_err(dev, "[%d] : can't configure CPU and DSA ports\n",
+			index);
 		ret = 0;
 	}
 
@@ -395,6 +395,7 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 		 struct device *parent, struct device *host_dev)
 {
 	struct dsa_chip_data *cd = dst->pd->chip + index;
+	struct device *dev = &dst->master_netdev->dev;
 	struct dsa_switch_driver *drv;
 	struct dsa_switch *ds;
 	int ret;
@@ -406,12 +407,11 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	 */
 	drv = dsa_switch_probe(parent, host_dev, cd->sw_addr, &name, &priv);
 	if (drv == NULL) {
-		netdev_err(dst->master_netdev, "[%d]: could not detect attached switch\n",
-			   index);
+		dev_err(dev, "[%d]: could not detect attached switch\n",
+			index);
 		return ERR_PTR(-EINVAL);
 	}
-	netdev_info(dst->master_netdev, "[%d]: detected a %s switch\n",
-		    index, name);
+	dev_info(dev, "[%d]: detected a %s switch\n", index, name);
 
 
 	/*

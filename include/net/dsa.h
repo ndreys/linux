@@ -93,6 +93,9 @@ struct dsa_switch_tree {
 	/* Number of switches attached to this tree */
 	struct kref refcount;
 
+	/* Has this tree been applied to the hardware? */
+	bool applied;
+
 	/*
 	 * Configuration data for the platform device that owns
 	 * this dsa switch tree instance.
@@ -172,6 +175,11 @@ struct dsa_switch {
 	char			hwmon_name[IFNAMSIZ + 8];
 	struct device		*hwmon_dev;
 #endif
+
+	/*
+	 * The lower device this switch uses to talk to the host
+	 */
+	struct net_device *master_netdev;
 
 	/*
 	 * Slave mii_bus and devices for the individual ports.
