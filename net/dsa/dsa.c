@@ -29,6 +29,26 @@
 
 char dsa_driver_version[] = "0.1";
 
+static const struct dsa_device_ops edsa_none_ops = {
+	.xmit	= NULL,
+	.rcv	= NULL,
+};
+
+const struct dsa_device_ops *dsa_device_ops[_DSA_TAG_LAST] = {
+#ifdef CONFIG_NET_DSA_TAG_DSA
+	[DSA_TAG_PROTO_DSA] = &dsa_netdev_ops,
+#endif
+#ifdef CONFIG_NET_DSA_TAG_EDSA
+	[DSA_TAG_PROTO_EDSA] = &edsa_netdev_ops,
+#endif
+#ifdef CONFIG_NET_DSA_TAG_TRAILER
+	[DSA_TAG_PROTO_TRAILER] = &trailer_netdev_ops,
+#endif
+#ifdef CONFIG_NET_DSA_TAG_BRCM
+	[DSA_TAG_PROTO_BRCM] = &brcm_netdev_ops,
+#endif
+	[DSA_TAG_PROTO_NONE] = &edsa_none_ops,
+};
 
 /* switch driver registration ***********************************************/
 static DEFINE_MUTEX(dsa_switch_drivers_mutex);
@@ -225,6 +245,20 @@ static int dsa_cpu_dsa_setups(struct dsa_switch *ds, struct device *dev)
 	return 0;
 }
 
+const struct dsa_device_ops *dsa_resolve_tag_protocol(int tag_protocol)
+{
+	const struct dsa_device_ops *ops;
+
+	if (tag_protocol >= _DSA_TAG_LAST)
+		return ERR_PTR(-EINVAL);
+	ops = dsa_device_ops[tag_protocol];
+
+	if (!ops)
+		return ERR_PTR(-ENOPROTOOPT);
+
+	return ops;
+}
+
 static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 {
 	struct dsa_switch_driver *drv = ds->drv;
@@ -277,34 +311,15 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 	 * switch.
 	 */
 	if (dst->cpu_switch == index) {
-		switch (ds->tag_protocol) {
-#ifdef CONFIG_NET_DSA_TAG_DSA
-		case DSA_TAG_PROTO_DSA:
-			dst->rcv = dsa_netdev_ops.rcv;
-			break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_EDSA
-		case DSA_TAG_PROTO_EDSA:
-			dst->rcv = edsa_netdev_ops.rcv;
-			break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_TRAILER
-		case DSA_TAG_PROTO_TRAILER:
-			dst->rcv = trailer_netdev_ops.rcv;
-			break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_BRCM
-		case DSA_TAG_PROTO_BRCM:
-			dst->rcv = brcm_netdev_ops.rcv;
-			break;
-#endif
-		case DSA_TAG_PROTO_NONE:
-			break;
-		default:
-			ret = -ENOPROTOOPT;
+		const struct dsa_device_ops *tag_ops;
+
+		tag_ops = dsa_resolve_tag_protocol(ds->tag_protocol);
+		if (IS_ERR(tag_ops)) {
+			ret = PTR_ERR(tag_ops);
 			goto out;
 		}
 
+		dst->rcv = tag_ops->rcv;
 		dst->tag_protocol = ds->tag_protocol;
 	}
 

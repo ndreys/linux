@@ -26,6 +26,7 @@ enum dsa_tag_protocol {
 	DSA_TAG_PROTO_TRAILER,
 	DSA_TAG_PROTO_EDSA,
 	DSA_TAG_PROTO_BRCM,
+	_DSA_TAG_LAST,
 };
 
 #define DSA_MAX_SWITCHES	4
