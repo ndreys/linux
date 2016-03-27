@@ -313,14 +313,14 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 	if (dst->cpu_switch == index) {
 		const struct dsa_device_ops *tag_ops;
 
-		tag_ops = dsa_resolve_tag_protocol(ds->tag_protocol);
+		tag_ops = dsa_resolve_tag_protocol(ds->drv->tag_protocol);
 		if (IS_ERR(tag_ops)) {
 			ret = PTR_ERR(tag_ops);
 			goto out;
 		}
 
 		dst->rcv = tag_ops->rcv;
-		dst->tag_protocol = ds->tag_protocol;
+		dst->tag_protocol = ds->drv->tag_protocol;
 	}
 
 	memcpy(ds->rtable, cd->rtable, sizeof(ds->rtable));
@@ -441,7 +441,6 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	ds->cd = cd;
 	ds->drv = drv;
 	ds->priv = priv;
-	ds->tag_protocol = drv->tag_protocol;
 	ds->dev = parent;
 
 	ret = dsa_switch_setup_one(ds, parent);
