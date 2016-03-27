@@ -181,6 +181,7 @@ struct dsa_switch {
 	 * Slave mii_bus and devices for the individual ports.
 	 */
 	u32			dsa_port_mask;
+	u32			cpu_port_mask;
 	u32			user_port_mask;
 	u32			phys_mii_mask;
 	struct dsa_port		ports[DSA_MAX_PORTS];

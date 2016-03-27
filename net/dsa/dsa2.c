@@ -55,6 +55,7 @@ static struct dsa_switch_tree *dsa_add_dst(u32 tree)
 	if (!dst)
 		return NULL;
 	dst->tree = tree;
+	dst->cpu_switch = -1;
 	INIT_LIST_HEAD(&dst->list);
 	list_add_tail(&dsa_switch_trees, &dst->list);
 	kref_init(&dst->refcount);
@@ -183,6 +184,8 @@ static int dsa_ds_complete(struct dsa_switch_tree *dst, struct dsa_switch *ds)
 		if (!dsa_port_is_dsa(port))
 			continue;
 
+		ds->dsa_port_mask |= 1 << index;
+
 		err = dsa_port_complete(dst, ds, port, index);
 		if (err != 0)
 			return err;
@@ -225,8 +228,11 @@ static int dsa_dsa_port_apply(struct device_node *port, u32 index,
 	int err;
 
 	err = dsa_cpu_dsa_setup(ds, ds->dev, port, index);
-	if (err)
+	if (err) {
+		dev_warn(ds->dev, "Failed to setup dsa port %d: %d\n",
+			 index, err);
 		return err;
+	}
 
 	pr_info("DSA: applied dsa port %s\n", port->full_name);
 
@@ -236,8 +242,7 @@ static int dsa_dsa_port_apply(struct device_node *port, u32 index,
 static void dsa_dsa_port_unapply(struct device_node *port, u32 index,
 				 struct dsa_switch *ds)
 {
-	dsa_slave_destroy(ds->ports[index].netdev);
-	ds->ports[index].netdev = NULL;
+	dsa_cpu_dsa_destroy(port);
 
 	pr_info("DSA: unapplied dsa port %s\n", port->full_name);
 
@@ -247,6 +252,17 @@ static void dsa_dsa_port_unapply(struct device_node *port, u32 index,
 static int dsa_cpu_port_apply(struct device_node *port, u32 index,
 			      struct dsa_switch *ds)
 {
+	int err;
+
+	err = dsa_cpu_dsa_setup(ds, ds->dev, port, index);
+	if (err) {
+		dev_warn(ds->dev, "Failed to setup cpu port %d: %d\n",
+			 index, err);
+		return err;
+	}
+
+	ds->cpu_port_mask |= 1 << index;
+
 	pr_info("DSA: applied cpu port %s\n", port->full_name);
 
 	return 0;
@@ -255,6 +271,8 @@ static int dsa_cpu_port_apply(struct device_node *port, u32 index,
 static void dsa_cpu_port_unapply(struct device_node *port, u32 index,
 				 struct dsa_switch *ds)
 {
+	dsa_cpu_dsa_destroy(port);
+
 	pr_info("DSA: unapplied cpu port %s\n", port->full_name);
 
 	return;
@@ -269,8 +287,11 @@ static int dsa_user_port_apply(struct device_node *port, u32 index,
 	name = of_get_property(port, "label", NULL);
 
 	err = _dsa_slave_create(ds, ds->dev, index, name);
-	if (err)
+	if (err) {
+		dev_warn(ds->dev, "Failed to create slave %d: %d\n",
+			 index, err);
 		return err;
+	}
 
 	pr_info("DSA: applied user port %s\n", port->full_name);
 
@@ -295,6 +316,18 @@ static int dsa_ds_apply(struct dsa_switch_tree *dst, struct dsa_switch *ds)
 	struct device_node *port;
 	u32 index;
 	int err;
+
+	err = ds->drv->setup(ds);
+	if (err < 0)
+		return err;
+
+	err = ds->drv->set_addr(ds, dst->master_netdev->dev_addr);
+	if (err < 0)
+		return err;
+
+	err = ds->drv->set_addr(ds, dst->master_netdev->dev_addr);
+	if (err < 0)
+		return err;
 
 	for (index = 0; index < DSA_MAX_PORTS; index++) {
 		port = ds->ports[index].dn;
@@ -369,6 +402,14 @@ static int dsa_dst_apply(struct dsa_switch_tree *dst)
 			return err;
 	}
 
+	/*
+	 * If we use a tagging format that doesn't have an ethertype
+	 * field, make sure that all packets from this point on get
+	 * sent to the tag format's receive function.
+	 */
+	wmb();
+	dst->master_netdev->dsa_ptr = (void *)dst;
+
 	pr_info("DSA: tree %d applied\n", dst->tree);
 
 	return 0;
@@ -378,6 +419,14 @@ static void dsa_dst_unapply(struct dsa_switch_tree *dst)
 {
 	struct dsa_switch *ds;
 	u32 index;
+
+	dst->master_netdev->dsa_ptr = NULL;
+
+	/* If we used a tagging format that doesn't have an ethertype
+	 * field, make sure that all packets from this point get sent
+	 * without the tag and go through the regular receive path.
+	 */
+	wmb();
 
 	for (index = 0; index < DSA_MAX_SWITCHES; index++) {
 		ds = dst->ds[index];
@@ -396,8 +445,9 @@ static int dsa_cpu_parse(struct device_node *port, u32 index,
 			 struct dsa_switch_tree *dst,
 			 struct dsa_switch *ds)
 {
-	struct device_node *ethernet;
+	const struct dsa_device_ops *tag_ops;
 	struct net_device *ethernet_dev;
+	struct device_node *ethernet;
 
 	ethernet = of_parse_phandle(port, "ethernet", 0);
 	if (!ethernet)
@@ -412,6 +462,28 @@ static int dsa_cpu_parse(struct device_node *port, u32 index,
 
 	if (!dst->master_netdev)
 		dst->master_netdev = ethernet_dev;
+
+	if (dst->cpu_switch == -1) {
+		dst->cpu_switch = ds->index;
+		dst->cpu_port = index;
+	}
+
+	tag_ops = dsa_resolve_tag_protocol(ds->drv->tag_protocol);
+	if (IS_ERR(tag_ops)) {
+		dev_warn(ds->dev, "No tagger for this switch\n");
+		return PTR_ERR(tag_ops);
+	}
+
+	dst->rcv = tag_ops->rcv;
+
+	if (dst->tag_protocol) {
+		if (dst->tag_protocol != ds->drv->tag_protocol) {
+			pr_warning("Two different tagging protocols");
+			return -EINVAL;
+		}
+	} else {
+		dst->tag_protocol = ds->drv->tag_protocol;
+	}
 
 	return 0;
 }
@@ -455,8 +527,10 @@ static int dsa_dst_parse(struct dsa_switch_tree *dst)
 			return err;
 	}
 
-	if (!dst->master_netdev)
+	if (!dst->master_netdev) {
+		pr_warn("Tree has no master device\n");
 		return -EINVAL;
+	}
 
 	pr_info("DSA: tree %d parsed\n", dst->tree);
 
