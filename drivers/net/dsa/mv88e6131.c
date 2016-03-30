@@ -75,18 +75,12 @@ static int mv88e6131_setup_global(struct dsa_switch *ds)
 	if (ret)
 		return ret;
 
-	/* Disable cascade port functionality unless this device
-	 * is used in a cascade configuration, and set the switch's
-	 * DSA device number.
+	/* Set the switch's DSA device number and enable the use of
+	 * the routing table.
 	 */
-	if (ds->dst->pd->nr_chips > 1)
-		ret = mv88e6xxx_reg_write(ps, REG_GLOBAL, GLOBAL_CONTROL_2,
-					  GLOBAL_CONTROL_2_MULTIPLE_CASCADE |
-					  (ds->index & 0x1f));
-	else
-		ret = mv88e6xxx_reg_write(ps, REG_GLOBAL, GLOBAL_CONTROL_2,
-					  GLOBAL_CONTROL_2_NO_CASCADE |
-					  (ds->index & 0x1f));
+	ret = mv88e6xxx_reg_write(ps, REG_GLOBAL, GLOBAL_CONTROL_2,
+				  GLOBAL_CONTROL_2_MULTIPLE_CASCADE |
+				  (ds->index & 0x1f));
 	if (ret)
 		return ret;
 
