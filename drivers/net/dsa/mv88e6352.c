@@ -109,6 +109,13 @@ static int mv88e6352_setup(struct dsa_switch *ds)
 	return mv88e6xxx_setup_ports(ds);
 }
 
+static int mv88e6352_get_eeprom_len(struct dsa_switch *ds)
+{
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
+	return ps->eeprom_len;
+}
+
 static int mv88e6352_read_eeprom_word(struct dsa_switch *ds, int addr)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
@@ -331,6 +338,7 @@ struct dsa_switch_driver mv88e6352_switch_driver = {
 #endif
 	.get_eeprom		= mv88e6352_get_eeprom,
 	.set_eeprom		= mv88e6352_set_eeprom,
+	.get_eeprom_len		= mv88e6352_get_eeprom_len,
 	.get_regs_len		= mv88e6xxx_get_regs_len,
 	.get_regs		= mv88e6xxx_get_regs,
 	.port_join_bridge	= mv88e6xxx_port_bridge_join,

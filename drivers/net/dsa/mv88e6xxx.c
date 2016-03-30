@@ -3155,9 +3155,11 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 		    unsigned int table_size)
 {
 	struct device *dev = &mdiodev->dev;
+	struct device_node *np = dev->of_node;
 	struct mv88e6xxx_priv_state *ps;
 	struct dsa_switch *ds;
 	const char *name;
+	u32 eeprom_len;
 	int entry;
 	int err;
 
@@ -3195,6 +3197,9 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev, struct dsa_switch_driver *ops,
 			return err;
 		}
 	}
+
+	if (!of_property_read_u32(np, "eeprom-length", &eeprom_len))
+		ps->eeprom_len = eeprom_len;
 
 	dev_set_drvdata(dev, ds);
 
