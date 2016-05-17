@@ -1,0 +1,96 @@
+/*
+ * Copyright 2015 Zodiac Inflight Innovations
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include "imx6q-zii-rdu2.dtsi"
+
+/ {
+	model = "Zii RDU2 Rev B";
+
+	aliases {
+		mdio-gpio0 = &mdio1;
+	};
+
+	mdio1: mdio {
+		compatible = "virtual,mdio-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mdio1>;
+		gpios = <&gpio6 5 GPIO_ACTIVE_HIGH
+		     	&gpio6 4 GPIO_ACTIVE_HIGH>;
+
+		phy0: phy@0 {
+		      reg = <0>;
+		};
+	};
+
+	dsa@0 {
+		compatible = "marvell,dsa";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		dsa,ethernet = <&fec>;
+		dsa,mii-bus = <&mdio0>;
+
+		switch0: switch@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x00 0>;
+			eeprom-length = <512>;
+
+			port@0 {
+				reg = <0>;
+				label = "gigabit_proc";
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "netaux";
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "cpu";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "netright";
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "netleft";
+			};
+		};
+	};
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet>;
+	phy-mode = "rmii";
+	phy-reset-gpios = <&gpio1 23 0>;
+	status = "okay";
+
+	phy-handle = <&phy0>;
+
+	mdio0: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+	};
+};
