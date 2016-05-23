@@ -216,6 +216,7 @@
 		pmu {
 			compatible = "arm,cortex-a9-pmu";
 			interrupts = <0 94 IRQ_TYPE_LEVEL_HIGH>;
+			status = "okay";
 		};
 
 		aips-bus@02000000 { /* AIPS1 */
