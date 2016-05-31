@@ -11,6 +11,9 @@ obj-$(CONFIG_DMA_OF) += of-dma.o
 #dmatest
 obj-$(CONFIG_DMATEST) += dmatest.o
 
+# simple RX Benchmark
+obj-$(CONFIG_DMA_RX_BENCHMARK) += dma_rx_benchmark.o
+
 #devices
 obj-$(CONFIG_AMBA_PL08X) += amba-pl08x.o
 obj-$(CONFIG_AMCC_PPC440SPE_ADMA) += ppc4xx/

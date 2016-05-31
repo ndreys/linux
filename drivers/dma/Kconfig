@@ -575,6 +575,11 @@ config DMATEST
 	  Simple DMA test client. Say N unless you're debugging a
 	  DMA Device driver.
 
+config DMA_RX_BENCHMARK
+	tristate "DMA RX Benchmark"
+	help
+	  Simple benchmark for RX performance of the DMA API.
+
 config DMA_ENGINE_RAID
 	bool
 
