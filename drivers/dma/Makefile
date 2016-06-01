@@ -13,6 +13,7 @@ obj-$(CONFIG_DMATEST) += dmatest.o
 
 # simple RX Benchmark
 obj-$(CONFIG_DMA_RX_BENCHMARK) += dma_rx_benchmark.o
+obj-$(CONFIG_DMA_COHERENT_RX_BENCHMARK) += dma_coherent_rx_benchmark.o
 
 #devices
 obj-$(CONFIG_AMBA_PL08X) += amba-pl08x.o
