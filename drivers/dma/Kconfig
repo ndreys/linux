@@ -585,6 +585,11 @@ config DMA_COHERENT_RX_BENCHMARK
 	help
 	  Simple benchmark for RX performance using coherent memory.
 
+config DMA_SRAM_RX_BENCHMARK
+	tristate "DMA SRAM RX Benchmark"
+	help
+	  Simple benchmark for RX performance using SRAM memory.
+
 config DMA_ENGINE_RAID
 	bool
 
