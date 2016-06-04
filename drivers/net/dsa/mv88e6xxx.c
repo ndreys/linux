@@ -561,7 +561,7 @@ static int _mv88e6xxx_stats_snapshot(struct mv88e6xxx_priv_state *ps,
 {
 	int ret;
 
-	if (mv88e6xxx_6320_family(ps) || mv88e6xxx_6352_family(ps))
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_SHIFT))
 		port = (port + 1) << 5;
 
 	/* Snapshot the hardware statistics counters for this port. */
