@@ -687,7 +687,7 @@ static int _mv88e6xxx_stats_snapshot(struct mv88e6xxx_chip *chip, int port)
 {
 	int ret;
 
-	if (mv88e6xxx_6320_family(chip) || mv88e6xxx_6352_family(chip))
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_SHIFT))
 		port = (port + 1) << 5;
 
 	/* Snapshot the hardware statistics counters for this port. */
