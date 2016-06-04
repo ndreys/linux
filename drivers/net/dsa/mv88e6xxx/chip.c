@@ -634,6 +634,9 @@ static void mv88e6xxx_adjust_link(struct dsa_switch *ds, int port,
 	if (mv88e6xxx_6065_family(chip) && phydev->speed > SPEED_100)
 		goto out;
 
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_PORT_FORCE_SPEED))
+		reg |= PORT_PCS_CTRL_FORCE_SPEED;
+
 	switch (phydev->speed) {
 	case SPEED_1000:
 		reg |= PORT_PCS_CTRL_1000;
@@ -2435,10 +2438,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 	int ret;
 	u16 reg;
 
-	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
-	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6097_family(chip) ||
-	    mv88e6xxx_6185_family(chip) || mv88e6xxx_6095_family(chip) ||
-	    mv88e6xxx_6065_family(chip) || mv88e6xxx_6320_family(chip)) {
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_PORT_FORCE)) {
 		/* MAC Forcing register: don't force link, speed,
 		 * duplex or flow control state to any particular
 		 * values on physical ports, but force the CPU port
@@ -2456,6 +2456,10 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 				reg |= PORT_PCS_CTRL_100;
 			else
 				reg |= PORT_PCS_CTRL_1000;
+			if (mv88e6xxx_has(chip,
+					  MV88E6XXX_FLAG_PORT_FORCE_SPEED))
+				reg |= PORT_PCS_CTRL_FORCE_SPEED;
+
 		} else {
 			reg |= PORT_PCS_CTRL_UNFORCED;
 		}
