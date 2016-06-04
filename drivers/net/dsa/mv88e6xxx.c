@@ -689,14 +689,9 @@ static bool mv88e6xxx_has_stat(struct mv88e6xxx_priv_state *ps,
 	case BANK0:
 		return true;
 	case BANK1:
-		return mv88e6xxx_6320_family(ps);
+		return mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1);
 	case PORT:
-		return mv88e6xxx_6095_family(ps) ||
-			mv88e6xxx_6185_family(ps) ||
-			mv88e6xxx_6097_family(ps) ||
-			mv88e6xxx_6165_family(ps) ||
-			mv88e6xxx_6351_family(ps) ||
-			mv88e6xxx_6352_family(ps);
+		return mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_PORT);
 	}
 	return false;
 }
