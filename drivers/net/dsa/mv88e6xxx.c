@@ -21,6 +21,7 @@
 #include <linux/list.h>
 #include <linux/mdio.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/of_mdio.h>
 #include <linux/netdevice.h>
 #include <linux/gpio/consumer.h>
@@ -39,7 +40,7 @@ static void assert_smi_lock(struct mv88e6xxx_priv_state *ps)
 
 static int mv88e6xxx_reg_port(struct mv88e6xxx_priv_state *ps, int port)
 {
-	return 0x10 + port;
+	return ps->port_offset + port;
 }
 
 /* If the switch's ADDR[4:0] strap pins are strapped to zero, it will
@@ -3625,7 +3626,8 @@ static const char *mv88e6xxx_drv_probe(struct device *dsa_dev,
 	if (!bus)
 		return NULL;
 
-	id = __mv88e6xxx_reg_read(bus, sw_addr, 0x10, PORT_SWITCH_ID);
+	id = __mv88e6xxx_reg_read(bus, sw_addr, PORT_OFFSET_0X10,
+				  PORT_SWITCH_ID);
 	if (id < 0)
 		return NULL;
 
@@ -3645,6 +3647,7 @@ static const char *mv88e6xxx_drv_probe(struct device *dsa_dev,
 
 	ps->bus = bus;
 	ps->sw_addr = sw_addr;
+	ps->port_offset = PORT_OFFSET_0X10;
 	ps->info = info;
 	ps->dev = dsa_dev;
 	mutex_init(&ps->smi_mutex);
@@ -3718,13 +3721,14 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev)
 	ps->ds = ds;
 	ps->bus = mdiodev->bus;
 	ps->sw_addr = mdiodev->addr;
+	ps->port_offset = (long)of_device_get_match_data(dev);
 	mutex_init(&ps->smi_mutex);
 
 	get_device(&ps->bus->dev);
 
 	ds->drv = &mv88e6xxx_switch_driver;
 
-	id = mv88e6xxx_reg_read(ps, 0x10, PORT_SWITCH_ID);
+	id = mv88e6xxx_reg_read(ps, ps->port_offset, PORT_SWITCH_ID);
 	if (id < 0)
 		return id;
 
@@ -3783,7 +3787,12 @@ static void mv88e6xxx_remove(struct mdio_device *mdiodev)
 }
 
 static const struct of_device_id mv88e6xxx_of_match[] = {
-	{ .compatible = "marvell,mv88e6085" },
+	{ .compatible = "marvell,mv88e6085",
+	  .data = (void *)PORT_OFFSET_0X10
+	},
+	{ .compatible = "marvell,mv88e6390",
+	  .data = (void *)PORT_OFFSET_0X0
+	},
 	{ /* sentinel */ },
 };
 
