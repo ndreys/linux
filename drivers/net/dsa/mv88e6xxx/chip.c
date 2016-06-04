@@ -601,16 +601,6 @@ static unsigned int mv88e6xxx_num_databases(struct mv88e6xxx_chip *chip)
 	return chip->info->num_databases;
 }
 
-static bool mv88e6xxx_has_fid_reg(struct mv88e6xxx_chip *chip)
-{
-	/* Does the device have dedicated FID registers for ATU and VTU ops? */
-	if (mv88e6xxx_6097_family(chip) || mv88e6xxx_6165_family(chip) ||
-	    mv88e6xxx_6351_family(chip) || mv88e6xxx_6352_family(chip))
-		return true;
-
-	return false;
-}
-
 /* We expect the switch to perform auto negotiation if there is a real
  * phy. However, in the case of a fixed link phy, we force the port
  * settings from the fixed link settings.
@@ -1012,7 +1002,7 @@ static int _mv88e6xxx_atu_cmd(struct mv88e6xxx_chip *chip, u16 fid, u16 cmd)
 {
 	int ret;
 
-	if (mv88e6xxx_has_fid_reg(chip)) {
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_G1_FID)) {
 		ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_ATU_FID,
 					   fid);
 		if (ret < 0)
@@ -1422,7 +1412,7 @@ static int _mv88e6xxx_vtu_getnext(struct mv88e6xxx_chip *chip,
 		if (ret < 0)
 			return ret;
 
-		if (mv88e6xxx_has_fid_reg(chip)) {
+		if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_G1_FID)) {
 			ret = _mv88e6xxx_reg_read(chip, REG_GLOBAL,
 						  GLOBAL_VTU_FID);
 			if (ret < 0)
@@ -1538,7 +1528,7 @@ static int _mv88e6xxx_vtu_loadpurge(struct mv88e6xxx_chip *chip,
 			return ret;
 	}
 
-	if (mv88e6xxx_has_fid_reg(chip)) {
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_G1_FID)) {
 		reg = entry->fid & GLOBAL_VTU_FID_MASK;
 		ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_VTU_FID,
 					   reg);
