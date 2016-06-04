@@ -33,7 +33,6 @@
 #define REG_FIBER_SERDES	0x0f
 #define PAGE_FIBER_SERDES	0x01
 
-#define REG_PORT(p)		(0x10 + (p))
 #define PORT_STATUS		0x00
 #define PORT_STATUS_PAUSE_EN	BIT(15)
 #define PORT_STATUS_MY_PAUSE	BIT(14)
