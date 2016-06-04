@@ -33,6 +33,10 @@
 #define REG_FIBER_SERDES	0x0f
 #define PAGE_FIBER_SERDES	0x01
 
+/* The port registers can either start of 0x0, or 0x10. */
+#define PORT_OFFSET_0X0		0x0
+#define PORT_OFFSET_0X10	0x10
+
 #define PORT_STATUS		0x00
 #define PORT_STATUS_PAUSE_EN	BIT(15)
 #define PORT_STATUS_MY_PAUSE	BIT(14)
@@ -564,6 +568,11 @@ struct mv88e6xxx_priv_state {
 	 */
 	struct mii_bus *bus;
 	int sw_addr;
+
+	/* The offset into the MDIO address space where the port registers
+	 * start.
+	 */
+	int port_offset;
 
 	/* Handles automatic disabling and re-enabling of the PHY
 	 * polling unit.
