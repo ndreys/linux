@@ -815,14 +815,11 @@ static bool mv88e6xxx_has_stat(struct mv88e6xxx_chip *chip,
 	case BANK0:
 		return true;
 	case BANK1:
-		return mv88e6xxx_6320_family(chip);
+		return mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_BANK1);
+
 	case PORT:
-		return mv88e6xxx_6095_family(chip) ||
-			mv88e6xxx_6185_family(chip) ||
-			mv88e6xxx_6097_family(chip) ||
-			mv88e6xxx_6165_family(chip) ||
-			mv88e6xxx_6351_family(chip) ||
-			mv88e6xxx_6352_family(chip);
+		return mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_PORT);
+
 	}
 	return false;
 }
