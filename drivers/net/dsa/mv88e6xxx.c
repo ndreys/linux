@@ -2715,40 +2715,24 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 	 * If this is the upstream port for this switch, enable
 	 * forwarding of unknown unicasts and multicasts.
 	 */
-	reg = 0;
-	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6095_family(ps) || mv88e6xxx_6065_family(ps) ||
-	    mv88e6xxx_6185_family(ps) || mv88e6xxx_6320_family(ps))
-		reg = PORT_CONTROL_IGMP_MLD_SNOOP |
+	reg = PORT_CONTROL_IGMP_MLD_SNOOP |
 		PORT_CONTROL_USE_TAG | PORT_CONTROL_USE_IP |
 		PORT_CONTROL_STATE_FORWARDING;
 	if (dsa_is_cpu_port(ds, port)) {
-		if (mv88e6xxx_6095_family(ps) || mv88e6xxx_6185_family(ps))
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA))
 			reg |= PORT_CONTROL_DSA_TAG;
-		if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-		    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-		    mv88e6xxx_6320_family(ps)) {
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA))
 			reg |= PORT_CONTROL_FRAME_ETHER_TYPE_DSA |
 				PORT_CONTROL_FORWARD_UNKNOWN |
 				PORT_CONTROL_FORWARD_UNKNOWN_MC;
-		}
 
-		if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-		    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-		    mv88e6xxx_6095_family(ps) || mv88e6xxx_6065_family(ps) ||
-		    mv88e6xxx_6185_family(ps) || mv88e6xxx_6320_family(ps)) {
-				reg |= PORT_CONTROL_EGRESS_ADD_TAG;
-		}
+		reg |= PORT_CONTROL_EGRESS_ADD_TAG;
 	}
 	if (dsa_is_dsa_port(ds, port)) {
-		if (mv88e6xxx_6095_family(ps) || mv88e6xxx_6185_family(ps))
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA))
 			reg |= PORT_CONTROL_DSA_TAG;
-		if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-		    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-		    mv88e6xxx_6320_family(ps)) {
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA))
 			reg |= PORT_CONTROL_FRAME_MODE_DSA;
-		}
 
 		if (port == dsa_upstream_port(ds))
 			reg |= PORT_CONTROL_FORWARD_UNKNOWN |
@@ -2794,7 +2778,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6320_family(ps))
 		reg |= PORT_CONTROL_2_JUMBO_10240;
 
-	if (mv88e6xxx_6095_family(ps) || mv88e6xxx_6185_family(ps)) {
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA)) {
 		/* Set the upstream port this port should use */
 		reg |= dsa_upstream_port(ds);
 		/* enable forwarding of unknown multicast addresses to
