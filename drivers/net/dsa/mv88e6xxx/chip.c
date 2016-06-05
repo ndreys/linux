@@ -2531,8 +2531,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 	 */
 	reg = PORT_CONTROL_2_MAP_DA;
 
-	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
-	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6320_family(chip))
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_PORT_JUMBO))
 		reg |= PORT_CONTROL_2_JUMBO_10240;
 
 	if (mv88e6xxx_6095_family(chip) || mv88e6xxx_6185_family(chip)) {
