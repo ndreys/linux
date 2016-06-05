@@ -497,9 +497,23 @@ static void mv88e6xxx_adjust_link(struct dsa_switch *ds, int port,
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_FORCE_SPEED))
 		reg |= PORT_PCS_CTRL_FORCE_SPEED;
 
+	if (!mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_SPEED_ALT))
+		if (phydev->speed == 200 || phydev->speed == SPEED_10000 ||
+		    phydev->speed == SPEED_2500)
+			goto out;
+
 	switch (phydev->speed) {
+	case SPEED_10000:
+		reg |= PORT_PCS_CTRL_10000;
+		break;
+	case SPEED_2500:
+		reg |= PORT_PCS_CTRL_2500;
+		break;
 	case SPEED_1000:
 		reg |= PORT_PCS_CTRL_1000;
+		break;
+	case 200:
+		reg |= PORT_PCS_CTRL_200;
 		break;
 	case SPEED_100:
 		reg |= PORT_PCS_CTRL_100;
@@ -2691,7 +2705,10 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 			if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_FORCE_SPEED))
 				reg |= PORT_PCS_CTRL_FORCE_SPEED;
 		} else {
-			reg |= PORT_PCS_CTRL_UNFORCED;
+			if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_FORCE_SPEED))
+				reg &= ~PORT_PCS_CTRL_FORCE_SPEED;
+			else
+				reg |= PORT_PCS_CTRL_UNFORCED;
 		}
 
 		ret = mv88e6xxx_reg_port_write(ps, port, PORT_PCS_CTRL, reg);
