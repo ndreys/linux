@@ -640,32 +640,32 @@ static struct mv88e6xxx_hw_stat mv88e6xxx_hw_stats[] = {
 	{ "sw_in_discards",	4, 0x10, PORT, },
 	{ "sw_in_filtered",	2, 0x12, PORT, },
 	{ "sw_out_filtered",	2, 0x13, PORT, },
-	{ "in_discards",	4, 0x00 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_filtered",	4, 0x01 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_accepted",	4, 0x02 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_bad_accepted",	4, 0x03 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_good_avb_class_a", 4, 0x04 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_good_avb_class_b", 4, 0x05 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_bad_avb_class_a", 4, 0x06 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_bad_avb_class_b", 4, 0x07 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "tcam_counter_0",	4, 0x08 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "tcam_counter_1",	4, 0x09 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "tcam_counter_2",	4, 0x0a | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "tcam_counter_3",	4, 0x0b | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_da_unknown",	4, 0x0e | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "in_management",	4, 0x0f | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_0",	4, 0x10 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_1",	4, 0x11 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_2",	4, 0x12 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_3",	4, 0x13 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_4",	4, 0x14 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_5",	4, 0x15 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_6",	4, 0x16 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_queue_7",	4, 0x17 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_cut_through",	4, 0x18 | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_octets_a",	4, 0x1a | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_octets_b",	4, 0x1b | GLOBAL_STATS_OP_BANK_1, BANK1, },
-	{ "out_management",	4, 0x1f | GLOBAL_STATS_OP_BANK_1, BANK1, },
+	{ "in_discards",	4, 0x00, BANK1, },
+	{ "in_filtered",	4, 0x01, BANK1, },
+	{ "in_accepted",	4, 0x02, BANK1, },
+	{ "in_bad_accepted",	4, 0x03, BANK1, },
+	{ "in_good_avb_class_a", 4, 0x04, BANK1, },
+	{ "in_good_avb_class_b", 4, 0x05, BANK1, },
+	{ "in_bad_avb_class_a", 4, 0x06, BANK1, },
+	{ "in_bad_avb_class_b", 4, 0x07, BANK1, },
+	{ "tcam_counter_0",	4, 0x08, BANK1, },
+	{ "tcam_counter_1",	4, 0x09, BANK1, },
+	{ "tcam_counter_2",	4, 0x0a, BANK1, },
+	{ "tcam_counter_3",	4, 0x0b, BANK1, },
+	{ "in_da_unknown",	4, 0x0e, BANK1, },
+	{ "in_management",	4, 0x0f, BANK1, },
+	{ "out_queue_0",	4, 0x10, BANK1, },
+	{ "out_queue_1",	4, 0x11, BANK1, },
+	{ "out_queue_2",	4, 0x12, BANK1, },
+	{ "out_queue_3",	4, 0x13, BANK1, },
+	{ "out_queue_4",	4, 0x14, BANK1, },
+	{ "out_queue_5",	4, 0x15, BANK1, },
+	{ "out_queue_6",	4, 0x16, BANK1, },
+	{ "out_queue_7",	4, 0x17, BANK1, },
+	{ "out_cut_through",	4, 0x18, BANK1, },
+	{ "out_octets_a",	4, 0x1a, BANK1, },
+	{ "out_octets_b",	4, 0x1b, BANK1, },
+	{ "out_management",	4, 0x1f, BANK1, },
 };
 
 static bool mv88e6xxx_has_stat(struct mv88e6xxx_priv_state *ps,
@@ -675,7 +675,8 @@ static bool mv88e6xxx_has_stat(struct mv88e6xxx_priv_state *ps,
 	case BANK0:
 		return true;
 	case BANK1:
-		return mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1);
+		return mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1_9) ||
+			mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1_10);
 	case PORT:
 		return mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_PORT);
 	}
@@ -690,26 +691,32 @@ static uint64_t _mv88e6xxx_get_ethtool_stat(struct mv88e6xxx_priv_state *ps,
 	u32 high = 0;
 	int ret;
 	u64 value;
+	int reg = s->reg;
 
 	switch (s->type) {
 	case PORT:
-		ret = mv88e6xxx_reg_port_read(ps, port, s->reg);
+		ret = mv88e6xxx_reg_port_read(ps, port, reg);
 		if (ret < 0)
 			return UINT64_MAX;
 
 		low = ret;
 		if (s->sizeof_stat == 4) {
-			ret = mv88e6xxx_reg_port_read(ps, port, s->reg + 1);
+			ret = mv88e6xxx_reg_port_read(ps, port, reg + 1);
 			if (ret < 0)
 				return UINT64_MAX;
 			high = ret;
 		}
 		break;
-	case BANK0:
 	case BANK1:
-		_mv88e6xxx_stats_read(ps, s->reg, &low);
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1_9))
+			reg |= GLOBAL_STATS_OP_BANK_1_BIT_9;
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_STATS_BANK1_10))
+			reg |= GLOBAL_STATS_OP_BANK_1_BIT_10;
+		/* Fall through */
+	case BANK0:
+		_mv88e6xxx_stats_read(ps, reg, &low);
 		if (s->sizeof_stat == 8)
-			_mv88e6xxx_stats_read(ps, s->reg + 1, &high);
+			_mv88e6xxx_stats_read(ps, reg + 1, &high);
 	}
 	value = (((u64)high) << 16) | low;
 	return value;
