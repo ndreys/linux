@@ -454,6 +454,11 @@ static bool mv88e6xxx_6352_family(struct mv88e6xxx_priv_state *ps)
 	return ps->info->family == MV88E6XXX_FAMILY_6352;
 }
 
+static bool mv88e6xxx_6390_family(struct mv88e6xxx_priv_state *ps)
+{
+	return ps->info->family == MV88E6XXX_FAMILY_6390;
+}
+
 static unsigned int mv88e6xxx_num_databases(struct mv88e6xxx_priv_state *ps)
 {
 	return ps->info->num_databases;
@@ -1924,7 +1929,8 @@ static int _mv88e6xxx_vtu_new(struct mv88e6xxx_priv_state *ps, u16 vid,
 			: GLOBAL_VTU_DATA_MEMBER_TAG_NON_MEMBER;
 
 	if (mv88e6xxx_6097_family(ps) || mv88e6xxx_6165_family(ps) ||
-	    mv88e6xxx_6351_family(ps) || mv88e6xxx_6352_family(ps)) {
+	    mv88e6xxx_6351_family(ps) || mv88e6xxx_6352_family(ps) ||
+	    mv88e6xxx_6390_family(ps)) {
 		struct mv88e6xxx_vtu_stu_entry vstp;
 
 		/* Adding a VTU entry requires a valid STU entry. As VSTP is not
@@ -2790,7 +2796,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 
 	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
 	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6320_family(ps)) {
+	    mv88e6xxx_6320_family(ps) || mv88e6xxx_6390_family(ps)) {
 		/* Do not limit the period of time that this port can
 		 * be paused for by the remote end or the period of
 		 * time that this port can pause the remote end.
@@ -3006,7 +3012,7 @@ static int mv88e6xxx_setup_global(struct mv88e6xxx_priv_state *ps)
 
 	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
 	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6320_family(ps)) {
+	    mv88e6xxx_6320_family(ps) || mv88e6xxx_6390_family(ps)) {
 		/* Send all frames with destination addresses matching
 		 * 01:80:c2:00:00:2x to the CPU port.
 		 */
