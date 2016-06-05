@@ -686,14 +686,17 @@ static int _mv88e6xxx_stats_wait(struct mv88e6xxx_chip *chip)
 static int _mv88e6xxx_stats_snapshot(struct mv88e6xxx_chip *chip, int port)
 {
 	int ret;
+	int reg;
 
 	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_SHIFT))
 		port = (port + 1) << 5;
 
 	/* Snapshot the hardware statistics counters for this port. */
-	ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_STATS_OP,
-				   GLOBAL_STATS_OP_CAPTURE_PORT |
-				   GLOBAL_STATS_OP_HIST_RX_TX | port);
+	reg = GLOBAL_STATS_OP_CAPTURE_PORT | port;
+	if (!mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_HISTOGRAM))
+		reg |= GLOBAL_STATS_OP_HIST_RX_TX;
+
+	ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_STATS_OP, reg);
 	if (ret < 0)
 		return ret;
 
@@ -710,12 +713,15 @@ static void _mv88e6xxx_stats_read(struct mv88e6xxx_chip *chip,
 {
 	u32 _val;
 	int ret;
+	int reg;
 
 	*val = 0;
 
-	ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_STATS_OP,
-				   GLOBAL_STATS_OP_READ_CAPTURED |
-				   GLOBAL_STATS_OP_HIST_RX_TX | stat);
+	reg = GLOBAL_STATS_OP_READ_CAPTURED | stat;
+	if (!mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_HISTOGRAM))
+		reg |= GLOBAL_STATS_OP_HIST_RX_TX;
+
+	ret = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_STATS_OP, reg);
 	if (ret < 0)
 		return;
 
@@ -2754,9 +2760,13 @@ static int mv88e6xxx_g1_setup(struct mv88e6xxx_chip *chip)
 		return err;
 
 	/* Disable remote management, and set the switch's DSA device number. */
-	err = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_CONTROL_2,
-				   GLOBAL_CONTROL_2_MULTIPLE_CASCADE |
-				   (ds->index & 0x1f));
+	reg = GLOBAL_CONTROL_2_MULTIPLE_CASCADE | (ds->index & 0x1f);
+
+	/* Set the histogram mode */
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_STATS_HISTOGRAM))
+		reg |= GLOBAL_CONTROL_2_HIST_RX_TX;
+
+	err = _mv88e6xxx_reg_write(chip, REG_GLOBAL, GLOBAL_CONTROL_2, reg);
 	if (err)
 		return err;
 
