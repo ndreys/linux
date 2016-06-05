@@ -556,11 +556,6 @@ static const struct mv88e6xxx_ops mv88e6xxx_phy_ppu_ops = {
 	.write = mv88e6xxx_phy_ppu_write,
 };
 
-static bool mv88e6xxx_6065_family(struct mv88e6xxx_chip *chip)
-{
-	return chip->info->family == MV88E6XXX_FAMILY_6065;
-}
-
 static bool mv88e6xxx_6095_family(struct mv88e6xxx_chip *chip)
 {
 	return chip->info->family == MV88E6XXX_FAMILY_6095;
@@ -630,9 +625,6 @@ static void mv88e6xxx_adjust_link(struct dsa_switch *ds, int port,
 	reg |= PORT_PCS_CTRL_FORCE_LINK;
 	if (phydev->link)
 		reg |= PORT_PCS_CTRL_LINK_UP;
-
-	if (mv88e6xxx_6065_family(chip) && phydev->speed > SPEED_100)
-		goto out;
 
 	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_PORT_FORCE_SPEED))
 		reg |= PORT_PCS_CTRL_FORCE_SPEED;
@@ -2451,11 +2443,8 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 			reg |= PORT_PCS_CTRL_FORCE_LINK |
 				PORT_PCS_CTRL_LINK_UP |
 				PORT_PCS_CTRL_DUPLEX_FULL |
-				PORT_PCS_CTRL_FORCE_DUPLEX;
-			if (mv88e6xxx_6065_family(chip))
-				reg |= PORT_PCS_CTRL_100;
-			else
-				reg |= PORT_PCS_CTRL_1000;
+				PORT_PCS_CTRL_FORCE_DUPLEX |
+				PORT_PCS_CTRL_1000;
 			if (mv88e6xxx_has(chip,
 					  MV88E6XXX_FLAG_PORT_FORCE_SPEED))
 				reg |= PORT_PCS_CTRL_FORCE_SPEED;
@@ -2483,12 +2472,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 	 * If this is the upstream port for this switch, enable
 	 * forwarding of unknown unicasts and multicasts.
 	 */
-	reg = 0;
-	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
-	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6097_family(chip) ||
-	    mv88e6xxx_6095_family(chip) || mv88e6xxx_6065_family(chip) ||
-	    mv88e6xxx_6185_family(chip) || mv88e6xxx_6320_family(chip))
-		reg = PORT_CONTROL_IGMP_MLD_SNOOP |
+	reg = PORT_CONTROL_IGMP_MLD_SNOOP |
 		PORT_CONTROL_USE_TAG | PORT_CONTROL_USE_IP |
 		PORT_CONTROL_STATE_FORWARDING;
 	if (dsa_is_cpu_port(ds, port)) {
@@ -2545,12 +2529,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 	 * received packets as usual, disable ARP mirroring and don't send a
 	 * copy of all transmitted/received frames on this port to the CPU.
 	 */
-	reg = 0;
-	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
-	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6097_family(chip) ||
-	    mv88e6xxx_6095_family(chip) || mv88e6xxx_6320_family(chip) ||
-	    mv88e6xxx_6185_family(chip))
-		reg = PORT_CONTROL_2_MAP_DA;
+	reg = PORT_CONTROL_2_MAP_DA;
 
 	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
 	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6320_family(chip))
@@ -2646,16 +2625,10 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 			return ret;
 	}
 
-	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
-	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6097_family(chip) ||
-	    mv88e6xxx_6185_family(chip) || mv88e6xxx_6095_family(chip) ||
-	    mv88e6xxx_6320_family(chip)) {
-		/* Rate Control: disable ingress rate limiting. */
-		ret = mv88e6xxx_port_write(chip, port,
-					   PORT_RATE_CONTROL, 0x0001);
-		if (ret)
-			return ret;
-	}
+	/* Rate Control: disable ingress rate limiting. */
+	ret = mv88e6xxx_port_write(chip, port, PORT_RATE_CONTROL, 0x0001);
+	if (ret)
+		return ret;
 
 	/* Port Control 1: disable trunking, disable sending
 	 * learning messages to this port.
