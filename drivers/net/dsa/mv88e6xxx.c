@@ -2748,8 +2748,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 	 */
 	reg = PORT_CONTROL_2_MAP_DA;
 
-	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6320_family(ps))
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_JUMBO))
 		reg |= PORT_CONTROL_2_JUMBO_10240;
 
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA)) {
