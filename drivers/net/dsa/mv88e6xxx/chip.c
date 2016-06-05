@@ -591,6 +591,11 @@ static bool mv88e6xxx_6352_family(struct mv88e6xxx_chip *chip)
 	return chip->info->family == MV88E6XXX_FAMILY_6352;
 }
 
+static bool mv88e6xxx_6390_family(struct mv88e6xxx_chip *chip)
+{
+	return chip->info->family == MV88E6XXX_FAMILY_6390;
+}
+
 static unsigned int mv88e6xxx_num_databases(struct mv88e6xxx_chip *chip)
 {
 	return chip->info->num_databases;
@@ -1753,7 +1758,8 @@ static int _mv88e6xxx_vtu_new(struct mv88e6xxx_chip *chip, u16 vid,
 			: GLOBAL_VTU_DATA_MEMBER_TAG_NON_MEMBER;
 
 	if (mv88e6xxx_6097_family(chip) || mv88e6xxx_6165_family(chip) ||
-	    mv88e6xxx_6351_family(chip) || mv88e6xxx_6352_family(chip)) {
+	    mv88e6xxx_6351_family(chip) || mv88e6xxx_6352_family(chip) ||
+	    mv88e6xxx_6390_family(chip)) {
 		struct mv88e6xxx_vtu_stu_entry vstp;
 
 		/* Adding a VTU entry requires a valid STU entry. As VSTP is not
@@ -2492,7 +2498,8 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 		    mv88e6xxx_6351_family(chip) ||
 		    mv88e6xxx_6165_family(chip) ||
 		    mv88e6xxx_6097_family(chip) ||
-		    mv88e6xxx_6320_family(chip)) {
+		    mv88e6xxx_6320_family(chip) ||
+		    mv88e6xxx_6390_family(chip)) {
 			reg |= PORT_CONTROL_FRAME_MODE_DSA;
 		}
 
@@ -2573,7 +2580,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 
 	if (mv88e6xxx_6352_family(chip) || mv88e6xxx_6351_family(chip) ||
 	    mv88e6xxx_6165_family(chip) || mv88e6xxx_6097_family(chip) ||
-	    mv88e6xxx_6320_family(chip)) {
+	    mv88e6xxx_6320_family(chip) || mv88e6xxx_6390_family(chip)) {
 		/* Do not limit the period of time that this port can
 		 * be paused for by the remote end or the period of
 		 * time that this port can pause the remote end.
