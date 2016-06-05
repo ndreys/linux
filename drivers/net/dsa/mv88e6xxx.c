@@ -429,16 +429,6 @@ static int mv88e6xxx_mdio_write_ppu(struct mv88e6xxx_priv_state *ps, int addr,
 	return ret;
 }
 
-static bool mv88e6xxx_6065_family(struct mv88e6xxx_priv_state *ps)
-{
-	return ps->info->family == MV88E6XXX_FAMILY_6065;
-}
-
-static bool mv88e6xxx_6095_family(struct mv88e6xxx_priv_state *ps)
-{
-	return ps->info->family == MV88E6XXX_FAMILY_6095;
-}
-
 static bool mv88e6xxx_6097_family(struct mv88e6xxx_priv_state *ps)
 {
 	return ps->info->family == MV88E6XXX_FAMILY_6097;
@@ -447,11 +437,6 @@ static bool mv88e6xxx_6097_family(struct mv88e6xxx_priv_state *ps)
 static bool mv88e6xxx_6165_family(struct mv88e6xxx_priv_state *ps)
 {
 	return ps->info->family == MV88E6XXX_FAMILY_6165;
-}
-
-static bool mv88e6xxx_6185_family(struct mv88e6xxx_priv_state *ps)
-{
-	return ps->info->family == MV88E6XXX_FAMILY_6185;
 }
 
 static bool mv88e6xxx_6320_family(struct mv88e6xxx_priv_state *ps)
@@ -503,9 +488,6 @@ static void mv88e6xxx_adjust_link(struct dsa_switch *ds, int port,
 	reg |= PORT_PCS_CTRL_FORCE_LINK;
 	if (phydev->link)
 			reg |= PORT_PCS_CTRL_LINK_UP;
-
-	if (mv88e6xxx_6065_family(ps) && phydev->speed > SPEED_100)
-		goto out;
 
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_FORCE_SPEED))
 		reg |= PORT_PCS_CTRL_FORCE_SPEED;
@@ -2685,11 +2667,8 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 			reg |= PORT_PCS_CTRL_FORCE_LINK |
 				PORT_PCS_CTRL_LINK_UP |
 				PORT_PCS_CTRL_DUPLEX_FULL |
-				PORT_PCS_CTRL_FORCE_DUPLEX;
-			if (mv88e6xxx_6065_family(ps))
-				reg |= PORT_PCS_CTRL_100;
-			else
-				reg |= PORT_PCS_CTRL_1000;
+				PORT_PCS_CTRL_FORCE_DUPLEX |
+				PORT_PCS_CTRL_1000;
 			if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_MAC_FORCE_SPEED))
 				reg |= PORT_PCS_CTRL_FORCE_SPEED;
 		} else {
@@ -2767,12 +2746,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 	 * received packets as usual, disable ARP mirroring and don't send a
 	 * copy of all transmitted/received frames on this port to the CPU.
 	 */
-	reg = 0;
-	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6095_family(ps) || mv88e6xxx_6320_family(ps) ||
-	    mv88e6xxx_6185_family(ps))
-		reg = PORT_CONTROL_2_MAP_DA;
+	reg = PORT_CONTROL_2_MAP_DA;
 
 	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
 	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6320_family(ps))
@@ -2865,16 +2839,10 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 			return ret;
 	}
 
-	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6185_family(ps) || mv88e6xxx_6095_family(ps) ||
-	    mv88e6xxx_6320_family(ps)) {
-		/* Rate Control: disable ingress rate limiting. */
-		ret = mv88e6xxx_reg_port_write(ps, port,
-					       PORT_RATE_CONTROL, 0x0001);
-		if (ret)
-			return ret;
-	}
+	/* Rate Control: disable ingress rate limiting. */
+	ret = mv88e6xxx_reg_port_write(ps, port, PORT_RATE_CONTROL, 0x0001);
+	if (ret)
+		return ret;
 
 	/* Port Control 1: disable trunking, disable sending
 	 * learning messages to this port.
@@ -3066,21 +3034,14 @@ static int mv88e6xxx_setup_global(struct mv88e6xxx_priv_state *ps)
 		}
 	}
 
-	if (mv88e6xxx_6352_family(ps) || mv88e6xxx_6351_family(ps) ||
-	    mv88e6xxx_6165_family(ps) || mv88e6xxx_6097_family(ps) ||
-	    mv88e6xxx_6185_family(ps) || mv88e6xxx_6095_family(ps) ||
-	    mv88e6xxx_6320_family(ps)) {
-		/* Disable ingress rate limiting by resetting all
-		 * ingress rate limit registers to their initial
-		 * state.
-		 */
-		for (i = 0; i < ps->info->num_ports; i++) {
-			err = _mv88e6xxx_reg_write(ps, REG_GLOBAL2,
-						   GLOBAL2_INGRESS_OP,
-						   0x9000 | (i << 8));
-			if (err)
-				return err;
-		}
+	/* Disable ingress rate limiting by resetting all ingress rate
+	 * limit registers to their initial state.
+	 */
+	for (i = 0; i < ps->info->num_ports; i++) {
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL2, GLOBAL2_INGRESS_OP,
+					   0x9000 | (i << 8));
+		if (err)
+			return err;
 	}
 
 	/* Clear the statistics counters for all ports */
