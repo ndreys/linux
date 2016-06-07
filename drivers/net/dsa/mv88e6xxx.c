@@ -3735,6 +3735,18 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev)
 
 	ds->drv = &mv88e6xxx_switch_driver;
 
+	ps->reset = devm_gpiod_get(&mdiodev->dev, "reset", GPIOD_OUT_LOW);
+	if (IS_ERR(ps->reset)) {
+		err = PTR_ERR(ps->reset);
+		dev_err(dev, "gpio %d\n", err);
+		if (err == -ENOENT) {
+			/* Optional, so not an error */
+			ps->reset = NULL;
+		} else {
+			return err;
+		}
+	}
+
 	id = mv88e6xxx_reg_read(ps, ps->port_offset, PORT_SWITCH_ID);
 	if (id < 0)
 		return id;
@@ -3746,16 +3758,6 @@ int mv88e6xxx_probe(struct mdio_device *mdiodev)
 					 ARRAY_SIZE(mv88e6xxx_table));
 	if (!ps->info)
 		return -ENODEV;
-
-	ps->reset = devm_gpiod_get(&mdiodev->dev, "reset", GPIOD_ASIS);
-	if (IS_ERR(ps->reset)) {
-		err = PTR_ERR(ps->reset);
-		if (err == -ENOENT) {
-			/* Optional, so not an error */
-			ps->reset = NULL;
-		} else {
-			return err;
-		}
 	}
 
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_EEPROM) &&
