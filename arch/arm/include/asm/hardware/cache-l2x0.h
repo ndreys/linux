@@ -53,6 +53,8 @@
  */
 #define L2X0_LOCKDOWN_WAY_D_BASE	0x900
 #define L2X0_LOCKDOWN_WAY_I_BASE	0x904
+#define L310_LOCK_LINE_EN		0x950
+#define L310_UNLOCK_WAY			0x954
 #define L2X0_LOCKDOWN_STRIDE		0x08
 #define L310_ADDR_FILTER_START		0xC00
 #define L310_ADDR_FILTER_END		0xC04
@@ -69,8 +71,8 @@
 #define   L310_INCR_DOUBLE_LINEFILL_EN			BIT(23)
 #define   L310_ESCLUSIVE_SEQUENCE_EN			BIT(21)
 #define L310_POWER_CTRL			0xF80
-#define   L310_DYNAMIC_CLK_GATING_EN	(1 << 1)
-#define   L310_STNDBY_MODE_EN		(1 << 0)
+#define L310_DYNAMIC_CLK_GATING_EN	(1 << 1)
+#define L310_STNDBY_MODE_EN		(1 << 0)
 
 /* Registers shifts and masks */
 #define L2X0_CACHE_ID_PART_MASK		(0xf << 6)

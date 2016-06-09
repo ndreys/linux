@@ -764,6 +764,135 @@ static void l2c310_unlock(void __iomem *base, unsigned num_lock)
 		l2c_unlock(base, num_lock);
 }
 
+#ifdef CONFIG_PL310_REG_DUMP
+/*
+ * This part of code is responsible for dumping the PL310 Cache control
+ * registes into debugfs with path /sys/kernel/debug/pl310cc_reg
+ */
+#include <linux/debugfs.h>
+
+static int pl310cc_show(struct seq_file *m, void *v)
+{
+	u32 val;
+	unsigned int i;
+	/* Cache ID */
+	val = readl_relaxed(l2x0_base + L2X0_CACHE_ID);
+	seq_printf(m,"R0_CACHEID\t\t\t0x%08x\n",val);
+	/* Cache Type */
+	val = readl_relaxed(l2x0_base + L2X0_CACHE_TYPE);
+	seq_printf(m,"R0_CACHETYP\t\t\t0x%08x\n",val);
+	/* Control Register */
+	val = readl_relaxed(l2x0_base + L2X0_CTRL);
+	seq_printf(m,"R1_CTRL\t\t\t\t0x%08x\n",val);
+	/* Auxillary Control Register */
+	val = readl_relaxed(l2x0_base + L2X0_AUX_CTRL);
+	seq_printf(m,"R1_AUXCTRL\t\t\t0x%08x\n",val);
+	/* TAG and DATARAM Latency Control Register */
+	val = readl_relaxed(l2x0_base + L310_TAG_LATENCY_CTRL);
+	seq_printf(m,"R1_TAGLATCTRL\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L310_DATA_LATENCY_CTRL);
+	seq_printf(m,"R1_DATALATCTRL\t\t\t0x%08x\n",val);
+	/* Event Counter Control Register*/
+	val = readl_relaxed(l2x0_base + L2X0_EVENT_CNT_CTRL);
+	seq_printf(m,"R2_EVCNTCTRL\t\t\t0x%08x\n",val);
+	/* Event Counter Configuration Register*/
+	val = readl_relaxed(l2x0_base + L2X0_EVENT_CNT1_CFG);
+	seq_printf(m,"R2_EVCNTCFG1\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_EVENT_CNT0_CFG);
+	seq_printf(m,"R2_EVCNTCFG0\t\t\t0x%08x\n",val);
+	/* Event Counter Value Register*/
+	val = readl_relaxed(l2x0_base + L2X0_EVENT_CNT1_VAL);
+	seq_printf(m,"R2_EVCNT1_VAL\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_EVENT_CNT0_VAL);
+	/* Interrupt Registers*/
+	seq_printf(m,"R2_EVCNT0_VAL\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_INTR_MASK);
+	seq_printf(m,"R2_INTMASK\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_MASKED_INTR_STAT);
+	seq_printf(m,"R2_INTMASKSTAT\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_RAW_INTR_STAT);
+	seq_printf(m,"R2_INTRAWSTAT\t\t\t0x%08x\n",val);
+	/* Cache Maintainence Operation Registers*/
+	val = readl_relaxed(l2x0_base + L2X0_CACHE_SYNC);
+	seq_printf(m,"R7_CACHESYNC\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_INV_LINE_PA);
+	seq_printf(m,"R7_CACHEINVPA\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_INV_WAY);
+	seq_printf(m,"R7_CACHEINVWAY\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_LINE_PA);
+	seq_printf(m,"R7_CACHECLEANPA\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_LINE_IDX);
+	seq_printf(m,"R7_CACHECLEANIDX  \t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_WAY);
+	seq_printf(m,"R7_CACHECLEANWAY  \t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_INV_LINE_PA);
+	seq_printf(m,"R7_CACHECLEANINVPA\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_INV_LINE_IDX);
+	seq_printf(m,"R7_CACHECLEANINVIDX\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L2X0_CLEAN_INV_WAY);
+	seq_printf(m,"R7_CACHECLEANINVWAY\t\t0x%08x\n",val);
+	/* Cache Lockdown Registers */
+	for(i = 0; i < 8 ; i++) {
+		val = readl_relaxed(l2x0_base + L2X0_LOCKDOWN_WAY_D_BASE + (i<<3));
+		seq_printf(m,"R9_D_LOCKDOWN%i\t\t\t0x%08x\n", i,val);
+		val = readl_relaxed(l2x0_base + L2X0_LOCKDOWN_WAY_I_BASE + (i<<3));
+		seq_printf(m,"R9_I_LOCKDOWN%i\t\t\t0x%08x\n", i, val);
+	}
+	val = readl_relaxed(l2x0_base + L310_LOCK_LINE_EN);
+	seq_printf(m,"R9_LOCK_LINE_EN\t\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L310_UNLOCK_WAY);
+	seq_printf(m,"R9_UNLOCK_WAY\t\t\t0x%08x\n",val);
+	/* Address Filtering Registers */
+	val = readl_relaxed(l2x0_base + L310_ADDR_FILTER_START);
+	seq_printf(m,"R12_ADDRFILTER_START\t\t0x%08x\n",val);
+	val = readl_relaxed(l2x0_base + L310_ADDR_FILTER_END);
+	seq_printf(m,"R12_ADDRFILTER_END\t\t0x%08x\n",val);
+	/* Debug Register */
+	val = readl_relaxed(l2x0_base + L2X0_DEBUG_CTRL);
+	seq_printf(m,"R15_DEBUGCTRL\t\t\t0x%08x\n",val);
+	/* Prefect Control Register */
+	val = readl_relaxed(l2x0_base + L310_PREFETCH_CTRL);
+	seq_printf(m,"R15_PREFETCH_CTRL\t\t0x%08x\n",val);
+	/* Power Control Register */
+	val = readl_relaxed(l2x0_base + L310_POWER_CTRL);
+	seq_printf(m,"R15_POWER_CTRL\t\t\t0x%08x\n",val);
+	return 0;
+}
+
+static int pl310cc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pl310cc_show, NULL);
+}
+
+static struct file_operations pl310cc_dump_fops = {
+	.open	= pl310cc_open,
+	.read	= seq_read,
+	.llseek	= seq_lseek,
+	.release= single_release
+};
+
+static int __init pl310cc_debug_init (void)
+{
+	u32 val;
+	struct dentry *d;
+	if (!l2x0_base)
+		return 0;
+	val = readl_relaxed(l2x0_base + L2X0_CACHE_ID);
+	if((val & L2X0_CACHE_ID_PART_MASK) == L2X0_CACHE_ID_PART_L310) {
+		d = debugfs_create_file("pl310cc_reg", S_IRUGO, NULL, NULL,
+						&pl310cc_dump_fops);
+		if(!d)
+			return -ENOMEM;
+		pr_info("Added debugfs for PL310 L2 Cache Controller rev3pX\n");
+	}
+
+	return 0;
+}
+
+late_initcall(pl310cc_debug_init);
+
+#endif
+
 static const struct l2c_init_data l2c310_init_fns __initconst = {
 	.type = "L2C-310",
 	.way_size_0 = SZ_8K,

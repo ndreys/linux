@@ -966,6 +966,14 @@ config PL310_ERRATA_769419
 	  on systems with an outer cache, the store buffer is drained
 	  explicitly.
 
+config PL310_REG_DUMP
+	bool "PL310 CC: Register Dump"
+	default n
+	help
+	 This option will enable the debugfs creation to dump the configur-
+	 ration registers responsible for configuring the PL310 Cache Con-
+	 troller r3p2.
+
 endif
 
 config CACHE_TAUROS2
