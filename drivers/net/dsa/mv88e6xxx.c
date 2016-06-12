@@ -2857,6 +2857,9 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 					       PORT_ETH_TYPE, ETH_P_EDSA);
 		if (ret)
 			return ret;
+	}
+
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_REGMAP)) {
 		/* Tag Remap: use an identity 802.1p prio -> switch
 		 * prio mapping.
 		 */
@@ -2872,6 +2875,43 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 					       PORT_TAG_REGMAP_4567, 0x7654);
 		if (ret)
 			return ret;
+	}
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_PRIO_MAP_TABLE)) {
+		int i;
+
+		for (i = 0; i <= 7; i++) {
+			reg = i | (i << 4) |
+				PORT_PRIO_MAP_TABLE_INGRESS_PCP |
+				PORT_PRIO_MAP_TABLE_UPDATE;
+			ret = mv88e6xxx_reg_port_write(
+				ps, port, PORT_PRIO_MAP_TABLE, reg);
+			if (ret)
+				return ret;
+
+			reg = i |
+				PORT_PRIO_MAP_TABLE_EGRESS_GREEN_PCP |
+				PORT_PRIO_MAP_TABLE_UPDATE;
+			ret = mv88e6xxx_reg_port_write(
+				ps, port, PORT_PRIO_MAP_TABLE, reg);
+			if (ret)
+				return ret;
+
+			reg = i |
+				PORT_PRIO_MAP_TABLE_EGRESS_YELLOW_PCP |
+				PORT_PRIO_MAP_TABLE_UPDATE;
+			ret = mv88e6xxx_reg_port_write(
+				ps, port, PORT_PRIO_MAP_TABLE, reg);
+			if (ret)
+				return ret;
+
+			reg = i |
+				PORT_PRIO_MAP_TABLE_EGRESS_AVB_PCP |
+				PORT_PRIO_MAP_TABLE_UPDATE;
+			ret = mv88e6xxx_reg_port_write(
+				ps, port, PORT_PRIO_MAP_TABLE, reg);
+			if (ret)
+				return ret;
+		}
 	}
 
 	/* Rate Control: disable ingress rate limiting. */
