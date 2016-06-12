@@ -2971,12 +2971,56 @@ static int mv88e6xxx_setup_global(struct mv88e6xxx_priv_state *ps)
 	/* Configure the upstream port, and configure it as the port to which
 	 * ingress and egress and ARP monitor frames are to be sent.
 	 */
-	reg = upstream_port << GLOBAL_MONITOR_CONTROL_INGRESS_SHIFT |
-		upstream_port << GLOBAL_MONITOR_CONTROL_EGRESS_SHIFT |
-		upstream_port << GLOBAL_MONITOR_CONTROL_ARP_SHIFT;
-	err = _mv88e6xxx_reg_write(ps, REG_GLOBAL, GLOBAL_MONITOR_CONTROL, reg);
-	if (err)
-		return err;
+	if (!mv88e6xxx_has(ps, MV88E6XXX_FLAG_MONITOR_MGMT)) {
+		reg = upstream_port << GLOBAL_MONITOR_CONTROL_INGRESS_SHIFT |
+			upstream_port << GLOBAL_MONITOR_CONTROL_EGRESS_SHIFT |
+			upstream_port << GLOBAL_MONITOR_CONTROL_ARP_SHIFT;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+	} else {
+		/* Trap destination */
+		reg = GLOBAL_MONITOR_CONTROL_UPDATE |
+			GLOBAL_MONITOR_CONTROL_CPU_DEST |
+			upstream_port;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+
+		/* 01:c2:80:00:00:00:00-01:c2:80:00:00:00:07 are Management */
+		reg = GLOBAL_MONITOR_CONTROL_UPDATE |
+			GLOBAL_MONITOR_CONTROL_0180C280000000XLO | 0xff;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+
+		/* 01:c2:80:00:00:00:08-01:c2:80:00:00:00:0f are Management */
+		reg = GLOBAL_MONITOR_CONTROL_UPDATE |
+			GLOBAL_MONITOR_CONTROL_0180C280000000XHI | 0xff;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+
+		/* 01:c2:80:00:00:00:20-01:c2:80:00:00:00:27 are Management */
+		reg = GLOBAL_MONITOR_CONTROL_UPDATE |
+			GLOBAL_MONITOR_CONTROL_0180C280000002XLO | 0xff;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+
+		/* 01:c2:80:00:00:00:28-01:c2:80:00:00:00:2f are Management */
+		reg = GLOBAL_MONITOR_CONTROL_UPDATE |
+			GLOBAL_MONITOR_CONTROL_0180C280000002XHI | 0xff;
+		err = _mv88e6xxx_reg_write(ps, REG_GLOBAL,
+					   GLOBAL_MONITOR_CONTROL, reg);
+		if (err)
+			return err;
+	}
 
 	/* Disable remote management, and set the switch's DSA device number. */
 	reg = GLOBAL_CONTROL_2_MULTIPLE_CASCADE | (ds->index & 0x1f);
