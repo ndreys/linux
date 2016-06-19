@@ -1393,7 +1393,7 @@ MODULE_DEVICE_TABLE(spi, mrf24j40_ids);
 
 static struct spi_driver mrf24j40_driver = {
 	.driver = {
-		.of_match_table = of_match_ptr(mrf24j40_of_match),
+		.of_match_table = mrf24j40_of_match,
 		.name = "mrf24j40",
 	},
 	.id_table = mrf24j40_ids,
