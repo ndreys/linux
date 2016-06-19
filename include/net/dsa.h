@@ -19,6 +19,7 @@
 #include <linux/phy.h>
 #include <linux/phy_fixed.h>
 #include <linux/ethtool.h>
+#include <net/devlink.h>
 
 enum dsa_tag_protocol {
 	DSA_TAG_PROTO_NONE = 0,
@@ -139,6 +140,7 @@ struct dsa_switch_tree {
 struct dsa_port {
 	struct net_device	*netdev;
 	struct device_node	*dn;
+	struct devlink_port	devlink_port;
 };
 
 struct dsa_switch {
@@ -195,6 +197,9 @@ struct dsa_switch {
 	u32			phys_mii_mask;
 	struct dsa_port		ports[DSA_MAX_PORTS];
 	struct mii_bus		*slave_mii_bus;
+
+	/* devlink used to represent this switch device */
+	struct devlink 		*devlink;
 };
 
 static inline bool dsa_is_cpu_port(struct dsa_switch *ds, int p)
