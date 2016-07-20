@@ -3761,7 +3761,12 @@ static const char *mv88e6xxx_drv_probe(struct device *dsa_dev,
 
 static enum dsa_tag_protocol mv88e6xxx_get_tag_protocol(struct dsa_switch *ds)
 {
-	return DSA_TAG_PROTO_EDSA;
+	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
+	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA))
+		return DSA_TAG_PROTO_EDSA;
+
+	return DSA_TAG_PROTO_DSA;
 }
 
 struct dsa_switch_driver mv88e6xxx_switch_driver = {
