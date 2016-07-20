@@ -2736,13 +2736,18 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_priv_state *ps, int port)
 	if (dsa_is_cpu_port(ds, port)) {
 		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA))
 			reg |= PORT_CONTROL_DSA_TAG;
-		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA))
-			reg |= PORT_CONTROL_FRAME_ETHER_TYPE_DSA |
-				PORT_CONTROL_FORWARD_UNKNOWN |
+		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA)) {
+			if (mv88e6xxx_6390_family(ps))
+				reg |= PORT_CONTROL_FRAME_MODE_DSA;
+			else
+				reg |= PORT_CONTROL_FRAME_ETHER_TYPE_DSA |
+					PORT_CONTROL_EGRESS_ADD_TAG;
+			reg |= PORT_CONTROL_FORWARD_UNKNOWN |
 				PORT_CONTROL_FORWARD_UNKNOWN_MC;
 
-		reg |= PORT_CONTROL_EGRESS_ADD_TAG;
+		}
 	}
+
 	if (dsa_is_dsa_port(ds, port)) {
 		if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_DSA))
 			reg |= PORT_CONTROL_DSA_TAG;
@@ -3762,6 +3767,9 @@ static const char *mv88e6xxx_drv_probe(struct device *dsa_dev,
 static enum dsa_tag_protocol mv88e6xxx_get_tag_protocol(struct dsa_switch *ds)
 {
 	struct mv88e6xxx_priv_state *ps = ds_to_priv(ds);
+
+	if (mv88e6xxx_6390_family(ps))
+		return DSA_TAG_PROTO_DSA;
 
 	if (mv88e6xxx_has(ps, MV88E6XXX_FLAG_TAG_EDSA))
 		return DSA_TAG_PROTO_EDSA;
