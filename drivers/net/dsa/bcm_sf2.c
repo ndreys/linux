@@ -136,6 +136,11 @@ static int bcm_sf2_sw_get_sset_count(struct dsa_switch *ds)
 	return BCM_SF2_STATS_SIZE;
 }
 
+static enum dsa_tag_protocol bcm_sf2_sw_get_tag_protocol(struct dsa_switch *ds)
+{
+	return DSA_TAG_PROTO_BRCM;
+}
+
 static const char *bcm_sf2_sw_drv_probe(struct device *dsa_dev,
 					struct device *host_dev, int sw_addr,
 					void **_priv)
@@ -1691,7 +1696,7 @@ out_unmap:
 }
 
 static struct dsa_switch_driver bcm_sf2_switch_driver = {
-	.tag_protocol		= DSA_TAG_PROTO_BRCM,
+	.get_tag_protocol	= bcm_sf2_sw_get_tag_protocol,
 	.probe			= bcm_sf2_sw_drv_probe,
 	.setup			= bcm_sf2_sw_setup,
 	.set_addr		= bcm_sf2_sw_set_addr,
