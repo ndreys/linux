@@ -379,6 +379,12 @@ enum mv88e6xxx_cap {
 	 */
 	MV88E6XXX_CAP_ATU,
 
+	/* Two different tag protocols can be used by the driver. All
+	 * switches support DSA, but only later generations support
+	 * EDSA.
+	 */
+	MV88E6XXX_CAP_EDSA,
+
 	/* Energy Efficient Ethernet.
 	 */
 	MV88E6XXX_CAP_EEE,
@@ -444,6 +450,7 @@ enum mv88e6xxx_cap {
 
 /* Bitmask of capabilities */
 #define MV88E6XXX_FLAG_ATU		BIT(MV88E6XXX_CAP_ATU)
+#define MV88E6XXX_FLAG_EDSA		BIT(MV88E6XXX_CAP_EDSA)
 #define MV88E6XXX_FLAG_EEE		BIT(MV88E6XXX_CAP_EEE)
 #define MV88E6XXX_FLAG_EEPROM		BIT(MV88E6XXX_CAP_EEPROM)
 #define MV88E6XXX_FLAG_MULTI_CHIP	BIT(MV88E6XXX_CAP_MULTI_CHIP)
@@ -489,6 +496,7 @@ enum mv88e6xxx_cap {
 
 #define MV88E6XXX_FLAGS_FAMILY_6320	\
 	(MV88E6XXX_FLAG_ATU |		\
+	 MV88E6XXX_FLAG_EDSA |		\
 	 MV88E6XXX_FLAG_EEE |		\
 	 MV88E6XXX_FLAG_EEPROM |	\
 	 MV88E6XXX_FLAG_MULTI_CHIP |	\
@@ -503,6 +511,7 @@ enum mv88e6xxx_cap {
 
 #define MV88E6XXX_FLAGS_FAMILY_6351	\
 	(MV88E6XXX_FLAG_ATU |		\
+	 MV88E6XXX_FLAG_EDSA |		\
 	 MV88E6XXX_FLAG_MULTI_CHIP |	\
 	 MV88E6XXX_FLAG_PORTSTATE |	\
 	 MV88E6XXX_FLAG_PPU_ACTIVE |	\
@@ -515,6 +524,7 @@ enum mv88e6xxx_cap {
 
 #define MV88E6XXX_FLAGS_FAMILY_6352	\
 	(MV88E6XXX_FLAG_ATU |		\
+	 MV88E6XXX_FLAG_EDSA |		\
 	 MV88E6XXX_FLAG_EEE |		\
 	 MV88E6XXX_FLAG_EEPROM |	\
 	 MV88E6XXX_FLAG_MULTI_CHIP |	\
