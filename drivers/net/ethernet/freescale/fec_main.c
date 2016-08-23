@@ -1598,14 +1598,14 @@ fec_enet_interrupt(int irq, void *dev_id)
 	int_events = readl_relaxed(fep->hwp + FEC_IEVENT) &
 	             readl_relaxed(fep->hwp + FEC_IMASK);
 	writel(int_events, fep->hwp + FEC_IEVENT);
-	fec_enet_collect_events(fep, int_events);
 
-	if ((fep->work_tx || fep->work_rx) && fep->link) {
+	if ((int_events & (FEC_ENET_RXF | FEC_ENET_TXF)) && fep->link) {
 		ret = IRQ_HANDLED;
 
 		if (napi_schedule_prep(&fep->napi)) {
 			/* Disable the NAPI interrupts */
 			writel(FEC_NAPI_IMASK, fep->hwp + FEC_IMASK);
+			fec_enet_collect_events(fep, int_events);
 			__napi_schedule(&fep->napi);
 		}
 	}
