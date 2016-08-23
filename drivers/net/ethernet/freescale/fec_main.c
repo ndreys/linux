@@ -1595,7 +1595,8 @@ fec_enet_interrupt(int irq, void *dev_id)
 	uint int_events;
 	irqreturn_t ret = IRQ_NONE;
 
-	int_events = readl(fep->hwp + FEC_IEVENT);
+	int_events = readl_relaxed(fep->hwp + FEC_IEVENT) &
+	             readl_relaxed(fep->hwp + FEC_IMASK);
 	writel(int_events, fep->hwp + FEC_IEVENT);
 	fec_enet_collect_events(fep, int_events);
 
