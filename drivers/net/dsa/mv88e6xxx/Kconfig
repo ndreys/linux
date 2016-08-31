@@ -6,3 +6,11 @@ config NET_DSA_MV88E6XXX
 	help
 	  This driver adds support for most of the Marvell 88E6xxx models of
 	  Ethernet switch chips, except 88E6060.
+
+config NET_DSA_MV88E6XXX_TCAM
+	bool "Marvell 88E6xxx Ethernet switch TCAM support"
+	default y
+	depends on NET_DSA_MV88E6XXX
+	help
+	  Enable support for the TCAM which some switch chips have. The TCAM
+	  can be used to accelerate frame filtering.

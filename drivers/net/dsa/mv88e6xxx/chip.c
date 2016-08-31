@@ -182,8 +182,8 @@ static const struct mv88e6xxx_ops mv88e6xxx_smi_multi_chip_ops = {
 	.write = mv88e6xxx_smi_multi_chip_write,
 };
 
-static int mv88e6xxx_read(struct mv88e6xxx_chip *chip,
-			  int addr, int reg, u16 *val)
+int mv88e6xxx_read(struct mv88e6xxx_chip *chip,
+		   int addr, int reg, u16 *val)
 {
 	int err;
 
@@ -199,8 +199,8 @@ static int mv88e6xxx_read(struct mv88e6xxx_chip *chip,
 	return 0;
 }
 
-static int mv88e6xxx_write(struct mv88e6xxx_chip *chip,
-			   int addr, int reg, u16 val)
+int mv88e6xxx_write(struct mv88e6xxx_chip *chip,
+		    int addr, int reg, u16 val)
 {
 	int err;
 
@@ -306,8 +306,8 @@ static int mv88e6xxx_serdes_write(struct mv88e6xxx_chip *chip, int reg, u16 val)
 					reg, val);
 }
 
-static int mv88e6xxx_wait(struct mv88e6xxx_chip *chip, int addr, int reg,
-			  u16 mask)
+int mv88e6xxx_wait(struct mv88e6xxx_chip *chip, int addr, int reg,
+		   u16 mask)
 {
 	int i;
 
@@ -2440,8 +2440,8 @@ static int mv88e6xxx_serdes_power_on(struct mv88e6xxx_chip *chip)
 	return err;
 }
 
-static int mv88e6xxx_port_read(struct mv88e6xxx_chip *chip, int port,
-			       int reg, u16 *val)
+int mv88e6xxx_port_read(struct mv88e6xxx_chip *chip, int port,
+			int reg, u16 *val)
 {
 	int addr = chip->info->port_base_addr + port;
 
@@ -2449,6 +2449,17 @@ static int mv88e6xxx_port_read(struct mv88e6xxx_chip *chip, int port,
 		return -EINVAL;
 
 	return mv88e6xxx_read(chip, addr, reg, val);
+}
+
+int mv88e6xxx_port_write(struct mv88e6xxx_chip *chip, int port,
+			 int reg, u16 val)
+{
+	int addr = chip->info->port_base_addr + port;
+
+	if (port >= chip->info->num_ports)
+		return -EINVAL;
+
+	return mv88e6xxx_write(chip, addr, reg, val);
 }
 
 static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
