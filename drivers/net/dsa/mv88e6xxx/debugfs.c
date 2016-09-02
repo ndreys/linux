@@ -1024,6 +1024,283 @@ static const struct file_operations mv88e6xxx_scratch_fops = {
 	.owner  = THIS_MODULE,
 };
 
+static char *mv88e6xxx_tcam_frame_type_str(int frame_type)
+{
+	switch (frame_type) {
+	case GLOBAL3_P0_KEY1_FRAME_TYPE_NORNAL:
+		return "Frame type: Nornal";
+	case GLOBAL3_P0_KEY1_FRAME_TYPE_DSA:
+		return "frame type: DSA";
+	case GLOBAL3_P0_KEY1_FRAME_TYPE_PROVIDER:
+		return "frame type: Provider";
+	default:
+		return "frame type: Unknown";
+	}
+}
+
+static int mv88e6xxx_tcam_show_entry(struct mv88e6xxx_chip *chip,
+				     struct seq_file *s, int entry,
+				     struct mv88e6xxx_tcam_data *data)
+{
+	int err, i, value;
+	u8 octet, mask;
+
+	seq_puts(s, "      Dst          Src          Tag      Type Data\n");
+	seq_printf(s, "Entry %3d\n", entry);
+	seq_puts(s, "Octet:");
+	for (i = 0; i < 48; i++) {
+		/* -Dst-------Src-------Tag--------Eth Type----Data-- */
+		if (i == 6 || i == 12 || i == 16 || i == 18 || i == 26 ||
+		    i == 34 || i == 42)
+			seq_puts(s, " ");
+
+		err = mv88e6xxx_tcam_get_match(chip, data, i, &octet, &mask);
+		if (err)
+			return err;
+		seq_printf(s, "%02x", octet);
+	}
+	seq_puts(s, "\n");
+
+	seq_puts(s, "Mask: ");
+	for (i = 0; i < 48; i++) {
+		/* -Dst-------Src-------Tag--------Eth Type----Data-- */
+		if (i == 6 || i == 12 || i == 16 || i == 18 || i == 26 ||
+		    i == 34 || i == 42)
+			seq_puts(s, " ");
+
+		err = mv88e6xxx_tcam_get_match(chip, data, i, &octet, &mask);
+		if (err)
+			return err;
+		seq_printf(s, "%02x", mask);
+	}
+	seq_puts(s, "\n");
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P0_KEY1_FRAME_TYPE,
+			   &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "%s ", mv88e6xxx_tcam_frame_type_str(value));
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P0_KEY2_SRC_PORT_VECTOR,
+			   &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Source port vector: %x ", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P0_KEY3_PPRI, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Provider priority: %d ", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P0_KEY4_PVID, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Provider VLAN ID: %d ", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION1_INTERRUPT,
+			   &value);
+	seq_printf(s, "Interrupt: %d ",
+		   value == GLOBAL3_P2_ACTION1_INTERRUPT);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION1_INC_TCAM_COUNTER,
+			   &value);
+	seq_printf(s, "Inc TCAM counter: %d ",
+		   value == GLOBAL3_P2_ACTION1_INC_TCAM_COUNTER);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION1_VID, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "VID: %d ", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION2_FLOW_ID, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Flow ID: %d ",
+			   value - GLOBAL3_P2_ACTION2_FLOW_ID_0);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION2_QPRI, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Queue priority: %d ",
+			   value - GLOBAL3_P2_ACTION2_QPRI_0);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION2_FPRI, &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Priority: %d ",
+			   value - GLOBAL3_P2_ACTION2_FPRI_0);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION3_DST_PORT_VECTOR,
+			   &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Destination port vector: %x ", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION4_FRAME_ACTION,
+			   &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED) {
+		seq_printf(s, "Frame Action: %x ", value);
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_SRC_IS_TAGGED)
+			seq_puts(s, "SRC_IS_TAGGED ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_PVID)
+			seq_puts(s, "PVID ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_MGMT)
+			seq_puts(s, "MGMT ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_SNOOP)
+			seq_puts(s, "SNOOP ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_POLICY_MIRROR)
+			seq_puts(s, "POLICY_MIRROR ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_POLICY_TRAP)
+			seq_puts(s, "POLICY_TRAP ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_SANRL)
+			seq_puts(s, "SaNRL ");
+		if (value & GLOBAL3_P2_ACTION4_FRAME_ACTION_DANRL)
+			seq_puts(s, "DaNRL ");
+	}
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_ACTION4_LOAD_BALANCE,
+			   &value);
+	if (value != MV88E6XXX_TCAM_PARAM_DISABLED)
+		seq_printf(s, "Load balance: %d", value);
+
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_DEBUG_PORT, &value);
+	seq_printf(s, "Debug Port: %d ", value);
+	mv88e6xxx_tcam_get(chip, data, MV88E6XXX_P2_DEBUG_HIT, &value);
+	seq_printf(s, "Debug Hit %x\n", value);
+
+	return 0;
+}
+
+static int mv88e6xxx_tcam_all_show(struct seq_file *s, void *p)
+{
+	struct mv88e6xxx_chip *chip = s->private;
+	struct mv88e6xxx_tcam_data data;
+	int err, entry;
+
+	for (entry = 0; entry < 255; entry++) {
+		err = mv88e6xxx_tcam_read(chip, entry, &data);
+		if (err)
+			return err;
+
+		err = mv88e6xxx_tcam_show_entry(chip, s, entry, &data);
+		if (err)
+			return err;
+	}
+
+	return 0;
+}
+
+static ssize_t mv88e6xxx_tcam_all_write(struct file *file,
+					const char __user *buf,
+					size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct mv88e6xxx_chip *chip = s->private;
+	struct mv88e6xxx_tcam_data data;
+
+	memset(&data, 0, sizeof(data));
+
+	mv88e6xxx_tcam_flush_all(chip);
+	mv88e6xxx_tcam_port_enable(chip, 0);
+	mv88e6xxx_tcam_port_enable(chip, 1);
+
+	/* Destination - Broadcast address */
+	mv88e6xxx_tcam_set_match(chip, &data, 0, 0xff, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 1, 0xff, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 2, 0xff, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 3, 0xff, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 4, 0xff, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 5, 0xff, 0xff);
+
+	/* Source Port 0 */
+	mv88e6xxx_tcam_set(chip, &data, MV88E6XXX_P0_KEY2_SRC_PORT_VECTOR,
+			   (1 << 0));
+
+	/* Destination port None, i.e. drop */
+	mv88e6xxx_tcam_set(chip, &data, MV88E6XXX_P2_ACTION3_DST_PORT_VECTOR,
+			   0);
+
+	mv88e6xxx_tcam_load_entry(chip, 42, &data);
+
+	memset(&data, 0, sizeof(data));
+
+	/* Source 00:26:55:d2:27:a9 */
+	mv88e6xxx_tcam_set_match(chip, &data, 6, 0x00, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 7, 0x26, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 8, 0x55, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 9, 0xd2, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 10, 0x27, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 11, 0xa9, 0xff);
+
+	/* Ether Type 0x0806 - ARP */
+	mv88e6xxx_tcam_set_match(chip, &data, 16, 0x08, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 17, 0x06, 0xff);
+
+	/* ARP Hardware Type 1  - Ethernet */
+	mv88e6xxx_tcam_set_match(chip, &data, 18, 0x00, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 19, 0x01, 0xff);
+
+	/* ARP protocol Type 0x0800 - IP */
+	mv88e6xxx_tcam_set_match(chip, &data, 20, 0x08, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 21, 0x00, 0xff);
+
+	/* Operation 2 - reply */
+	mv88e6xxx_tcam_set_match(chip, &data, 24, 0x00, 0xff);
+	mv88e6xxx_tcam_set_match(chip, &data, 25, 0x02, 0xff);
+
+	/* Source Port 1 */
+	mv88e6xxx_tcam_set(chip, &data, MV88E6XXX_P0_KEY2_SRC_PORT_VECTOR,
+			   (1 << 1));
+
+	/* Destination port None, i.e. drop */
+	mv88e6xxx_tcam_set(chip, &data, MV88E6XXX_P2_ACTION3_DST_PORT_VECTOR,
+			   0);
+
+	mv88e6xxx_tcam_load_entry(chip, 43, &data);
+
+	return count;
+}
+
+static int mv88e6xxx_tcam_all_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mv88e6xxx_tcam_all_show, inode->i_private);
+}
+
+static const struct file_operations mv88e6xxx_tcam_all_fops = {
+	.open   = mv88e6xxx_tcam_all_open,
+	.read   = seq_read,
+	.write  = mv88e6xxx_tcam_all_write,
+	.llseek = no_llseek,
+	.release = single_release,
+	.owner  = THIS_MODULE,
+};
+
+static int mv88e6xxx_tcam_show(struct seq_file *s, void *p)
+{
+	struct mv88e6xxx_chip *chip = s->private;
+	struct mv88e6xxx_tcam_data data;
+	int err, entry = 0;
+
+	while (1) {
+		err = mv88e6xxx_tcam_get_next(chip, &entry, &data);
+		if (err)
+			return err;
+
+		if (entry == 0xff)
+			break;
+
+		err = mv88e6xxx_tcam_show_entry(chip, s, entry, &data);
+		if (err)
+			return err;
+	}
+
+	return 0;
+}
+
+static int mv88e6xxx_tcam_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mv88e6xxx_tcam_show, inode->i_private);
+}
+
+static const struct file_operations mv88e6xxx_tcam_fops = {
+	.open   = mv88e6xxx_tcam_open,
+	.read   = seq_read,
+	.llseek = no_llseek,
+	.release = single_release,
+	.owner  = THIS_MODULE,
+};
+
 static void mv88e6xxx_init_debugfs(struct mv88e6xxx_chip *chip)
 {
 	char *name;
@@ -1070,4 +1347,11 @@ static void mv88e6xxx_init_debugfs(struct mv88e6xxx_chip *chip)
 
 	debugfs_create_file("scratch", S_IRUGO, chip->dbgfs, chip,
 			    &mv88e6xxx_scratch_fops);
+
+	if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_TCAM)) {
+		debugfs_create_file("tcam-all", S_IRUGO, chip->dbgfs, chip,
+				    &mv88e6xxx_tcam_all_fops);
+		debugfs_create_file("tcam", S_IRUGO, chip->dbgfs, chip,
+				    &mv88e6xxx_tcam_fops);
+	}
 }
