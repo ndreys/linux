@@ -13,6 +13,7 @@
 #define __MV88E6XXX_H
 
 #include <linux/if_vlan.h>
+#include <linux/irq.h>
 #include <linux/gpio/consumer.h>
 
 #ifndef UINT64_MAX
@@ -168,6 +169,15 @@
 #define GLOBAL_STATUS_PPU_INITIALIZING	(0x1 << 14)
 #define GLOBAL_STATUS_PPU_DISABLED	(0x2 << 14)
 #define GLOBAL_STATUS_PPU_POLLING	(0x3 << 14)
+#define GLOBAL_STATUS_IRQ_AVB		8
+#define GLOBAL_STATUS_IRQ_DEVICE	7
+#define GLOBAL_STATUS_IRQ_STATS		6
+#define GLOBAL_STATUS_IRQ_VTU_PROBLEM	5
+#define GLOBAL_STATUS_IRQ_VTU_DONE	4
+#define GLOBAL_STATUS_IRQ_ATU_PROBLEM	3
+#define GLOBAL_STATUS_IRQ_ATU_DONE	2
+#define GLOBAL_STATUS_IRQ_TCAM_DONE	1
+#define GLOBAL_STATUS_IRQ_EEPROM_DONE	0
 #define GLOBAL_MAC_01		0x01
 #define GLOBAL_MAC_23		0x02
 #define GLOBAL_MAC_45		0x03
@@ -414,6 +424,7 @@ enum mv88e6xxx_cap {
 	 * The device contains a second set of global 16-bit registers.
 	 */
 	MV88E6XXX_CAP_GLOBAL2,
+	MV88E6XXX_CAP_G2_INT,		/* (0x00) Interrupt Status */
 	MV88E6XXX_CAP_G2_MGMT_EN_2X,	/* (0x02) MGMT Enable Register 2x */
 	MV88E6XXX_CAP_G2_MGMT_EN_0X,	/* (0x03) MGMT Enable Register 0x */
 	MV88E6XXX_CAP_G2_IRL_CMD,	/* (0x09) Ingress Rate Command */
@@ -463,6 +474,7 @@ enum mv88e6xxx_cap {
 #define MV88E6XXX_FLAG_SERDES		BIT_ULL(MV88E6XXX_CAP_SERDES)
 
 #define MV88E6XXX_FLAG_GLOBAL2		BIT_ULL(MV88E6XXX_CAP_GLOBAL2)
+#define MV88E6XXX_FLAG_G2_INT		BIT_ULL(MV88E6XXX_CAP_G2_INT)
 #define MV88E6XXX_FLAG_G2_MGMT_EN_2X	BIT_ULL(MV88E6XXX_CAP_G2_MGMT_EN_2X)
 #define MV88E6XXX_FLAG_G2_MGMT_EN_0X	BIT_ULL(MV88E6XXX_CAP_G2_MGMT_EN_0X)
 #define MV88E6XXX_FLAG_G2_IRL_CMD	BIT_ULL(MV88E6XXX_CAP_G2_IRL_CMD)
@@ -534,6 +546,7 @@ enum mv88e6xxx_cap {
 
 #define MV88E6XXX_FLAGS_FAMILY_6165	\
 	(MV88E6XXX_FLAG_GLOBAL2 |	\
+	 MV88E6XXX_FLAG_G2_INT |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_2X |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_0X |	\
 	 MV88E6XXX_FLAG_G2_SWITCH_MAC |	\
@@ -547,6 +560,7 @@ enum mv88e6xxx_cap {
 
 #define MV88E6XXX_FLAGS_FAMILY_6185	\
 	(MV88E6XXX_FLAG_GLOBAL2 |	\
+	 MV88E6XXX_FLAG_G2_INT |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_0X |	\
 	 MV88E6XXX_FLAGS_MULTI_CHIP |	\
 	 MV88E6XXX_FLAG_PPU |		\
@@ -573,6 +587,7 @@ enum mv88e6xxx_cap {
 #define MV88E6XXX_FLAGS_FAMILY_6351	\
 	(MV88E6XXX_FLAG_EDSA |		\
 	 MV88E6XXX_FLAG_GLOBAL2 |	\
+	 MV88E6XXX_FLAG_G2_INT |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_2X |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_0X |	\
 	 MV88E6XXX_FLAG_G2_SWITCH_MAC |	\
@@ -590,6 +605,7 @@ enum mv88e6xxx_cap {
 	(MV88E6XXX_FLAG_EDSA |		\
 	 MV88E6XXX_FLAG_EEE |		\
 	 MV88E6XXX_FLAG_GLOBAL2 |	\
+	 MV88E6XXX_FLAG_G2_INT |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_2X |	\
 	 MV88E6XXX_FLAG_G2_MGMT_EN_0X |	\
 	 MV88E6XXX_FLAG_G2_SWITCH_MAC |	\
@@ -615,6 +631,7 @@ struct mv88e6xxx_info {
 	unsigned int port_base_addr;
 	unsigned int age_time_coeff;
 	unsigned long long flags;
+	unsigned int g1_irqs;
 };
 
 struct mv88e6xxx_atu_entry {
@@ -640,6 +657,13 @@ struct mv88e6xxx_ops;
 
 struct mv88e6xxx_priv_port {
 	struct net_device *bridge_dev;
+};
+
+struct mv88e6xxx_irq {
+	u16 masked;
+	struct irq_chip chip;
+	struct irq_domain *domain;
+	unsigned int nirqs;
 };
 
 struct mv88e6xxx_chip {
@@ -693,6 +717,13 @@ struct mv88e6xxx_chip {
 
 	/* And the MDIO bus itself */
 	struct mii_bus *mdio_bus;
+
+	/* There can be two interrupt controllers, which are chained
+	 * off a GPIO as interrupt source
+	 */
+	struct mv88e6xxx_irq g1_irq;
+	struct mv88e6xxx_irq g2_irq;
+	int irq;
 };
 
 struct mv88e6xxx_ops {
@@ -724,5 +755,4 @@ int mv88e6xxx_write(struct mv88e6xxx_chip *chip, int addr, int reg, u16 val);
 int mv88e6xxx_update(struct mv88e6xxx_chip *chip, int addr, int reg,
 		     u16 update);
 int mv88e6xxx_wait(struct mv88e6xxx_chip *chip, int addr, int reg, u16 mask);
-
 #endif
