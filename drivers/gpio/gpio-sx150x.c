@@ -86,11 +86,6 @@ struct sx150x_device_data {
 
 /**
  * struct sx150x_platform_data - config data for SX150x driver
- * @gpio_base: The index number of the first GPIO assigned to this
- *             GPIO expander.  The expander will create a block of
- *             consecutively numbered gpios beginning at the given base,
- *             with the size of the block depending on the model of the
- *             expander chip.
  * @oscio_is_gpo: If set to true, the driver will configure OSCIO as a GPO
  *                instead of as an oscillator, increasing the size of the
  *                GP(I)O pool created by this expander by one.  The
@@ -125,7 +120,6 @@ struct sx150x_device_data {
  *                      in order to place it in a known state.
  */
 struct sx150x_platform_data {
-	unsigned gpio_base;
 	bool     oscio_is_gpo;
 	u16      io_pullup_ena;
 	u16      io_pulldn_ena;
@@ -588,7 +582,7 @@ static void sx150x_init_chip(struct sx150x_chip *chip,
 	chip->gpio_chip.get              = sx150x_gpio_get;
 	chip->gpio_chip.set              = sx150x_gpio_set;
 	chip->gpio_chip.set_single_ended = sx150x_gpio_set_single_ended;
-	chip->gpio_chip.base             = pdata->gpio_base;
+	chip->gpio_chip.base             = -1;
 	chip->gpio_chip.can_sleep        = true;
 	chip->gpio_chip.ngpio            = chip->dev_cfg->ngpios;
 #ifdef CONFIG_OF_GPIO
