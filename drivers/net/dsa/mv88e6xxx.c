@@ -3696,6 +3696,15 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
 		.num_ports = 11,	/* 10 + Z80 */
 		.flags = MV88E6XXX_FLAGS_FAMILY_6390,
 	},
+
+	[MV88E6390X] = {
+		.prod_num = PORT_SWITCH_ID_PROD_NUM_6390X,
+		.family = MV88E6XXX_FAMILY_6390,
+		.name = "Marvell 88E6390X",
+		.num_databases = 4096,
+		.num_ports = 11,	/* 10 + Z80 */
+		.flags = MV88E6XXX_FLAGS_FAMILY_6390,
+	},
 };
 
 static const struct mv88e6xxx_info *
