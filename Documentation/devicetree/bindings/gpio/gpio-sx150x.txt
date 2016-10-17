@@ -35,6 +35,14 @@ Optional properties:
   		       polarity. For chips with fewer than 16 IO pins,
   		       high-end bits are ignored.
 
+- semtech,io-pullup:
+- semtech,io-pulldown: A bit-mask which enables-or disables the
+  		       pull-up (pull-down) resistor for each IO line
+  		       in the expander. Setting the bit at position n
+  		       will enable the pull-down for the IO at the
+  		       corresponding offset.  For chips with fewer
+  		       than 16 IO pins, high-end bits are ignored.
+
 Example:
 
 	i2c_gpio_expander@20{
