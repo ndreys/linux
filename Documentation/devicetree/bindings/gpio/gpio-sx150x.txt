@@ -48,6 +48,13 @@ Optional properties:
   			      beginning of the probe in order to place
   			      it in a known state.
 
+- semtech,oscio-is-gpo: Boolean, if set to true, the driver will
+  			configure OSCIO as a GPO instead of as an
+  			oscillator, increasing the size of the GP(I)O
+  			pool created by this expander by one.  The
+  			output-only GPO pin will be added at the end
+  			of the block.
+
 Example:
 
 	i2c_gpio_expander@20{
