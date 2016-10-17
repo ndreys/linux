@@ -26,6 +26,15 @@ The GPIO expander can optionally be used as an interrupt controller, in
 which case it uses the default two cell specifier as described in
 Documentation/devicetree/bindings/interrupt-controller/interrupts.txt.
 
+Optional properties:
+
+- semtech,io-polarity: A bit-mask which enables polarity inversion for
+  		       each IO line in the expander. Setting the bit
+  		       at position n inverts the polarity of that IO
+  		       line, while clearing it results in normal
+  		       polarity. For chips with fewer than 16 IO pins,
+  		       high-end bits are ignored.
+
 Example:
 
 	i2c_gpio_expander@20{
