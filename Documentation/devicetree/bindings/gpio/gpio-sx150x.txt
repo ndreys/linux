@@ -43,6 +43,11 @@ Optional properties:
   		       corresponding offset.  For chips with fewer
   		       than 16 IO pins, high-end bits are ignored.
 
+- semtech,reset-during-probe: Boolean, if true, the driver will
+  			      trigger a full reset of the chip at the
+  			      beginning of the probe in order to place
+  			      it in a known state.
+
 Example:
 
 	i2c_gpio_expander@20{
