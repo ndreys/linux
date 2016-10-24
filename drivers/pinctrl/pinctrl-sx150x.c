@@ -1014,7 +1014,7 @@ static int sx150x_probe(struct i2c_client *client,
 
 		ret = gpiochip_irqchip_add(&pctl->gpio,
 					   &pctl->irq_chip, 0,
-					   handle_edge_irq, IRQ_TYPE_EDGE_BOTH);
+					   handle_edge_irq, IRQ_TYPE_NONE);
 		if (ret) {
 			dev_err(dev, "could not connect irqchip to gpiochip\n");
 			return ret;
