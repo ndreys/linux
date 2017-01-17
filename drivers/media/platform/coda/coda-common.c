@@ -14,6 +14,7 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
+#include <linux/devcoredump.h>
 #include <linux/firmware.h>
 #include <linux/gcd.h>
 #include <linux/genalloc.h>
@@ -1721,6 +1722,34 @@ void coda_free_aux_buf(struct coda_dev *dev,
 	}
 }
 
+static void coda_dump_metas(struct coda_ctx *ctx, unsigned int payload)
+{
+	struct v4l2_device *v4l2_dev = &ctx->dev->v4l2_dev;
+	struct coda_buffer_meta *meta;
+	void *dump;
+
+	list_for_each_entry(meta, &ctx->buffer_meta_list, list) {
+		unsigned int mask = ctx->bitstream_fifo.kfifo.mask;
+		unsigned int meta_start = meta->start & mask;
+		unsigned int meta_end = meta->end & mask;
+		char *buf = ctx->bitstream.vaddr + meta_start;
+
+		v4l2_err(v4l2_dev,
+			 "\tmeta %d: %u - %u (%02x %02x %02x %02x %02x)\n",
+			 meta->sequence, meta_start, meta_end,
+			 buf[0], buf[1], buf[2], buf[3], buf[4]);
+	}
+
+	if (payload) {
+		dump = vmalloc(payload);
+		if (dump) {
+			memcpy(dump, ctx->bitstream.vaddr, payload);
+			dev_coredumpv(ctx->dev->v4l2_dev.dev, dump, payload,
+				      GFP_KERNEL);
+		}
+	}
+}
+
 static int coda_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct coda_ctx *ctx = vb2_get_drv_priv(q);
@@ -1728,6 +1757,7 @@ static int coda_start_streaming(struct vb2_queue *q, unsigned int count)
 	struct coda_q_data *q_data_src, *q_data_dst;
 	struct v4l2_m2m_buffer *m2m_buf, *tmp;
 	struct vb2_v4l2_buffer *buf;
+	unsigned int payload;
 	struct list_head list;
 	int ret = 0;
 
@@ -1746,8 +1776,11 @@ static int coda_start_streaming(struct vb2_queue *q, unsigned int count)
 			coda_fill_bitstream(ctx, &list);
 			mutex_unlock(&ctx->bitstream_mutex);
 
-			if (coda_get_bitstream_payload(ctx) < 512) {
-				v4l2_err(v4l2_dev, "start payload < 512\n");
+			payload = coda_get_bitstream_payload(ctx);
+			if (payload < 512) {
+				v4l2_err(v4l2_dev, "start payload: %u < 512, count: %u\n",
+					 payload, count);
+				coda_dump_metas(ctx, payload);
 				ret = -EINVAL;
 				goto err;
 			}
