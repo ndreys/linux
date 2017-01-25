@@ -1,0 +1,63 @@
+Freescale i.MX General Power Controller v2
+==========================================
+
+The i.MX7S/D General Power Control (GPC) block contains Power Gating
+Control (PGC) for various power domains.
+
+Required properties:
+
+- compatible: Should be "fsl,imx7d-gpc"
+
+- reg: should be register base and length as documented in the
+  datasheet
+
+- interrupts: Should contain GPC interrupt request 1
+
+- pcie-phy-supply: Link to the LDO regulator powering the PCIE PHY
+  power domain (connected to PCIE_VP/VP_TX/VP_RX pads)
+
+- mipi-phy-supply: Link to the LDO regulator powering the MIPI PHY
+  power domain (connected to VDD_MIPI_1P0 pad)
+
+- usb-hsic-phy-supply: Link to the LDO regulator powering the USB HSIC
+  PHY power domain (connected to VDD_USB_H_1P2 pad)
+
+- #power-domain-cells: Should be 1, see below:
+
+The gpc node is a power-controller as documented by the generic power
+domain bindings in
+Documentation/devicetree/bindings/power/power_domain.txt.
+
+Example:
+
+	gpc: gpc@303a0000 {
+		compatible = "fsl,imx7d-gpc";
+		reg = <0x303a0000 0x10000>;
+		interrupt-controller;
+		interrupts = <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		#power-domain-cells = <1>;
+		pcie-phy-supply = <&reg_1p0d>;
+	};
+
+
+Specifying power domain for IP modules
+======================================
+
+IP cores belonging to a power domain should contain a 'power-domains'
+property that is a phandle pointing to the gpc device node and a
+DOMAIN_INDEX specifying the power domain the device belongs to.
+
+Example of a device that is part of the PU power domain:
+
+	pcie: pcie@0x33800000 {
+	      reg = <0x33800000 0x4000>,
+	            <0x4ff00000 0x80000>;
+		/* ... */
+		power-domains = <&gpc IMX7_POWER_DOMAIN_PCIE_PHY>;
+		/* ... */
+	};
+
+All valid DOMAIN_INDEX values are defined and can be found in
+include/dt-bindings/power/imx7-power.h
