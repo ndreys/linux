@@ -27,6 +27,22 @@
 #define IRQCHIP_DECLARE(name, compat, fn) OF_DECLARE_2(irqchip, name, compat, fn)
 
 /*
+ * Use this macro when you have a driver that requires two
+ * initialization routines, one at IRQCHIP_DECLARE, and one at
+ * platform device probe
+ */
+#define IRQCHIP_DECLARE_DRIVER(name, compat, fn)			\
+	static int __init						\
+	name##_of_irqchip_init_driver(struct device_node *np,		\
+				      struct device_node *parent)	\
+	{								\
+		of_node_clear_flag(np, OF_POPULATED);			\
+		return fn(np, parent);					\
+	}								\
+	OF_DECLARE_2(irqchip, name, compat, name##_of_irqchip_init_driver)
+
+
+/*
  * This macro must be used by the different irqchip drivers to declare
  * the association between their version and their initialization function.
  *
