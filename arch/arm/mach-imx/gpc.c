@@ -279,7 +279,7 @@ static int __init imx_gpc_init(struct device_node *node,
 
 	return 0;
 }
-IRQCHIP_DECLARE(imx_gpc, "fsl,imx6q-gpc", imx_gpc_init);
+IRQCHIP_DECLARE_DRIVER(imx_gpc, "fsl,imx6q-gpc", imx_gpc_init);
 
 void __init imx_gpc_check_dt(void)
 {
