@@ -92,6 +92,14 @@ config RESET_ZYNQ
 	help
 	  This enables the reset controller driver for Xilinx Zynq SoCs.
 
+config RESET_IMX7
+	bool "i.MX7 Reset Driver"
+	depends on SOC_IMX7D || COMPILE_TEST
+	select MFD_SYSCON
+	default SOC_IMX7D
+	help
+	  This enables the reset controller driver for i.MX7 SoCs.
+
 source "drivers/reset/sti/Kconfig"
 source "drivers/reset/hisilicon/Kconfig"
 source "drivers/reset/tegra/Kconfig"
