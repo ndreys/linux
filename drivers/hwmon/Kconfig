@@ -1851,6 +1851,14 @@ config SENSORS_XGENE
 	  If you say yes here you get support for the temperature
 	  and power sensors for APM X-Gene SoC.
 
+config SENSORS_ZII_PIC
+	tristate "ZII PIC sensors"
+	depends on MFD_ZII_PIC
+	help
+	  This driver provides support for the Zodiac Inflight Innovations PIC
+	  sensors (voltage, temperature, etc)
+
+
 if ACPI
 
 comment "ACPI drivers"
