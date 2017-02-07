@@ -133,4 +133,10 @@ config MESON_EFUSE
 	  This driver can also be built as a module. If so, the module
 	  will be called nvmem_meson_efuse.
 
+config ZII_PIC_EEPROM
+	tristate "ZII PIC EEPROM Support"
+	depends on MFD_ZII_PIC
+	help
+	  Say y here to enable ZII PIC EEPROM support.
+
 endif
