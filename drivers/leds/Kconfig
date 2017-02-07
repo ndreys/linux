@@ -678,6 +678,14 @@ config LEDS_NIC78BX
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-nic78bx.
 
+config LEDS_ZII_PIC
+	tristate "LED support for LEDs connected to PIC on ZII platform"
+	depends on LEDS_CLASS && MFD_ZII_PIC
+	help
+	  This option enables support for LEDs connected to Zodiac
+	  Inflight Innovations PIC controller.
+
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
