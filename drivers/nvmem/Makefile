@@ -28,3 +28,5 @@ obj-$(CONFIG_NVMEM_VF610_OCOTP)	+= nvmem-vf610-ocotp.o
 nvmem-vf610-ocotp-y		:= vf610-ocotp.o
 obj-$(CONFIG_MESON_EFUSE)	+= nvmem_meson_efuse.o
 nvmem_meson_efuse-y		:= meson-efuse.o
+obj-$(CONFIG_ZII_PIC_EEPROM)	+= nvmem-zii-pic-eeprom.o
+nvmem-zii-pic-eeprom-y		:= zii-pic-eeprom.o
