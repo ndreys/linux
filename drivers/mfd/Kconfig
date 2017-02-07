@@ -1621,6 +1621,15 @@ config MFD_STW481X
 	  in various ST Microelectronics and ST-Ericsson embedded
 	  Nomadik series.
 
+config MFD_ZII_PIC
+	tristate "ZII PIC MCU core driver"
+	select MFD_CORE
+	select SERIAL_DEV_BUS
+	help
+	  Select this to get support for the PIC microcontroller unit
+	  that is connected via dedicated UART port on several boards from
+	  Zodiac Inflight Innovations.
+
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100
 
