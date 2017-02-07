@@ -766,6 +766,13 @@ config LEDS_NIC78BX
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-nic78bx.
 
+config LEDS_RAVE_SP
+	tristate "LED support for RAVE SP devices"
+	depends on LEDS_CLASS && RAVE_SP_CORE
+	help
+	  This option enables support for LEDs connected to RAVE SP
+	  devices.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
