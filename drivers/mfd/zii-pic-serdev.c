@@ -49,6 +49,7 @@
 #include <linux/delay.h>
 #include <linux/crc-ccitt.h>
 
+extern int zii_pic_tracing;
 
 #define STX			0x02
 #define ETX			0x03
@@ -104,10 +105,9 @@ static void zii_pic_make_frame(struct zii_pic *zp,
 	}
 	zp->tx_buf[0] = STX;
 
-#ifdef DEBUG
-	print_hex_dump(KERN_DEBUG, "zii_pic tx: ", DUMP_PREFIX_NONE,
-			16, 1, zp->tx_buf, zp->tx_size, false);
-#endif
+	if (zii_pic_tracing)
+		print_hex_dump(KERN_INFO, "zii_pic tx: ", DUMP_PREFIX_NONE,
+				16, 1, zp->tx_buf, zp->tx_size, false);
 }
 
 static void zii_pic_send_frame(struct zii_pic *zp)
@@ -347,10 +347,9 @@ static void zii_pic_handle_rx_frame(struct zii_pic *zp)
 {
 	int ret;
 
-#ifdef DEBUG
-	print_hex_dump(KERN_DEBUG, "zii-pic rx: ", DUMP_PREFIX_NONE,
-			16, 1, zp->rx_buf, zp->rx_size, false);
-#endif
+	if (zii_pic_tracing)
+		print_hex_dump(KERN_INFO, "zii-pic rx: ", DUMP_PREFIX_NONE,
+				16, 1, zp->rx_buf, zp->rx_size, false);
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU1)
 		ret = zii_pic_check_remove_csum_8b2c(zp);
