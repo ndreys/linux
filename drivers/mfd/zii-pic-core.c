@@ -37,6 +37,10 @@
 
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
 
+int zii_pic_tracing;
+module_param_named(tracing, zii_pic_tracing, int, 0644);
+MODULE_PARM_DESC(tracing, "enable protocol tracing");
+
 static const struct mfd_cell zii_pic_devices[] = {
 	{
 		.of_compatible = "zii,pic-main-eeprom",
