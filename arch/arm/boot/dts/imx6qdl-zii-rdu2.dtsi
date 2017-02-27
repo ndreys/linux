@@ -247,7 +247,29 @@
                #clock-cells = <0>;
                compatible = "fixed-clock";
                clock-frequency = <19200000>;
-       };
+	};
+
+        status-leds {
+                compatible = "pwm-leds";
+
+                red {
+                        label = "status:red";
+                        pwms  = <&led_pwm_driver 0 5000000>;
+                        max-brightness = <255>;
+                };
+
+                green {
+                        label = "status:green";
+                        pwms  = <&led_pwm_driver 0 5000000>;
+                        max-brightness = <255>;
+                };
+
+                blue {
+                        label = "status:blue";
+                        pwms  = <&led_pwm_driver 0 5000000>;
+                        max-brightness = <255>;
+                };
+        };
 };
 
 &reg_arm {
@@ -370,7 +392,14 @@
                                };
                        };
                };
-       };
+        };
+
+        led_pwm_driver: pwm-driver@40 {
+                compatible = "nxp,pca9685-pwm";
+                #pwm-cells = <2>;
+                reg = <0x40>;
+        };
+
 };
 
 &i2c2 {
@@ -691,10 +720,27 @@
        };
 };
 
-&iomuxc {
-       pinctrl-names = "default";
+&gpio4 {
+        dps0-dat0 {
+                gpio-hog;
+                gpios = <21 GPIO_ACTIVE_HIGH>;
+                output-low;
+                line-name = "DSP0_DAT0";
+        };
+};
 
-       imx6qdl-zii-rdu2 {
+&iomuxc {
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_pwm_oe_hog>;
+
+
+        imx6qdl-zii-rdu2 {
+               pinctrl_pwm_oe_hog: pwm-oe-grp {
+                        fsl,pins = <
+                               MX6QDL_PAD_DISP0_DAT0__GPIO4_IO21 0x40000038
+                       >;
+               };
+
                pinctrl_codec1: dac1grp {
                        fsl,pins = <
                                MX6QDL_PAD_GPIO_0__GPIO1_IO00 0x40000038
@@ -899,7 +945,6 @@
                                MX6QDL_PAD_DI0_PIN15__IPU1_DI0_PIN15    0x100f9
                                MX6QDL_PAD_DI0_PIN2__IPU1_DI0_PIN02    0x100f9
                                MX6QDL_PAD_DI0_PIN3__IPU1_DI0_PIN03    0x100f9
-                               MX6QDL_PAD_DISP0_DAT0__IPU1_DISP0_DATA00   0x100f9
                                MX6QDL_PAD_DISP0_DAT1__IPU1_DISP0_DATA01   0x100f9
                                MX6QDL_PAD_DISP0_DAT2__IPU1_DISP0_DATA02   0x100f9
                                MX6QDL_PAD_DISP0_DAT3__IPU1_DISP0_DATA03   0x100f9
