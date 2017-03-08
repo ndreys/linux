@@ -257,7 +257,7 @@ static void zii_pic_setup_reboot(struct zii_pic *zp)
 	int ret;
 
 	zp->reboot_nb.notifier_call = zii_pic_reboot_notifier;
-	ret = unregister_reboot_notifier(&zp->reboot_nb);
+	ret = register_reboot_notifier(&zp->reboot_nb);
 	if (ret) {
 		dev_warn(&zp->sdev->dev,
 				"could not register reboot notifier\n");
@@ -266,7 +266,7 @@ static void zii_pic_setup_reboot(struct zii_pic *zp)
 
 	zp->reset_nb.notifier_call = zii_pic_reset_handler;
 	zp->reset_nb.priority = 255;
-	ret = unregister_restart_handler(&zp->reset_nb);
+	ret = register_restart_handler(&zp->reset_nb);
 	if (ret) {
 		dev_warn(&zp->sdev->dev,
 				"could not register restart handler\n");
