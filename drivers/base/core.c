@@ -651,6 +651,7 @@ void device_links_unbind_consumers(struct device *dev)
 
 			device_release_driver_internal(consumer, NULL,
 						       consumer->parent);
+			driver_deferred_probe_add(consumer);
 			put_device(consumer);
 			goto start;
 		}
