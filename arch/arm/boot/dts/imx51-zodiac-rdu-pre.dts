@@ -502,7 +502,7 @@
 	phy_type = "ulpi";
 	fsl,usbphy = <&usbh1phy>;
 	disable-over-current;
-	status = "okay";
+	/* status = "okay"; */
 };
 
 &usbh2 {
@@ -512,14 +512,14 @@
 	phy_type = "ulpi";
 	fsl,usbphy = <&usbh2phy>;
 	disable-over-current;
-	status = "okay";
+	/* status = "okay"; */
 };
 
 &usbotg {
 	dr_mode = "host";
 	disable-over-current;
 	phy_type = "utmi_wide";
-	status = "okay";
+	/* status = "okay"; */
 };
 
 &iomuxc {
