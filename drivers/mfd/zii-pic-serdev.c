@@ -110,41 +110,6 @@ static void zii_pic_make_frame(struct zii_pic *zp,
 				16, 1, zp->tx_buf, zp->tx_size, false);
 }
 
-static void zii_pic_send_frame(struct zii_pic *zp)
-{
-	u8 *buf = zp->tx_buf;
-	u8 size = zp->tx_size;
-	int ret;
-
-	while (1) {
-
-		zp->tx_flag = 0;	/* BEFORE s_d_write_buf() */
-
-		ret = serdev_device_write_buf(zp->sdev, buf, size);
-		if (ret < 0) {
-			dev_err_ratelimited(&zp->sdev->dev,
-					"error %d writing to serdev\n", ret);
-			return;
-		}
-
-		if (ret == size)
-			return;
-
-		buf += ret;
-		size -= ret;
-
-		wait_event(zp->tx_wait, zp->tx_flag == 1);
-	}
-}
-
-static void zii_pic_write_wakeup(struct serdev_device *sdev)
-{
-	struct zii_pic *zp = dev_get_drvdata(&sdev->dev);
-
-	zp->tx_flag = 1;
-	wake_up(&zp->tx_wait);
-}
-
 int zii_pic_exec(struct zii_pic *zp,
 		u8 code, const u8 *data, u8 data_size,
 		u8 reply_code, u8 *reply_data, u8 reply_data_size)
@@ -167,7 +132,7 @@ int zii_pic_exec(struct zii_pic *zp,
 		spin_unlock(&zp->reply_lock);
 	}
 
-	zii_pic_send_frame(zp);
+	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
 
 	mutex_unlock(&zp->tx_mutex);
 
@@ -196,7 +161,7 @@ void zii_pic_exec_reset(struct zii_pic *zp,
 	zp->ackid++;
 	zii_pic_make_frame(zp, code, zp->ackid, data, data_size);
 	WARN_ON(serdev_device_write_room(zp->sdev) < zp->tx_size);
-	zii_pic_send_frame(zp);
+	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
 }
 
 
@@ -235,7 +200,7 @@ static void zii_pic_send_event_reply(struct work_struct *work)
 	mutex_lock(&zp->tx_mutex);
 	zii_pic_make_frame(zp, zp->er_code, zp->er_ackid, NULL, 0);
 	zp->er_pending = 0;
-	zii_pic_send_frame(zp);
+	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
 	mutex_unlock(&zp->tx_mutex);
 }
 
@@ -437,7 +402,6 @@ static int zii_pic_receive_buf(struct serdev_device *sdev,
 
 static const struct serdev_device_ops zii_pic_serdev_device_ops = {
 	.receive_buf = zii_pic_receive_buf,
-	.write_wakeup = zii_pic_write_wakeup,
 };
 
 int zii_pic_comm_init(struct zii_pic *zp)
