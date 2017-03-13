@@ -67,48 +67,53 @@ static u8 checksum_8b2c(const u8 *buf, u8 size)
 	return 1 + ~sum;
 }
 
-static void zii_pic_make_frame(struct zii_pic *zp,
-		u8 code, u8 ackid, const u8 *data, u8 data_size)
+static int zii_pic_write(struct zii_pic *zp,
+			 u8 code, u8 ackid, const u8 *data, u8 data_size)
 {
 	u8 p, q, c, i;
+
+	unsigned char frame[ZII_PIC_TX_BUF_SIZE];
+	size_t length = 0;
 
 	BUG_ON(data_size > ZII_PIC_TX_BUF_SIZE);
 
 	p = 0;
-	zp->tx_buf[p++] = code;
-	zp->tx_buf[p++] = ackid;
+	frame[p++] = code;
+	frame[p++] = ackid;
 	while (data_size--)
-		zp->tx_buf[p++] = *data++;
+		frame[p++] = *data++;
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
-		u8 csum = checksum_8b2c(zp->tx_buf, p);
-		zp->tx_buf[p++] = csum;
+		u8 csum = checksum_8b2c(frame, p);
+		frame[p++] = csum;
 	} else {
-		u16 csum = crc_ccitt_false(0xffff, zp->tx_buf, p);
-		zp->tx_buf[p++] = csum >> 8;
-		zp->tx_buf[p++] = csum;
+		u16 csum = crc_ccitt_false(0xffff, frame, p);
+		frame[p++] = csum >> 8;
+		frame[p++] = csum;
 	}
 
 	for (i = 0, q = 2; i < p; i++, q++) {
-		c = zp->tx_buf[i];
+		c = frame[i];
 		if (c == STX || c == ETX || c == DLE)
 			q++;
 	}
 
-	zp->tx_size = q;
+	length = q;
 
-	zp->tx_buf[--q] = ETX;
+	frame[--q] = ETX;
 	while (q > 0) {
-		c = zp->tx_buf[--p];
-		zp->tx_buf[--q] = c;
+		c = frame[--p];
+		frame[--q] = c;
 		if (c == STX || c == ETX || c == DLE)
-			zp->tx_buf[--q] = DLE;
+			frame[--q] = DLE;
 	}
-	zp->tx_buf[0] = STX;
+	frame[0] = STX;
 
 	if (zii_pic_tracing)
 		print_hex_dump(KERN_INFO, "zii_pic tx: ", DUMP_PREFIX_NONE,
-				16, 1, zp->tx_buf, zp->tx_size, false);
+				16, 1, frame, length, false);
+
+	return serdev_device_write(zp->sdev, frame, length);
 }
 
 int zii_pic_exec(struct zii_pic *zp,
@@ -127,19 +132,13 @@ int zii_pic_exec(struct zii_pic *zp,
 
 	serdev_device_bus_lock(zp->sdev);
 
-	mutex_lock(&zp->tx_mutex);
-
-	zii_pic_make_frame(zp, code, ackid, data, data_size);
-
 	if (reply_code) {
 		mutex_lock(&zp->reply_lock);
 		zp->reply = &reply;
 		mutex_unlock(&zp->reply_lock);
 	}
 
-	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
-
-	mutex_unlock(&zp->tx_mutex);
+	zii_pic_write(zp, code, ackid, data, data_size);
 
 	if (reply_code &&
 	    !wait_for_completion_timeout(&reply.received, HZ)) {
@@ -158,7 +157,7 @@ EXPORT_SYMBOL(zii_pic_exec);
 
 void zii_pic_prepare_for_reset(struct zii_pic *zp)
 {
-	mutex_lock(&zp->tx_mutex);
+	serdev_device_bus_lock(zp->sdev);
 	serdev_device_write_flush(zp->sdev);
 }
 EXPORT_SYMBOL(zii_pic_prepare_for_reset);
@@ -166,9 +165,7 @@ EXPORT_SYMBOL(zii_pic_prepare_for_reset);
 void zii_pic_exec_reset(struct zii_pic *zp,
 		u8 code, const u8 *data, u8 data_size)
 {
-	zii_pic_make_frame(zp, code, 0, data, data_size);
-	WARN_ON(serdev_device_write_room(zp->sdev) < zp->tx_size);
-	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
+	zii_pic_write(zp, code, 0, data, data_size);
 }
 
 
@@ -198,11 +195,8 @@ static void zii_pic_send_event_reply(struct work_struct *work)
 {
 	struct zii_pic *zp = container_of(work, struct zii_pic, er_work);
 
-	mutex_lock(&zp->tx_mutex);
-	zii_pic_make_frame(zp, zp->er_code, zp->er_ackid, NULL, 0);
+	zii_pic_write(zp, zp->er_code, zp->er_ackid, NULL, 0);
 	zp->er_pending = 0;
-	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
-	mutex_unlock(&zp->tx_mutex);
 }
 
 static void zii_pic_handle_event(struct zii_pic *zp,
@@ -400,9 +394,6 @@ int zii_pic_comm_init(struct zii_pic *zp)
 	int ret;
 
 	mutex_init(&zp->reply_lock);
-
-	mutex_init(&zp->tx_mutex);
-	init_waitqueue_head(&zp->tx_wait);
 
 	mutex_init(&zp->eh_mutex);
 	INIT_WORK(&zp->er_work, zii_pic_send_event_reply);

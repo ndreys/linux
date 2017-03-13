@@ -77,12 +77,6 @@ struct zii_pic {
 	enum zii_pic_hw_id		hw_id;
 	u32				baud;
 
-	u8				tx_buf[ZII_PIC_TX_BUF_SIZE];
-	u8				tx_size;
-	u8				tx_flag;
-	struct mutex			tx_mutex;
-	wait_queue_head_t		tx_wait;
-
 	struct zii_pic_deframer deframer;
 	atomic_t ackid;
 
