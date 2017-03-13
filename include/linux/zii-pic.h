@@ -64,6 +64,14 @@ struct zii_pic_deframer {
 	size_t length;
 };
 
+struct zii_pic_reply {
+	size_t length;
+	void  *data;
+	u8     code;
+	u8     ackid;
+	struct completion received;
+};
+
 struct zii_pic {
 	struct serdev_device		*sdev;
 	enum zii_pic_hw_id		hw_id;
@@ -78,14 +86,10 @@ struct zii_pic {
 	struct zii_pic_deframer deframer;
 
 	struct mutex			cmd_mutex;
-	u8				ackid;
+	atomic_t			ackid;
 
-	u8				reply_code;
-	u8				reply_ackid;
-	u8				reply_data_size;
-	u8				*reply_data;
-	spinlock_t			reply_lock;
-	wait_queue_head_t		reply_wait;
+	struct mutex          reply_lock;
+	struct zii_pic_reply *reply;
 
 	struct zii_pic_eh_data		eh[ZII_PIC_EH_NR];
 	struct mutex			eh_mutex;

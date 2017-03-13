@@ -41,6 +41,7 @@
 
 /* #define DEBUG */
 
+#include <linux/atomic.h>
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/zii-pic.h>
@@ -114,34 +115,41 @@ int zii_pic_exec(struct zii_pic *zp,
 		u8 code, const u8 *data, u8 data_size,
 		u8 reply_code, u8 *reply_data, u8 reply_data_size)
 {
-	int ret;
+	int ret = 0;
+	const u8 ackid = (u8)atomic_inc_return(&zp->ackid);
+	struct zii_pic_reply reply = {
+		.code     = reply_code,
+		.ackid    = ackid,
+		.data     = reply_data,
+		.length   = reply_data_size,
+		.received = COMPLETION_INITIALIZER_ONSTACK(reply.received),
+	};
 
 	mutex_lock(&zp->cmd_mutex);
 
 	mutex_lock(&zp->tx_mutex);
 
-	zp->ackid++;
-	zii_pic_make_frame(zp, code, zp->ackid, data, data_size);
+	zii_pic_make_frame(zp, code, ackid, data, data_size);
 
 	if (reply_code) {
-		spin_lock(&zp->reply_lock);
-		zp->reply_code = reply_code;
-		zp->reply_ackid = zp->ackid;
-		zp->reply_data_size = reply_data_size;
-		zp->reply_data = reply_data;
-		spin_unlock(&zp->reply_lock);
+		mutex_lock(&zp->reply_lock);
+		zp->reply = &reply;
+		mutex_unlock(&zp->reply_lock);
 	}
 
 	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
 
 	mutex_unlock(&zp->tx_mutex);
 
-	if (reply_code && wait_event_timeout(zp->reply_wait,
-					!zp->reply_code, HZ) == 0) {
+	if (reply_code &&
+	    !wait_for_completion_timeout(&reply.received, HZ)) {
 		dev_err(&zp->sdev->dev, "command timeout\n");
 		ret = -ETIMEDOUT;
-	} else
-		ret = 0;
+
+		mutex_lock(&zp->reply_lock);
+		zp->reply = NULL;
+		mutex_unlock(&zp->reply_lock);
+	}
 
 	mutex_unlock(&zp->cmd_mutex);
 	return ret;
@@ -158,8 +166,7 @@ EXPORT_SYMBOL(zii_pic_prepare_for_reset);
 void zii_pic_exec_reset(struct zii_pic *zp,
 		u8 code, const u8 *data, u8 data_size)
 {
-	zp->ackid++;
-	zii_pic_make_frame(zp, code, zp->ackid, data, data_size);
+	zii_pic_make_frame(zp, code, 0, data, data_size);
 	WARN_ON(serdev_device_write_room(zp->sdev) < zp->tx_size);
 	serdev_device_write(zp->sdev, zp->tx_buf, zp->tx_size);
 }
@@ -270,38 +277,35 @@ void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code)
 }
 EXPORT_SYMBOL(zii_pic_cleanup_event_handler);
 
-static void zii_pic_handle_reply(struct zii_pic *zp,
-				 const unsigned char *data, size_t length)
+static void zii_pic_receive_reply(struct zii_pic *zp,
+				  const unsigned char *data, size_t length)
 {
-	spin_lock(&zp->reply_lock);
+	mutex_lock(&zp->reply_lock);
+	{
+		struct zii_pic_reply *reply = zp->reply;
 
-	if (!zp->reply_code) {
-		spin_unlock(&zp->reply_lock);
-		dev_warn(&zp->sdev->dev,
-			"got reply frame when not expecting one");
-		return;
+		if (reply) {
+			if (reply->code  == data[0] &&
+			    reply->ackid == data[1]) {
+				if (reply->length)
+					memcpy(reply->data, &data[2],
+					       min(reply->length, length - 2));
+				complete(&reply->received);
+				zp->reply = NULL;
+			} else {
+				dev_warn(&zp->sdev->dev,
+					 "unexpected reply: need code=%02x ackid=%02x "
+					 "size>=%d, got code=%02x ackid=%02x size=%d\n",
+					 reply->code, reply->ackid,
+					 reply->length,
+					 data[0], data[1], length - 2);
+			}
+		} else {
+			dev_warn(&zp->sdev->dev,
+				 "got reply frame when not expecting one");
+		}
 	}
-
-	if (data[0] != zp->reply_code ||
-	    data[1] != zp->reply_ackid ||
-	    length - 2 < zp->reply_data_size) {
-		spin_unlock(&zp->reply_lock);
-		dev_warn(&zp->sdev->dev,
-			"unexpected reply: need code=%02x ackid=%02x size>=%d, got code=%02x ackid=%02x size=%d\n",
-			zp->reply_code, zp->reply_ackid,
-			zp->reply_data_size,
-			data[0], data[1], length - 2);
-		return;
-	}
-
-	if (zp->reply_data_size)
-		memcpy(zp->reply_data, &data[2],
-					zp->reply_data_size);
-
-	zp->reply_code = 0;
-	wake_up(&zp->reply_wait);
-
-	spin_unlock(&zp->reply_lock);
+	mutex_unlock(&zp->reply_lock);
 }
 
 static void zii_pic_receive_frame(struct zii_pic *zp,
@@ -328,7 +332,7 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
 		zii_pic_handle_event(zp, data, length);
 	else
-		zii_pic_handle_reply(zp, data, length);
+		zii_pic_receive_reply(zp, data, length);
 }
 
 static int zii_pic_receive_buf(struct serdev_device *serdev,
@@ -395,11 +399,12 @@ int zii_pic_comm_init(struct zii_pic *zp)
 {
 	int ret;
 
+	mutex_init(&zp->reply_lock);
+
 	mutex_init(&zp->tx_mutex);
 	init_waitqueue_head(&zp->tx_wait);
 
 	mutex_init(&zp->cmd_mutex);
-	init_waitqueue_head(&zp->reply_wait);
 
 	mutex_init(&zp->eh_mutex);
 	INIT_WORK(&zp->er_work, zii_pic_send_event_reply);
