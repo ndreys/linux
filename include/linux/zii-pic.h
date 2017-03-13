@@ -84,9 +84,7 @@ struct zii_pic {
 	wait_queue_head_t		tx_wait;
 
 	struct zii_pic_deframer deframer;
-
-	struct mutex			cmd_mutex;
-	atomic_t			ackid;
+	atomic_t ackid;
 
 	struct mutex          reply_lock;
 	struct zii_pic_reply *reply;

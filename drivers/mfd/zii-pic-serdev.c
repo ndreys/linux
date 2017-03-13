@@ -125,7 +125,7 @@ int zii_pic_exec(struct zii_pic *zp,
 		.received = COMPLETION_INITIALIZER_ONSTACK(reply.received),
 	};
 
-	mutex_lock(&zp->cmd_mutex);
+	serdev_device_bus_lock(zp->sdev);
 
 	mutex_lock(&zp->tx_mutex);
 
@@ -151,7 +151,7 @@ int zii_pic_exec(struct zii_pic *zp,
 		mutex_unlock(&zp->reply_lock);
 	}
 
-	mutex_unlock(&zp->cmd_mutex);
+	serdev_device_bus_unlock(zp->sdev);
 	return ret;
 }
 EXPORT_SYMBOL(zii_pic_exec);
@@ -403,8 +403,6 @@ int zii_pic_comm_init(struct zii_pic *zp)
 
 	mutex_init(&zp->tx_mutex);
 	init_waitqueue_head(&zp->tx_wait);
-
-	mutex_init(&zp->cmd_mutex);
 
 	mutex_init(&zp->eh_mutex);
 	INIT_WORK(&zp->er_work, zii_pic_send_event_reply);
