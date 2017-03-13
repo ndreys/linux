@@ -27,12 +27,6 @@ enum zii_pic_hw_id {
 	ZII_PIC_HW_ID_RDU2,
 };
 
-enum zii_pic_rx_state {
-	ZII_PIC_EXPECT_SOF = 0,
-	ZII_PIC_EXPECT_DATA,
-	ZII_PIC_EXPECT_ESCAPED_DATA,
-};
-
 struct zii_pic_version {
 	u8	hw;
 	u16	major;
@@ -58,6 +52,18 @@ struct zii_pic_eh_data {
 };
 
 
+enum zii_pic_deframer_state {
+	ZII_PIC_EXPECT_SOF,
+	ZII_PIC_EXPECT_DATA,
+	ZII_PIC_EXPECT_ESCAPED_DATA,
+};
+
+struct zii_pic_deframer {
+	enum zii_pic_deframer_state state;
+	unsigned char data[ZII_PIC_RX_BUF_SIZE];
+	size_t length;
+};
+
 struct zii_pic {
 	struct serdev_device		*sdev;
 	enum zii_pic_hw_id		hw_id;
@@ -69,9 +75,7 @@ struct zii_pic {
 	struct mutex			tx_mutex;
 	wait_queue_head_t		tx_wait;
 
-	u8				rx_buf[ZII_PIC_RX_BUF_SIZE];
-	u8				rx_size;
-	enum zii_pic_rx_state		rx_state;
+	struct zii_pic_deframer deframer;
 
 	struct mutex			cmd_mutex;
 	u8				ackid;

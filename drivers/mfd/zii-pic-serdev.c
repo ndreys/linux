@@ -198,9 +198,10 @@ static void zii_pic_send_event_reply(struct work_struct *work)
 	mutex_unlock(&zp->tx_mutex);
 }
 
-static void zii_pic_handle_event(struct zii_pic *zp)
+static void zii_pic_handle_event(struct zii_pic *zp,
+				 const unsigned char *data, size_t length)
 {
-	u8 code = zp->rx_buf[0];
+	u8 code = data[0];
 	struct zii_pic_eh_data *ehd = &zp->eh[code - ZII_PIC_EVENT_CODE_MIN];
 
 	mutex_lock(&zp->eh_mutex);
@@ -217,10 +218,10 @@ static void zii_pic_handle_event(struct zii_pic *zp)
 		goto out;
 	}
 
-	ehd->handler(ehd->context, code, &zp->rx_buf[2], zp->rx_size - 2);
+	ehd->handler(ehd->context, code, &data[2], length - 2);
 
 	zp->er_code = ehd->reply_code;
-	zp->er_ackid = zp->rx_buf[1];
+	zp->er_ackid = data[1];
 	schedule_work(&zp->er_work);
 out:
 	mutex_unlock(&zp->eh_mutex);
@@ -269,7 +270,8 @@ void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code)
 }
 EXPORT_SYMBOL(zii_pic_cleanup_event_handler);
 
-static void zii_pic_handle_reply(struct zii_pic *zp)
+static void zii_pic_handle_reply(struct zii_pic *zp,
+				 const unsigned char *data, size_t length)
 {
 	spin_lock(&zp->reply_lock);
 
@@ -280,20 +282,20 @@ static void zii_pic_handle_reply(struct zii_pic *zp)
 		return;
 	}
 
-	if (zp->rx_buf[0] != zp->reply_code ||
-	    zp->rx_buf[1] != zp->reply_ackid ||
-	    zp->rx_size - 2 < zp->reply_data_size) {
+	if (data[0] != zp->reply_code ||
+	    data[1] != zp->reply_ackid ||
+	    length - 2 < zp->reply_data_size) {
 		spin_unlock(&zp->reply_lock);
 		dev_warn(&zp->sdev->dev,
 			"unexpected reply: need code=%02x ackid=%02x size>=%d, got code=%02x ackid=%02x size=%d\n",
 			zp->reply_code, zp->reply_ackid,
 			zp->reply_data_size,
-			zp->rx_buf[0], zp->rx_buf[1], zp->rx_size - 2);
+			data[0], data[1], length - 2);
 		return;
 	}
 
 	if (zp->reply_data_size)
-		memcpy(zp->reply_data, &zp->rx_buf[2],
+		memcpy(zp->reply_data, &data[2],
 					zp->reply_data_size);
 
 	zp->reply_code = 0;
@@ -302,92 +304,87 @@ static void zii_pic_handle_reply(struct zii_pic *zp)
 	spin_unlock(&zp->reply_lock);
 }
 
-static void zii_pic_handle_rx_frame(struct zii_pic *zp)
+static void zii_pic_receive_frame(struct zii_pic *zp,
+				  const unsigned char *data,
+				  size_t length)
 {
 	if (zii_pic_tracing)
 		print_hex_dump(KERN_INFO, "zii-pic rx: ", DUMP_PREFIX_NONE,
-				16, 1, zp->rx_buf, zp->rx_size, false);
+				16, 1, data, length, false);
 
-	if (unlikely(zp->rx_size < 3)) {
+	if (unlikely(length < 3)) {
 		dev_warn(&zp->sdev->dev, "dropping short frame\n");
 		return;
 	}
 
-	if (!zp->valid_csum(zp->rx_buf, zp->rx_size)) {
+	if (!zp->valid_csum(data, length)) {
 		dev_warn(&zp->sdev->dev, "dropping bad frame\n");
 		return;
 	}
 
-	zp->rx_size -= zp->csum_size;
+	length -= zp->csum_size;
 
-	if (zp->rx_buf[0] >= ZII_PIC_EVENT_CODE_MIN &&
-	    zp->rx_buf[0] <= ZII_PIC_EVENT_CODE_MAX)
-		zii_pic_handle_event(zp);
+	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
+	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
+		zii_pic_handle_event(zp, data, length);
 	else
-		zii_pic_handle_reply(zp);
+		zii_pic_handle_reply(zp, data, length);
 }
 
-static int zii_pic_receive_buf(struct serdev_device *sdev,
-		const unsigned char *buf, size_t size)
+static int zii_pic_receive_buf(struct serdev_device *serdev,
+			       const unsigned char *buf, size_t size)
 {
-	struct zii_pic *zp = dev_get_drvdata(&sdev->dev);
-	u8 c;
-	size_t i;
+	struct zii_pic *pic = dev_get_drvdata(&serdev->dev);
+	struct zii_pic_deframer *deframer = &pic->deframer;
+	const unsigned char *src = buf;
+	const unsigned char *end = buf + size;
 
-	for (i = 0; i < size; i++) {
+	while (src < end) {
+		const unsigned char byte = *src++;
 
-		c = buf[i];
-
-		switch (zp->rx_state) {
+		switch (deframer->state) {
 
 		case ZII_PIC_EXPECT_SOF:
-
-			if (c == STX)
-				zp->rx_state = ZII_PIC_EXPECT_DATA;
-			break;
+			if (byte == STX)
+				deframer->state = ZII_PIC_EXPECT_DATA;
+			continue;
 
 		case ZII_PIC_EXPECT_DATA:
-
-			if (unlikely(c == STX)) {
-				dev_warn(&zp->sdev->dev,
-						"dropping incomplete frame\n");
-				zp->rx_size = 0;
-				break;
+			switch (byte) {
+			case ETX:
+				zii_pic_receive_frame(pic,
+						      deframer->data,
+						      deframer->length);
+			case STX: /* FALLTHROUGH */
+				if (unlikely(byte == STX))
+					dev_warn(&serdev->dev,
+						 "Frame has second STX "
+						 "before ETX. Dropping it\n");
+				goto reset_framer;
+			case DLE:
+				deframer->state = ZII_PIC_EXPECT_ESCAPED_DATA;
+				continue;
 			}
 
-			if (c == ETX) {
-				zii_pic_handle_rx_frame(zp);
-				zp->rx_size = 0;
-				zp->rx_state = ZII_PIC_EXPECT_SOF;
-				break;
+		case ZII_PIC_EXPECT_ESCAPED_DATA: /* FALLTHROUGH */
+			deframer->data[deframer->length++] = byte;
+
+			if (deframer->length == sizeof(deframer->data)) {
+				dev_warn(&serdev->dev, "Frame too long. Dropping it\n");
+				goto reset_framer;
 			}
 
-			if (zp->rx_size == sizeof(zp->rx_buf)) {
-				dev_warn(&zp->sdev->dev,
-						"dropping too long frame\n");
-				zp->rx_size = 0;
-				zp->rx_state = ZII_PIC_EXPECT_SOF;
-				break;
-			}
-
-			if (c == DLE)
-				zp->rx_state = ZII_PIC_EXPECT_ESCAPED_DATA;
-			else
-				zp->rx_buf[zp->rx_size++] = c;
+			deframer->state = ZII_PIC_EXPECT_DATA;
 			break;
-
-		case ZII_PIC_EXPECT_ESCAPED_DATA:
-
-			zp->rx_buf[zp->rx_size++] = c;
-			zp->rx_state = ZII_PIC_EXPECT_DATA;
-			break;
-
-		default:
-			BUG();
 		}
 	}
 
-	return size;
+	return src - buf;
+
+reset_framer:
+	deframer->state  = ZII_PIC_EXPECT_SOF;
+	deframer->length = 0;
+	return src - buf;
 }
 
 static const struct serdev_device_ops zii_pic_serdev_device_ops = {
