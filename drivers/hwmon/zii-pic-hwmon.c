@@ -103,15 +103,17 @@ static int halfdg_to_mdg(u8 *data)
 static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 		enum zii_pic_sensor sensor)
 {
-	u8 cmd[1], rsp[2];
+	u8 cmd[3], rsp[2];
 	int ret;
 
 	/* Voltage */
 	if (sensor >= ZII_PIC_SENSOR_RMB_3V3_PMIC &&
 	    sensor <= ZII_PIC_SENSOR_DEB_28V_RDU) {
-		cmd[0] = sensor - ZII_PIC_SENSOR_RMB_3V3_PMIC;
+		cmd[0] = CMD_RDU2_GET_VOLTAGE;
+		cmd[1] = 0;
+		cmd[2] = sensor - ZII_PIC_SENSOR_RMB_3V3_PMIC;
 		ret = zii_pic_exec(hwmon->zp,
-				CMD_RDU2_GET_VOLTAGE, cmd, sizeof(cmd),
+				   cmd, sizeof(cmd),
 				RSP_RDU2_GET_VOLTAGE, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
@@ -121,9 +123,11 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 
 	/* Current */
 	if (sensor == ZII_PIC_SENSOR_RMB_28V_CURRENT) {
-		cmd[0] = 0;
+		cmd[0] = CMD_RDU2_GET_CURRENT;
+		cmd[1] = 0;
+		cmd[2] = 0;
 		ret = zii_pic_exec(hwmon->zp,
-				CMD_RDU2_GET_CURRENT, cmd, sizeof(cmd),
+				   cmd, sizeof(cmd),
 				RSP_RDU2_GET_CURRENT, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
@@ -134,9 +138,11 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 	/* Temperature */
 	if (sensor >= ZII_PIC_SENSOR_TEMPERATURE &&
 	    sensor <= ZII_PIC_SENSOR_TEMPERATURE_2) {
-		cmd[0] = sensor - ZII_PIC_SENSOR_TEMPERATURE;
+		cmd[0] = CMD_RDU2_GET_TEMPERATURE;
+		cmd[1] = 0;
+		cmd[2] = sensor - ZII_PIC_SENSOR_TEMPERATURE;
 		ret = zii_pic_exec(hwmon->zp,
-				CMD_RDU2_GET_TEMPERATURE, cmd, sizeof(cmd),
+				   cmd, sizeof(cmd),
 				RSP_RDU2_GET_TEMPERATURE, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
@@ -163,8 +169,10 @@ static int rdu1_read_sensor(struct zii_pic_hwmon *hwmon,
 		u8 v[2];
 	} __packed rsp;
 
+	u8 cmd[] = { CMD_RDU1_GET_STATUS, 0 };
+
 	int ret = zii_pic_exec(hwmon->zp,
-			CMD_RDU1_GET_STATUS, NULL, 0,
+			       cmd, sizeof(cmd),
 			RSP_RDU1_GET_STATUS, (u8 *)&rsp, sizeof(rsp));
 	if (ret)
 		return ret;
@@ -201,45 +209,51 @@ static int rdu1_read_sensor(struct zii_pic_hwmon *hwmon,
 static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		enum zii_pic_sensor sensor)
 {
+	u8 cmd[2];
 	u8 rsp[2];
 	int ret;
 
 	switch (sensor) {
 	case ZII_PIC_SENSOR_28V:
+		cmd[0] = OCMD_GET_28V;
 		ret = zii_pic_exec(hwmon->zp,
-				OCMD_GET_28V, NULL, 0,
+				   cmd, sizeof(cmd),
 				ORSP_GET_28V, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
 			return f88_to_1000x(rsp);
 	case ZII_PIC_SENSOR_12V:
+		cmd[0] = OCMD_GET_12V;
 		ret = zii_pic_exec(hwmon->zp,
-				OCMD_GET_12V, NULL, 0,
+				   cmd, sizeof(cmd),
 				ORSP_GET_12V, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
 			return f88_to_1000x(rsp);
 	case ZII_PIC_SENSOR_5V:
+		cmd[0] = OCMD_GET_5V;
 		ret = zii_pic_exec(hwmon->zp,
-				OCMD_GET_5V, NULL, 0,
+				   cmd, sizeof(cmd),
 				ORSP_GET_5V, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
 			return f88_to_1000x(rsp);
 	case ZII_PIC_SENSOR_3V3:
+		cmd[0] = OCMD_GET_3V3;
 		ret = zii_pic_exec(hwmon->zp,
-				OCMD_GET_3V3, NULL, 0,
+				   cmd, sizeof(cmd),
 				ORSP_GET_3V3, rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
 			return f88_to_1000x(rsp);
 	case ZII_PIC_SENSOR_TEMPERATURE:
+		cmd[0] = OCMD_GET_TERMERATURE;
 		ret = zii_pic_exec(hwmon->zp,
-				OCMD_GET_TERMERATURE, NULL, 0,
+				   cmd, sizeof(cmd),
 				ORSP_GET_TERMERATURE, rsp, sizeof(rsp));
 		if (ret)
 			return ret;

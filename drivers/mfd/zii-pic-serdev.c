@@ -56,7 +56,7 @@ extern int zii_pic_tracing;
 #define ETX			0x03
 #define DLE			0x10
 
-static u8 checksum_8b2c(const u8 *buf, u8 size)
+static void csum_8b2c(const u8 *buf, size_t size, u8 *crc)
 {
 	u8 i;
 	u8 sum = 0;
@@ -64,61 +64,64 @@ static u8 checksum_8b2c(const u8 *buf, u8 size)
 	for (i = 0; i < size; i++)
 		sum += buf[i];
 
-	return 1 + ~sum;
+	*crc = 1 + ~sum;
 }
 
-static int zii_pic_write(struct zii_pic *zp,
-			 u8 code, u8 ackid, const u8 *data, u8 data_size)
+static void csum_ccitt(const u8 *buf, size_t size, u8 *crc)
 {
-	u8 p, q, c, i;
 
+	const u16 calculated = crc_ccitt_false(0xffff, buf, size);
+
+	*(__le16 *)crc = cpu_to_le16(calculated);
+}
+
+static void *stuff(unsigned char *dest, const unsigned char *src, size_t n)
+{
+	size_t i;
+	for (i = 0; i < n; i++) {
+		const unsigned char byte = *src++;
+
+		switch (byte) {
+		case STX:
+		case ETX:
+		case DLE:
+			*dest++ = DLE;
+		default:
+			*dest++ = byte;
+		}
+	}
+
+	return dest;
+}
+
+static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
+{
+	size_t length;
+	const size_t csum_size = pic->csum_size;
+	unsigned char crc[csum_size];
 	unsigned char frame[ZII_PIC_TX_BUF_SIZE];
-	size_t length = 0;
+	unsigned char *dest = frame;
 
 	BUG_ON(data_size > ZII_PIC_TX_BUF_SIZE);
 
-	p = 0;
-	frame[p++] = code;
-	frame[p++] = ackid;
-	while (data_size--)
-		frame[p++] = *data++;
+	pic->csum(data, data_size, crc);
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
-		u8 csum = checksum_8b2c(frame, p);
-		frame[p++] = csum;
-	} else {
-		u16 csum = crc_ccitt_false(0xffff, frame, p);
-		frame[p++] = csum >> 8;
-		frame[p++] = csum;
-	}
+	*dest++ = STX;
+	dest = stuff(dest, data, data_size);
+	dest = stuff(dest, crc, csum_size);
+	*dest++ = ETX;
 
-	for (i = 0, q = 2; i < p; i++, q++) {
-		c = frame[i];
-		if (c == STX || c == ETX || c == DLE)
-			q++;
-	}
+	length = dest - frame;
 
-	length = q;
+	print_hex_dump(KERN_CRIT, "zii_pic tx: ", DUMP_PREFIX_NONE,
+		       16, 1, frame, length, false);
 
-	frame[--q] = ETX;
-	while (q > 0) {
-		c = frame[--p];
-		frame[--q] = c;
-		if (c == STX || c == ETX || c == DLE)
-			frame[--q] = DLE;
-	}
-	frame[0] = STX;
-
-	if (zii_pic_tracing)
-		print_hex_dump(KERN_INFO, "zii_pic tx: ", DUMP_PREFIX_NONE,
-				16, 1, frame, length, false);
-
-	return serdev_device_write(zp->sdev, frame, length);
+	return serdev_device_write(pic->sdev, frame, length);
 }
 
 int zii_pic_exec(struct zii_pic *zp,
-		u8 code, const u8 *data, u8 data_size,
-		u8 reply_code, u8 *reply_data, u8 reply_data_size)
+		 u8 *data, u8 data_size,
+		 u8 reply_code, u8 *reply_data, u8 reply_data_size)
 {
 	int ret = 0;
 	const u8 ackid = (u8)atomic_inc_return(&zp->ackid);
@@ -138,7 +141,9 @@ int zii_pic_exec(struct zii_pic *zp,
 		mutex_unlock(&zp->reply_lock);
 	}
 
-	zii_pic_write(zp, code, ackid, data, data_size);
+	data[1] = ackid;
+
+	zii_pic_write(zp, data, data_size);
 
 	if (reply_code &&
 	    !wait_for_completion_timeout(&reply.received, HZ)) {
@@ -163,32 +168,9 @@ void zii_pic_prepare_for_reset(struct zii_pic *zp)
 EXPORT_SYMBOL(zii_pic_prepare_for_reset);
 
 void zii_pic_exec_reset(struct zii_pic *zp,
-		u8 code, const u8 *data, u8 data_size)
+			const u8 *data, u8 data_size)
 {
-	zii_pic_write(zp, code, 0, data, data_size);
-}
-
-
-static bool
-zii_pic_frame_valid_csum_8b2c(const unsigned char *data,
-			      size_t length)
-{
-	const u8 expected   = data[length - 1];
-	const u8 calculated = checksum_8b2c(data, length - 1);
-
-	return expected == calculated;
-}
-
-static bool
-zii_pic_frame_valid_csum_ccitt_false(const unsigned char *data,
-				     size_t length)
-{
-	const u16 expected   =
-		le16_to_cpup((const __le16 *)&data[length - 2]);
-	const u16 calculated = crc_ccitt_false(0xffff,
-					       data, length - 2);
-
-	return expected == calculated;
+	zii_pic_write(zp, data, data_size);
 }
 
 int zii_pic_set_event_handler(struct zii_pic *zp,
@@ -232,6 +214,7 @@ EXPORT_SYMBOL(zii_pic_cleanup_event_handler);
 static void zii_pic_receive_event(struct zii_pic *zp,
 				 const unsigned char *data, size_t length)
 {
+	u8 cmd[2];
 	u8 code = data[0];
 	struct zii_pic_eh_data *ehd = &zp->eh[code - ZII_PIC_EVENT_CODE_MIN];
 
@@ -244,7 +227,10 @@ static void zii_pic_receive_event(struct zii_pic *zp,
 
 	ehd->handler(ehd->context, code, &data[2], length - 2);
 
-	zii_pic_write(zp, ehd->reply_code, data[1], NULL, 0);
+	cmd[0] = ehd->reply_code;
+	cmd[1] = data[1];
+
+	zii_pic_write(zp, cmd, sizeof(cmd));
 }
 
 static void zii_pic_receive_reply(struct zii_pic *zp,
@@ -282,6 +268,10 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 				  const unsigned char *data,
 				  size_t length)
 {
+	const size_t csum_size = zp->csum_size;
+	u8 crc_calculated[csum_size];
+	const u8 *crc_reported = &data[length - zp->csum_size];
+
 	if (zii_pic_tracing)
 		print_hex_dump(KERN_INFO, "zii-pic rx: ", DUMP_PREFIX_NONE,
 				16, 1, data, length, false);
@@ -291,12 +281,14 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 		return;
 	}
 
-	if (!zp->valid_csum(data, length)) {
+	zp->csum(data, length - csum_size, crc_calculated);
+
+	if (memcmp(crc_calculated, crc_reported, csum_size)) {
 		dev_warn(&zp->sdev->dev, "dropping bad frame\n");
 		return;
 	}
 
-	length -= zp->csum_size;
+	length -= csum_size;
 
 	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
 	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
@@ -373,10 +365,10 @@ int zii_pic_comm_init(struct zii_pic *zp)
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
 		zp->csum_size  = 1;
-		zp->valid_csum = zii_pic_frame_valid_csum_8b2c;
+		zp->csum = csum_8b2c;
 	} else {
 		zp->csum_size  = 2;
-		zp->valid_csum = zii_pic_frame_valid_csum_ccitt_false;
+		zp->csum = csum_ccitt;
 	}
 
 	serdev_device_set_client_ops(zp->sdev, &zii_pic_serdev_device_ops);

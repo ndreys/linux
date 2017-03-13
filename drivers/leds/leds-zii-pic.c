@@ -123,11 +123,11 @@ static inline void zl_unlock(struct zii_pic_leds *zleds, enum zii_led_id id)
 
 static int zl_fetch(struct zii_pic_leds *zleds, enum zii_led_id id)
 {
-	u8 cmd[] = { 0, id, 0, 0, 0, 0, 0, 0, 0 };
+	u8 cmd[] = { CMD_LEDS, 0, 0, id, 0, 0, 0, 0, 0, 0, 0 };
 	u8 rsp[5];
 	int ret;
 
-	ret = zii_pic_exec(zleds->zp, CMD_LEDS, cmd, sizeof(cmd),
+	ret = zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
 			RSP_LEDS, rsp, sizeof(rsp));
 	if (ret)
 		return ret;
@@ -151,7 +151,7 @@ static int zl_apply(struct zii_pic_leds *zleds, enum zii_led_id id)
 {
 	enum zii_led_state state;
 	u8 a, r, g, b;
-	u8 cmd[9];
+	u8 cmd[11];
 
 	a = zleds->l[id].v[CHANNEL_A];
 	r = zleds->l[id].v[CHANNEL_R];
@@ -159,17 +159,19 @@ static int zl_apply(struct zii_pic_leds *zleds, enum zii_led_id id)
 	b = zleds->l[id].v[CHANNEL_B];
 	state = (a | r | g | b) ? ZII_LED_STATE_ON : ZII_LED_STATE_OFF;
 
-	cmd[0] = 1;
-	cmd[1] = id;
-	cmd[2] = state;
-	cmd[3] = 0;
-	cmd[4] = 0;
-	cmd[5] = a;
-	cmd[6] = r;
-	cmd[7] = g;
-	cmd[8] = b;
+	cmd[0] = CMD_LEDS;
+	cmd[1] = 0;
+	cmd[2] = 1;
+	cmd[3] = id;
+	cmd[4] = state;
+	cmd[5] = 0;
+	cmd[6] = 0;
+	cmd[7] = a;
+	cmd[8] = r;
+	cmd[9] = g;
+	cmd[10] = b;
 
-	return zii_pic_exec(zleds->zp, CMD_LEDS, cmd, sizeof(cmd),
+	return zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
 			RSP_LEDS, NULL, 0);
 }
 

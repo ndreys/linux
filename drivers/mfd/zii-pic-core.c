@@ -80,13 +80,13 @@ static const struct mfd_cell zii_pic_devices[] = {
 
 static void zii_pic_get_fw_version(struct zii_pic *zp)
 {
-	u8 code = zii_pic_code(zp,
-			CMD_GET_FW_VERSION, OCMD_GET_FW_VERSION);
+	u8 cmd[2] = { zii_pic_code(zp,
+				   CMD_GET_FW_VERSION, OCMD_GET_FW_VERSION), 0};
 	u8 reply_code = zii_pic_code(zp,
 			RSP_GET_FW_VERSION, ORSP_GET_FW_VERSION);
 	int ret;
 
-	ret = zii_pic_exec(zp, code, NULL, 0,	reply_code,
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
 			(u8 *) &zp->fw_version, sizeof(zp->fw_version));
 	if (ret) {
 		dev_warn(&zp->sdev->dev, "failed to get fw version\n");
@@ -102,13 +102,13 @@ static void zii_pic_get_fw_version(struct zii_pic *zp)
 
 static void zii_pic_get_bl_version(struct zii_pic *zp)
 {
-	u8 code = zii_pic_code(zp,
-			CMD_GET_BL_VERSION, OCMD_GET_BL_VERSION);
+	u8 cmd[2] = { zii_pic_code(zp,
+				   CMD_GET_BL_VERSION, OCMD_GET_BL_VERSION), 0 };
 	u8 reply_code = zii_pic_code(zp,
 			RSP_GET_BL_VERSION, ORSP_GET_BL_VERSION);
 	int ret;
 
-	ret = zii_pic_exec(zp, code, NULL, 0,	reply_code,
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
 			(u8 *) &zp->bl_version, sizeof(zp->bl_version));
 	if (ret) {
 		dev_warn(&zp->sdev->dev,
@@ -125,13 +125,13 @@ static void zii_pic_get_bl_version(struct zii_pic *zp)
 
 static void zii_pic_get_reset_reason(struct zii_pic *zp)
 {
-	u8 code = zii_pic_code(zp,
-			CMD_GET_RESET_REASON, OCMD_GET_RESET_REASON);
+	u8 cmd[2] = { zii_pic_code(zp,
+				   CMD_GET_RESET_REASON, OCMD_GET_RESET_REASON), 0 };
 	u8 reply_code = zii_pic_code(zp,
 			RSP_GET_RESET_REASON, ORSP_GET_RESET_REASON);
 	int ret;
 
-	ret = zii_pic_exec(zp, code, NULL, 0, reply_code, &zp->reset_reason, 1);
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code, &zp->reset_reason, 1);
 	if (ret) {
 		dev_warn(&zp->sdev->dev, "failed to get reset reason\n");
 		zp->reset_reason = 0xFF;
@@ -148,10 +148,10 @@ static void zii_pic_get_boot_source(struct zii_pic *zp)
 {
 	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
 	u8 reply_code = zii_pic_code(zp, RSP_BOOT_SOURCE, ORSP_BOOT_SOURCE);
-	u8 cmd[] = {0, 0};
+	u8 cmd[] = {code, 0, 0, 0};
 	int ret;
 
-	ret = zii_pic_exec(zp, code, cmd, sizeof(cmd),
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
 			reply_code, &zp->boot_source, 1);
 	if (ret) {
 		dev_warn(&zp->sdev->dev, "failed to get boot source\n");
@@ -163,10 +163,10 @@ static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
 {
 	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
 	u8 reply_code = zii_pic_code(zp, RSP_BOOT_SOURCE, ORSP_BOOT_SOURCE);
-	u8 cmd[] = {1, boot_src};
+	u8 cmd[] = {code, 0, 1, boot_src};
 	int ret;
 
-	ret = zii_pic_exec(zp, code, cmd, sizeof(cmd), reply_code, NULL, 0);
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code, NULL, 0);
 	if (ret)
 		return ret;
 
@@ -191,8 +191,9 @@ static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 	} __packed reply;
 
 	int ret;
+	u8 cmd[] = {CMD_GET_STATUS, 0};
 
-	ret = zii_pic_exec(zp, CMD_GET_STATUS, NULL, 0,
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
 			RSP_GET_STATUS, (u8 *)&reply, sizeof(reply));
 	if (ret) {
 		dev_warn(&zp->sdev->dev, "failed to read RDU1 status\n");
@@ -236,13 +237,11 @@ static int zii_pic_reset_handler(struct notifier_block *nb,
 	while (1) {
 
 		if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-			u8 cmd[] = { 1, 0 };
-			zii_pic_exec_reset(zp, CMD_PIC_RESET,
-					cmd, sizeof(cmd));
+			u8 cmd[] = { CMD_PIC_RESET, 1, 0 };
+			zii_pic_exec_reset(zp, cmd, sizeof(cmd));
 		} else {
-			u8 cmd[] = { 1 };
-			zii_pic_exec_reset(zp, OCMD_PIC_RESET,
-					cmd, sizeof(cmd));
+			u8 cmd[] = { OCMD_PIC_RESET, 1 };
+			zii_pic_exec_reset(zp, cmd, sizeof(cmd));
 		}
 
 		msleep(550);	/* PIC firmware waits 500 ms before reset */
@@ -379,18 +378,18 @@ static ssize_t zii_pic_show_copper_rev(struct device *dev,
 {
 	struct zii_pic *zp = dev_get_drvdata(dev);
 	int ret;
-	u8 cmd, rsp, res;
+	u8 cmd[2], rsp, res;
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU2) {
-		cmd = CMD_COPPER_REV_RDU2;
+		cmd[0] = CMD_COPPER_REV_RDU2;
 		rsp = RSP_COPPER_REV_RDU2;
 	} else if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
-		cmd = CMD_COPPER_REV_RDU1;
+		cmd[0] = CMD_COPPER_REV_RDU1;
 		rsp = RSP_COPPER_REV_RDU1;
 	} else
 		return -ENOTSUPP;
 
-	ret = zii_pic_exec(zp, cmd, NULL, 0, rsp, &res, sizeof(res));
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), rsp, &res, sizeof(res));
 	if (ret)
 		return ret;
 

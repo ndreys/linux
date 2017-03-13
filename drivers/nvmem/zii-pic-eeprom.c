@@ -61,18 +61,20 @@ struct zii_pic_eeprom {
 static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
 		unsigned int page, u8 *buf)
 {
-	u8 b[2 + EEPROM_PAGE_SIZE];
+	u8 b[2 + EEPROM_PAGE_SIZE + 2];
 	u8 p = 0;
 	int ret;
 
+	b[p++] = zpe->cmd;
+	b[p++] = 0;
 	b[p++] = 1;		/* read */
 	b[p++] = page;
 	if (zpe->page_nr_bytes > 1)
 		b[p++] = page >> 8;
 
 	ret = zii_pic_exec(zpe->zp,
-			zpe->cmd, b, p,
-			zpe->rsp, b, 2 + EEPROM_PAGE_SIZE);
+			   b, p,
+			   zpe->rsp, b, 2 + EEPROM_PAGE_SIZE);
 	if (ret)
 		return ret;
 	if (b[0] != 1)
@@ -87,10 +89,12 @@ static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
 static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
 		unsigned int page, u8 *buf)
 {
-	u8 b[3 + EEPROM_PAGE_SIZE];
+	u8 b[3 + EEPROM_PAGE_SIZE + 2];
 	u8 p = 0;
 	int ret;
 
+	b[p++] = zpe->cmd;
+	b[p++] = 0;
 	b[p++] = 0;		/* write */
 	b[p++] = page;
 	if (zpe->page_nr_bytes > 1)
@@ -98,8 +102,8 @@ static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
 	memcpy(&b[p], buf, EEPROM_PAGE_SIZE);
 
 	ret = zii_pic_exec(zpe->zp,
-			zpe->cmd, b, p + EEPROM_PAGE_SIZE,
-			zpe->rsp, b, 2);
+			   b, p + EEPROM_PAGE_SIZE,
+			   zpe->rsp, b, 2);
 	if (ret)
 		return ret;
 	if (b[0] != 0)

@@ -35,16 +35,18 @@ static int zii_pic_bl_update_status(struct backlight_device *bd)
 {
 	struct zii_pic *zp = dev_get_drvdata(&bd->dev);
 	int intensity = bd->props.brightness;
-	u8 cmd[3];
+	u8 cmd[5];
 
 	if (bd->props.power != FB_BLANK_UNBLANK)
 		intensity = 0;
 
-	cmd[0] = intensity ? 0x80 | intensity : 0;
+	cmd[0] = CMD_SET_BACKLIGHT;
 	cmd[1] = 0;
-	cmd[2] = 0;
+	cmd[2] = intensity ? 0x80 | intensity : 0;
+	cmd[3] = 0;
+	cmd[4] = 0;
 
-	return zii_pic_exec(zp, CMD_SET_BACKLIGHT, cmd, sizeof(cmd),
+	return zii_pic_exec(zp, cmd, sizeof(cmd),
 			RSP_SET_BACKLIGHT, NULL, 0);
 }
 

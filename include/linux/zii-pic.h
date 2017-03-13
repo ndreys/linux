@@ -90,7 +90,7 @@ struct zii_pic {
 	u8				reset_reason;
 	u8				boot_source;
 
-	bool (*valid_csum) (const unsigned char *, size_t);
+	void (*csum) (const u8 *, size_t, u8 *);
 	size_t csum_size;
 
 	struct notifier_block		reboot_nb,
@@ -115,8 +115,8 @@ void zii_pic_comm_cleanup(struct zii_pic *zp);
 
 /* reply_code = 0 means don't expect reply */
 int zii_pic_exec(struct zii_pic *zp,
-		u8 code, const u8 *data, u8 data_size,
-		u8 reply_code, u8 *reply, u8 reply_size);
+		 u8 *data, u8 data_size,
+		 u8 reply_code, u8 *reply, u8 reply_size);
 
 int zii_pic_set_event_handler(struct zii_pic *zp,
 		u8 event_code, u8 reply_code,
@@ -129,8 +129,7 @@ void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code);
  * - call zii_pic_do_reset() when already in machine_restart()
  */
 void zii_pic_prepare_for_reset(struct zii_pic *zp);
-void zii_pic_exec_reset(struct zii_pic *zp,
-		u8 code, const u8 *data, u8 data_size);
+void zii_pic_exec_reset(struct zii_pic *zp, const u8 *data, u8 data_size);
 
 #define ZII_PIC_NAME_WATCHDOG		"pic-watchdog"
 #define ZII_PIC_NAME_HWMON		"pic-hwmon"
