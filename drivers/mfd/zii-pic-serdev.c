@@ -50,8 +50,6 @@
 #include <linux/delay.h>
 #include <linux/crc-ccitt.h>
 
-extern int zii_pic_tracing;
-
 #define STX			0x02
 #define ETX			0x03
 #define DLE			0x10
@@ -272,9 +270,8 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 	u8 crc_calculated[csum_size];
 	const u8 *crc_reported = &data[length - zp->csum_size];
 
-	if (zii_pic_tracing)
-		print_hex_dump(KERN_INFO, "zii-pic rx: ", DUMP_PREFIX_NONE,
-				16, 1, data, length, false);
+	print_hex_dump(KERN_CRIT, "zii-pic rx: ", DUMP_PREFIX_NONE,
+		       16, 1, data, length, false);
 
 	if (unlikely(length < 3)) {
 		dev_warn(&zp->sdev->dev, "dropping short frame\n");
