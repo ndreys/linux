@@ -84,12 +84,6 @@ struct zii_pic {
 	struct zii_pic_reply *reply;
 
 	struct zii_pic_eh_data		eh[ZII_PIC_EH_NR];
-	struct mutex			eh_mutex;
-
-	u8				er_pending;
-	u8				er_code;
-	u8				er_ackid;
-	struct work_struct		er_work;
 
 	struct zii_pic_version		fw_version;
 	struct zii_pic_version		bl_version;

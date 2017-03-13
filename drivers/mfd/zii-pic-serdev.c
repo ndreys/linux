@@ -191,43 +191,6 @@ zii_pic_frame_valid_csum_ccitt_false(const unsigned char *data,
 	return expected == calculated;
 }
 
-static void zii_pic_send_event_reply(struct work_struct *work)
-{
-	struct zii_pic *zp = container_of(work, struct zii_pic, er_work);
-
-	zii_pic_write(zp, zp->er_code, zp->er_ackid, NULL, 0);
-	zp->er_pending = 0;
-}
-
-static void zii_pic_handle_event(struct zii_pic *zp,
-				 const unsigned char *data, size_t length)
-{
-	u8 code = data[0];
-	struct zii_pic_eh_data *ehd = &zp->eh[code - ZII_PIC_EVENT_CODE_MIN];
-
-	mutex_lock(&zp->eh_mutex);
-
-	if (unlikely(zp->er_pending)) {
-		dev_warn(&zp->sdev->dev,
-			"dropping event received before reply to previous one\n");
-		goto out;
-	}
-
-	if (!ehd->handler) {
-		dev_warn(&zp->sdev->dev,
-			"dropping unhandled event %02x\n", code);
-		goto out;
-	}
-
-	ehd->handler(ehd->context, code, &data[2], length - 2);
-
-	zp->er_code = ehd->reply_code;
-	zp->er_ackid = data[1];
-	schedule_work(&zp->er_work);
-out:
-	mutex_unlock(&zp->eh_mutex);
-}
-
 int zii_pic_set_event_handler(struct zii_pic *zp,
 		u8 event_code, u8 reply_code,
 		zii_pic_eh handler, void *context)
@@ -240,8 +203,6 @@ int zii_pic_set_event_handler(struct zii_pic *zp,
 		return -EINVAL;
 	ehd = &zp->eh[event_code - ZII_PIC_EVENT_CODE_MIN];
 
-	mutex_lock(&zp->eh_mutex);
-
 	if (ehd->handler)
 		ret = -EBUSY;
 	else {
@@ -251,7 +212,6 @@ int zii_pic_set_event_handler(struct zii_pic *zp,
 		ret = 0;
 	}
 
-	mutex_unlock(&zp->eh_mutex);
 	return ret;
 }
 EXPORT_SYMBOL(zii_pic_set_event_handler);
@@ -265,11 +225,27 @@ void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code)
 		return;
 	ehd = &zp->eh[event_code - ZII_PIC_EVENT_CODE_MIN];
 
-	mutex_lock(&zp->eh_mutex);
 	ehd->handler = NULL;
-	mutex_unlock(&zp->eh_mutex);
 }
 EXPORT_SYMBOL(zii_pic_cleanup_event_handler);
+
+static void zii_pic_receive_event(struct zii_pic *zp,
+				 const unsigned char *data, size_t length)
+{
+	u8 code = data[0];
+	struct zii_pic_eh_data *ehd = &zp->eh[code - ZII_PIC_EVENT_CODE_MIN];
+
+
+	if (!ehd->handler) {
+		dev_warn(&zp->sdev->dev,
+			"dropping unhandled event %02x\n", code);
+		return;
+	}
+
+	ehd->handler(ehd->context, code, &data[2], length - 2);
+
+	zii_pic_write(zp, ehd->reply_code, data[1], NULL, 0);
+}
 
 static void zii_pic_receive_reply(struct zii_pic *zp,
 				  const unsigned char *data, size_t length)
@@ -324,7 +300,7 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 
 	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
 	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
-		zii_pic_handle_event(zp, data, length);
+		zii_pic_receive_event(zp, data, length);
 	else
 		zii_pic_receive_reply(zp, data, length);
 }
@@ -394,9 +370,6 @@ int zii_pic_comm_init(struct zii_pic *zp)
 	int ret;
 
 	mutex_init(&zp->reply_lock);
-
-	mutex_init(&zp->eh_mutex);
-	INIT_WORK(&zp->er_work, zii_pic_send_event_reply);
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
 		zp->csum_size  = 1;
