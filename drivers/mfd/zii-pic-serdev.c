@@ -56,13 +56,13 @@
 
 static void csum_8b2c(const u8 *buf, size_t size, u8 *crc)
 {
-	u8 i;
-	u8 sum = 0;
+	*crc = *buf++;
+	size--;
 
-	for (i = 0; i < size; i++)
-		sum += buf[i];
+	while (size--)
+		*crc += *buf++;
 
-	*crc = 1 + ~sum;
+	*crc = 1 + ~(*crc);
 }
 
 static void csum_ccitt(const u8 *buf, size_t size, u8 *crc)
