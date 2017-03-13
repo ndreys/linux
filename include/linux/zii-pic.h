@@ -38,19 +38,7 @@ struct zii_pic_version {
 #define ZII_PIC_EVENT_CODE_MIN		0xE0
 #define ZII_PIC_EVENT_CODE_MAX		0xEF
 
-#define ZII_PIC_EH_NR	(ZII_PIC_EVENT_CODE_MAX - ZII_PIC_EVENT_CODE_MIN + 1)
-
 /* For now, assume no data in event reply */
-
-typedef void (*zii_pic_eh)(void *context,
-		u8 event_code, const u8 *data, u8 data_size);
-
-struct zii_pic_eh_data {
-	zii_pic_eh	handler;
-	void		*context;
-	u8		reply_code;
-};
-
 
 enum zii_pic_deframer_state {
 	ZII_PIC_EXPECT_SOF,
@@ -83,8 +71,6 @@ struct zii_pic {
 	struct mutex          reply_lock;
 	struct zii_pic_reply *reply;
 
-	struct zii_pic_eh_data		eh[ZII_PIC_EH_NR];
-
 	struct zii_pic_version		fw_version;
 	struct zii_pic_version		bl_version;
 	u8				reset_reason;
@@ -95,6 +81,8 @@ struct zii_pic {
 
 	struct notifier_block		reboot_nb,
 					reset_nb;
+
+	struct blocking_notifier_head   event_notifier_list;
 };
 
 static inline struct zii_pic *zii_pic_parent(struct device *dev)
@@ -118,11 +106,6 @@ int zii_pic_exec(struct zii_pic *zp,
 		 u8 *data, u8 data_size,
 		 u8 reply_code, u8 *reply, u8 reply_size);
 
-int zii_pic_set_event_handler(struct zii_pic *zp,
-		u8 event_code, u8 reply_code,
-		zii_pic_eh handler, void *context);
-
-void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code);
 
 /* Special handling for sending reset command:
  * - call zii_pic_prepare_for_reset() when scheduling is still available,

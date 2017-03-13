@@ -171,64 +171,22 @@ void zii_pic_exec_reset(struct zii_pic *zp,
 	zii_pic_write(zp, data, data_size);
 }
 
-int zii_pic_set_event_handler(struct zii_pic *zp,
-		u8 event_code, u8 reply_code,
-		zii_pic_eh handler, void *context)
-{
-	struct zii_pic_eh_data *ehd;
-	int ret;
-
-	if (event_code < ZII_PIC_EVENT_CODE_MIN ||
-	    event_code > ZII_PIC_EVENT_CODE_MAX)
-		return -EINVAL;
-	ehd = &zp->eh[event_code - ZII_PIC_EVENT_CODE_MIN];
-
-	if (ehd->handler)
-		ret = -EBUSY;
-	else {
-		ehd->handler = handler;
-		ehd->context = context;
-		ehd->reply_code = reply_code;
-		ret = 0;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL(zii_pic_set_event_handler);
-
-void zii_pic_cleanup_event_handler(struct zii_pic *zp, u8 event_code)
-{
-	struct zii_pic_eh_data *ehd;
-
-	if (event_code < ZII_PIC_EVENT_CODE_MIN ||
-	    event_code > ZII_PIC_EVENT_CODE_MAX)
-		return;
-	ehd = &zp->eh[event_code - ZII_PIC_EVENT_CODE_MIN];
-
-	ehd->handler = NULL;
-}
-EXPORT_SYMBOL(zii_pic_cleanup_event_handler);
-
 static void zii_pic_receive_event(struct zii_pic *zp,
-				 const unsigned char *data, size_t length)
+				  const unsigned char *data, size_t length)
 {
 	u8 cmd[2];
 	u8 code = data[0];
-	struct zii_pic_eh_data *ehd = &zp->eh[code - ZII_PIC_EVENT_CODE_MIN];
 
-
-	if (!ehd->handler) {
-		dev_warn(&zp->sdev->dev,
-			"dropping unhandled event %02x\n", code);
-		return;
-	}
-
-	ehd->handler(ehd->context, code, &data[2], length - 2);
-
-	cmd[0] = ehd->reply_code;
+	/*
+	  TODO: Is that a universal rule, that event's ack id is event id | 0x01 ?
+	 */
+	cmd[0] = code | 0x01;
 	cmd[1] = data[1];
 
 	zii_pic_write(zp, cmd, sizeof(cmd));
+
+	blocking_notifier_call_chain(&zp->event_notifier_list,
+				     data[2] << 8 | code, NULL);
 }
 
 static void zii_pic_receive_reply(struct zii_pic *zp,
@@ -359,6 +317,7 @@ int zii_pic_comm_init(struct zii_pic *zp)
 	int ret;
 
 	mutex_init(&zp->reply_lock);
+	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
 		zp->csum_size  = 1;

@@ -27,18 +27,36 @@
 #include <linux/zii-pic.h>
 
 #define EVT_BUTTON_PRESS	0xE0
-#define RSP_BUTTON_PRESS	0xE1
 
-static void zii_pic_pwrbutton_event(void *context,
-		u8 code, const u8 *data, u8 data_size)
+struct zii_pic_power_button {
+	struct input_dev *idev;
+	struct notifier_block nb;
+};
+
+static struct zii_pic_power_button *
+to_zii_pic_power_button(struct notifier_block *nb)
 {
-	struct input_dev *idev = context;
+	return container_of(nb, struct zii_pic_power_button, nb);
+}
 
-	if (data_size < 1)
-		return;
+static int zii_pic_power_button_event(struct notifier_block *nb,
+				      unsigned long action, void *data)
+{
+	const u8 event = action & 0xff;
 
-	input_report_key(idev, KEY_POWER, data[0]);
-	input_sync(idev);
+	if (event == EVT_BUTTON_PRESS) {
+		const u8 value = (action >> 8) & 0xff;
+		struct zii_pic_power_button *picpb;
+
+		picpb = to_zii_pic_power_button(nb);
+
+		input_report_key(picpb->idev, KEY_POWER, value);
+		input_sync(picpb->idev);
+
+		return NOTIFY_STOP;
+	}
+
+	return NOTIFY_DONE;
 }
 
 static const struct of_device_id zii_pic_pwrbutton_of_match[] = {
@@ -50,7 +68,7 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct zii_pic *zp = zii_pic_parent(dev);
-	struct input_dev *idev;
+	struct zii_pic_power_button *picpb;
 	int ret;
 
 	if (!zp)
@@ -58,29 +76,38 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 	if (zp->hw_id < ZII_PIC_HW_ID_RDU1)
 		return -ENODEV;
 
-	idev = devm_input_allocate_device(&pdev->dev);
-	if (!idev)
+	picpb = devm_kzalloc(&pdev->dev, sizeof(*picpb), GFP_KERNEL);
+	dev_set_drvdata(&pdev->dev, picpb);
+	if (!picpb)
 		return -ENOMEM;
 
-	idev->name = ZII_PIC_NAME_PWRBUTTON;
-	idev->dev.parent = dev;
+	picpb->idev = devm_input_allocate_device(&pdev->dev);
+	if (!picpb->idev)
+		return -ENOMEM;
 
-	input_set_capability(idev, EV_KEY, KEY_POWER);
+	picpb->nb.notifier_call = zii_pic_power_button_event;
+	picpb->nb.priority = 128;
 
-	ret = input_register_device(idev);
+	picpb->idev->name = ZII_PIC_NAME_PWRBUTTON;
+	picpb->idev->dev.parent = dev;
+
+	input_set_capability(picpb->idev, EV_KEY, KEY_POWER);
+
+	ret = input_register_device(picpb->idev);
 	if (ret)
 		return ret;
 
-	return zii_pic_set_event_handler(zp, EVT_BUTTON_PRESS, RSP_BUTTON_PRESS,
-			zii_pic_pwrbutton_event, idev);
+	return blocking_notifier_chain_register(&zp->event_notifier_list,
+						&picpb->nb);
 }
 
 static int zii_pic_pwrbutton_remove(struct platform_device *pdev)
 {
 	struct zii_pic *zp = zii_pic_parent(&pdev->dev);
+	struct zii_pic_power_button *picpb = dev_get_drvdata(&pdev->dev);
 
-	zii_pic_cleanup_event_handler(zp, EVT_BUTTON_PRESS);
-	return 0;
+	return blocking_notifier_chain_unregister(&zp->event_notifier_list,
+						  &picpb->nb);
 }
 
 static struct platform_driver zii_pic_pwrbutton_driver = {
