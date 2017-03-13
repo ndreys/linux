@@ -165,32 +165,26 @@ void zii_pic_exec_reset(struct zii_pic *zp,
 }
 
 
-static int zii_pic_check_remove_csum_8b2c(struct zii_pic *zp)
+static bool
+zii_pic_frame_valid_csum_8b2c(const unsigned char *data,
+			      size_t length)
 {
-	u8 csum_exp, csum_act;
+	const u8 expected   = data[length - 1];
+	const u8 calculated = checksum_8b2c(data, length - 1);
 
-	if (unlikely(zp->rx_size < 2))
-		return 0;
-
-	csum_exp = zp->rx_buf[--zp->rx_size];
-	csum_act = checksum_8b2c(zp->rx_buf, zp->rx_size);
-
-	return csum_exp == csum_act;
+	return expected == calculated;
 }
 
-static int zii_pic_check_remove_csum_ccitt_false(struct zii_pic *zp)
+static bool
+zii_pic_frame_valid_csum_ccitt_false(const unsigned char *data,
+				     size_t length)
 {
-	u16 csum_exp, csum_act;
+	const u16 expected   =
+		le16_to_cpup((const __le16 *)&data[length - 2]);
+	const u16 calculated = crc_ccitt_false(0xffff,
+					       data, length - 2);
 
-	if (unlikely(zp->rx_size < 3))
-		return 0;
-
-	csum_exp = (zp->rx_buf[zp->rx_size - 2] << 8) |
-		   zp->rx_buf[zp->rx_size - 1];
-	zp->rx_size -= 2;
-	csum_act = crc_ccitt_false(0xffff, zp->rx_buf, zp->rx_size);
-
-	return csum_exp == csum_act;
+	return expected == calculated;
 }
 
 static void zii_pic_send_event_reply(struct work_struct *work)
@@ -310,25 +304,21 @@ static void zii_pic_handle_reply(struct zii_pic *zp)
 
 static void zii_pic_handle_rx_frame(struct zii_pic *zp)
 {
-	int ret;
-
 	if (zii_pic_tracing)
 		print_hex_dump(KERN_INFO, "zii-pic rx: ", DUMP_PREFIX_NONE,
 				16, 1, zp->rx_buf, zp->rx_size, false);
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU1)
-		ret = zii_pic_check_remove_csum_8b2c(zp);
-	else
-		ret = zii_pic_check_remove_csum_ccitt_false(zp);
-	if (!ret) {
+	if (unlikely(zp->rx_size < 3)) {
+		dev_warn(&zp->sdev->dev, "dropping short frame\n");
+		return;
+	}
+
+	if (!zp->valid_csum(zp->rx_buf, zp->rx_size)) {
 		dev_warn(&zp->sdev->dev, "dropping bad frame\n");
 		return;
 	}
 
-	if (unlikely(zp->rx_size < 2)) {
-		dev_warn(&zp->sdev->dev, "dropping short frame\n");
-		return;
-	}
+	zp->rx_size -= zp->csum_size;
 
 	if (zp->rx_buf[0] >= ZII_PIC_EVENT_CODE_MIN &&
 	    zp->rx_buf[0] <= ZII_PIC_EVENT_CODE_MAX)
@@ -416,6 +406,14 @@ int zii_pic_comm_init(struct zii_pic *zp)
 
 	mutex_init(&zp->eh_mutex);
 	INIT_WORK(&zp->er_work, zii_pic_send_event_reply);
+
+	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
+		zp->csum_size  = 1;
+		zp->valid_csum = zii_pic_frame_valid_csum_8b2c;
+	} else {
+		zp->csum_size  = 2;
+		zp->valid_csum = zii_pic_frame_valid_csum_ccitt_false;
+	}
 
 	serdev_device_set_client_ops(zp->sdev, &zii_pic_serdev_device_ops);
 	ret = serdev_device_open(zp->sdev);

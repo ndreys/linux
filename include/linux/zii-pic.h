@@ -96,6 +96,9 @@ struct zii_pic {
 	u8				reset_reason;
 	u8				boot_source;
 
+	bool (*valid_csum) (const unsigned char *, size_t);
+	size_t csum_size;
+
 	struct notifier_block		reboot_nb,
 					reset_nb;
 };
