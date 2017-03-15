@@ -386,8 +386,6 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
 	int ret;
 
-	pr_debug("%s: enter\n", __func__);
-
 	id = of_match_device(zii_pic_dt_ids, &serdev->dev);
 	if (!id)
 		return -ENODEV;
