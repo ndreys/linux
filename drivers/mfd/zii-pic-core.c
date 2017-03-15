@@ -383,22 +383,23 @@ static int zii_pic_probe(struct serdev_device *serdev)
 {
 	struct zii_pic *zp;
 	const struct of_device_id *id;
+	struct device *dev = &serdev->dev;
 	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
 	int ret;
 
-	id = of_match_device(zii_pic_dt_ids, &serdev->dev);
+	id = of_match_device(zii_pic_dt_ids, dev);
 	if (!id)
 		return -ENODEV;
 
-	zp = devm_kzalloc(&serdev->dev, sizeof(*zp), GFP_KERNEL);
+	zp = devm_kzalloc(dev, sizeof(*zp), GFP_KERNEL);
 	if (!zp)
 		return -ENOMEM;
 
 	zp->serdev = serdev;
 	zp->hw_id = (enum zii_pic_hw_id)id->data;
-	dev_set_drvdata(&serdev->dev, zp);
+	dev_set_drvdata(dev, zp);
 
-	of_property_read_u32(serdev->dev.of_node, "current-speed", &baud);
+	of_property_read_u32(dev->of_node, "current-speed", &baud);
 
 	ret = zii_pic_open(zp, baud);
 	if (ret)
@@ -414,22 +415,22 @@ static int zii_pic_probe(struct serdev_device *serdev)
 
 	zii_pic_get_boot_source(zp);
 
-	ret = sysfs_create_group(&serdev->dev.kobj, &zii_pic_attr_group);
+	ret = sysfs_create_group(&dev->kobj, &zii_pic_attr_group);
 	if (ret)
 		goto err_create_group;
 
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-		ret = device_create_file(&serdev->dev, &dev_attr_copper_rev);
+		ret = device_create_file(dev, &dev_attr_copper_rev);
 		if (ret)
 			goto err_create_copper_attr;
 	}
 
 	zii_pic_setup_reboot(zp);
 
-	return of_platform_default_populate(serdev->dev.of_node, NULL, &serdev->dev);
+	return of_platform_default_populate(dev->of_node, NULL, dev);
 
 err_create_copper_attr:
-	sysfs_remove_group(&serdev->dev.kobj, &zii_pic_attr_group);
+	sysfs_remove_group(&dev->kobj, &zii_pic_attr_group);
 err_create_group:
 	serdev_device_close(zp->serdev);
 	return ret;
