@@ -38,21 +38,16 @@
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
 
 #define CMD_GET_FW_VERSION	0x20
-#define RSP_GET_FW_VERSION	0x60
-
 #define OCMD_GET_FW_VERSION	0x11
-#define ORSP_GET_FW_VERSION	0x51
 
 static void zii_pic_get_fw_version(struct zii_pic *zp)
 {
 	u8 cmd[2] = { zii_pic_code(zp,
 				   CMD_GET_FW_VERSION, OCMD_GET_FW_VERSION), 0};
-	u8 reply_code = zii_pic_code(zp,
-			RSP_GET_FW_VERSION, ORSP_GET_FW_VERSION);
 	int ret;
 
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
-			(u8 *) &zp->fw_version, sizeof(zp->fw_version));
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
+			   &zp->fw_version, sizeof(zp->fw_version));
 	if (ret) {
 		dev_warn(&zp->serdev->dev, "failed to get fw version\n");
 		memset(&zp->fw_version, 0, sizeof(zp->fw_version));
@@ -60,21 +55,16 @@ static void zii_pic_get_fw_version(struct zii_pic *zp)
 }
 
 #define CMD_GET_BL_VERSION	0x21
-#define RSP_GET_BL_VERSION	0x61
-
 #define OCMD_GET_BL_VERSION	0x12
-#define ORSP_GET_BL_VERSION	0x52
 
 static void zii_pic_get_bl_version(struct zii_pic *zp)
 {
 	u8 cmd[2] = { zii_pic_code(zp,
 				   CMD_GET_BL_VERSION, OCMD_GET_BL_VERSION), 0 };
-	u8 reply_code = zii_pic_code(zp,
-			RSP_GET_BL_VERSION, ORSP_GET_BL_VERSION);
 	int ret;
 
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
-			(u8 *) &zp->bl_version, sizeof(zp->bl_version));
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
+			   &zp->bl_version, sizeof(zp->bl_version));
 	if (ret) {
 		dev_warn(&zp->serdev->dev,
 				"failed to get bl version\n");
@@ -83,20 +73,15 @@ static void zii_pic_get_bl_version(struct zii_pic *zp)
 }
 
 #define CMD_GET_RESET_REASON	0xA8
-#define RSP_GET_RESET_REASON	0xC8
-
 #define OCMD_GET_RESET_REASON	0x1F
-#define ORSP_GET_RESET_REASON	0x5F
 
 static void zii_pic_get_reset_reason(struct zii_pic *zp)
 {
 	u8 cmd[2] = { zii_pic_code(zp,
 				   CMD_GET_RESET_REASON, OCMD_GET_RESET_REASON), 0 };
-	u8 reply_code = zii_pic_code(zp,
-			RSP_GET_RESET_REASON, ORSP_GET_RESET_REASON);
 	int ret;
 
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code, &zp->reset_reason, 1);
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), &zp->reset_reason, 1);
 	if (ret) {
 		dev_warn(&zp->serdev->dev, "failed to get reset reason\n");
 		zp->reset_reason = 0xFF;
@@ -104,20 +89,16 @@ static void zii_pic_get_reset_reason(struct zii_pic *zp)
 }
 
 #define CMD_BOOT_SOURCE		0x26
-#define RSP_BOOT_SOURCE		0x66
-
 #define OCMD_BOOT_SOURCE	0x14
-#define ORSP_BOOT_SOURCE	0x54
 
 static void zii_pic_get_boot_source(struct zii_pic *zp)
 {
 	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
-	u8 reply_code = zii_pic_code(zp, RSP_BOOT_SOURCE, ORSP_BOOT_SOURCE);
 	u8 cmd[] = {code, 0, 0, 0};
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
-			reply_code, &zp->boot_source, 1);
+			   &zp->boot_source, 1);
 	if (ret) {
 		dev_warn(&zp->serdev->dev, "failed to get boot source\n");
 		zp->boot_source = 0xFF;
@@ -127,11 +108,10 @@ static void zii_pic_get_boot_source(struct zii_pic *zp)
 static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
 {
 	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
-	u8 reply_code = zii_pic_code(zp, RSP_BOOT_SOURCE, ORSP_BOOT_SOURCE);
 	u8 cmd[] = {code, 0, 1, boot_src};
 	int ret;
 
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code, NULL, 0);
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), NULL, 0);
 	if (ret)
 		return ret;
 
@@ -144,7 +124,6 @@ static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
 
 
 #define CMD_GET_STATUS		0xA0
-#define RSP_GET_STATUS		0xC0
 
 static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 {
@@ -159,7 +138,7 @@ static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 	u8 cmd[] = {CMD_GET_STATUS, 0};
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
-			RSP_GET_STATUS, (u8 *)&reply, sizeof(reply));
+			   &reply, sizeof(reply));
 	if (ret) {
 		dev_warn(&zp->serdev->dev, "failed to read RDU1 status\n");
 		memset(&zp->fw_version, 0, sizeof(zp->fw_version));
@@ -333,28 +312,24 @@ static const struct attribute_group zii_pic_attr_group = {
 };
 
 #define CMD_COPPER_REV_RDU1	0x28
-#define RSP_COPPER_REV_RDU1	0x68
 
 #define CMD_COPPER_REV_RDU2	0x2B
-#define RSP_COPPER_REV_RDU2	0x6B
 
 static ssize_t zii_pic_show_copper_rev(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct zii_pic *zp = dev_get_drvdata(dev);
 	int ret;
-	u8 cmd[2], rsp, res;
+	u8 cmd[2], res;
 
 	if (zp->hw_id == ZII_PIC_HW_ID_RDU2) {
 		cmd[0] = CMD_COPPER_REV_RDU2;
-		rsp = RSP_COPPER_REV_RDU2;
 	} else if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
 		cmd[0] = CMD_COPPER_REV_RDU1;
-		rsp = RSP_COPPER_REV_RDU1;
 	} else
 		return -ENOTSUPP;
 
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), rsp, &res, sizeof(res));
+	ret = zii_pic_exec(zp, cmd, sizeof(cmd), &res, sizeof(res));
 	if (ret)
 		return ret;
 

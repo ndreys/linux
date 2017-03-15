@@ -39,10 +39,7 @@ struct zii_pic_wdt {
 };
 
 #define CMD_SET_WDT	0xA1
-#define RSP_SET_WDT	0xC1
-
 #define OCMD_SET_WDT	0x1C
-#define ORSP_SET_WDT	0x5C
 
 static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 {
@@ -53,7 +50,7 @@ static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 		cmd[2] = enable ? 1 : 0;
 		cmd[3] = enable ? zpw->wdt.timeout : 0;
 		return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-				RSP_SET_WDT, NULL, 0);
+				    NULL, 0);
 	} else {
 		u8 cmd[5];
 		cmd[0] = OCMD_SET_WDT;
@@ -62,23 +59,20 @@ static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 		cmd[3] = enable ? 1 : 0;
 		cmd[4] = enable ? zpw->wdt.timeout : 0;
 		return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-				ORSP_SET_WDT, NULL, 0);
+				    NULL, 0);
 	}
 }
 
 #define CMD_PET_WDT	0xA2
-#define RSP_PET_WDT	0xC2
-
 #define OCMD_PET_WDT	0x1D
-#define ORSP_PET_WDT	0x5D
+
 
 static int zii_pic_wdt_pet(struct zii_pic_wdt *zpw)
 {
 	u8 cmd[] = { zii_pic_code(zpw->zp, CMD_PET_WDT, OCMD_PET_WDT), 0 };
 	return zii_pic_exec(zpw->zp,
 			    cmd, sizeof(cmd),
-			zii_pic_code(zpw->zp, RSP_PET_WDT, ORSP_PET_WDT),
-			NULL, 0);
+			    NULL, 0);
 }
 
 static int zii_pic_wdt_start(struct watchdog_device *wdt)

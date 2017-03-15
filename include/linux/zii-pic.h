@@ -99,10 +99,9 @@ static inline u8 zii_pic_code(struct zii_pic *zp, u8 rdu, u8 old)
 
 int zii_pic_open(struct zii_pic *zp, unsigned int speed);
 
-/* reply_code = 0 means don't expect reply */
 int zii_pic_exec(struct zii_pic *zp,
-		 u8 *data, u8 data_size,
-		 u8 reply_code, u8 *reply, u8 reply_size);
+		 void *data,  size_t data_size,
+		 void *reply, size_t reply_size);
 
 
 /* Special handling for sending reset command:

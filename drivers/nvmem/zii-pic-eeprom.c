@@ -38,13 +38,10 @@ enum {
 #define EEPROM_PAGE_SIZE	(1 << EEPROM_PAGE_SHIFT)
 
 #define CMD_MAIN_EEPROM		0xA4
-#define RSP_MAIN_EEPROM		0xC4
 
 #define CMD_DDS_EEPROM		0xA3
-#define RSP_DDS_EEPROM		0xC3
 
 #define CMD_OLD_EEPROM		0x20
-#define RSP_OLD_EEPROM		0x60
 
 #define MAIN_EEPROM_SIZE	0x4000
 #define DDS_EEPROM_SIZE_RDU1	0x2000
@@ -52,7 +49,7 @@ enum {
 
 struct zii_pic_eeprom {
 	struct zii_pic *zp;
-	u8 cmd, rsp;
+	u8 cmd;
 	u8 page_nr_bytes;
 	struct nvmem_device *nvmem;
 	struct mutex mutex;
@@ -73,8 +70,8 @@ static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
 		b[p++] = page >> 8;
 
 	ret = zii_pic_exec(zpe->zp,
-			   b, p,
-			   zpe->rsp, b, 2 + EEPROM_PAGE_SIZE);
+			   b, p, 
+			   b, 2 + EEPROM_PAGE_SIZE);
 	if (ret)
 		return ret;
 	if (b[0] != 1)
@@ -103,7 +100,7 @@ static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
 
 	ret = zii_pic_exec(zpe->zp,
 			   b, p + EEPROM_PAGE_SIZE,
-			   zpe->rsp, b, 2);
+			   b, 2);
 	if (ret)
 		return ret;
 	if (b[0] != 0)
@@ -228,17 +225,14 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 		if (id->data == (void *)DDS_EEPROM)
 			return -ENXIO;
 		zpe->cmd = CMD_OLD_EEPROM;
-		zpe->rsp = RSP_OLD_EEPROM;
 		config.name = ZII_PIC_NAME_MAIN_EEPROM;
 		config.size = MAIN_EEPROM_SIZE;
 	} else if (id->data == (void *)MAIN_EEPROM) {
 		zpe->cmd = CMD_MAIN_EEPROM;
-		zpe->rsp = RSP_MAIN_EEPROM;
 		config.name = ZII_PIC_NAME_MAIN_EEPROM;
 		config.size = MAIN_EEPROM_SIZE;
 	} else {
 		zpe->cmd = CMD_DDS_EEPROM;
-		zpe->rsp = RSP_DDS_EEPROM;
 		config.name = ZII_PIC_NAME_DDS_EEPROM;
 		config.size = zp->hw_id == ZII_PIC_HW_ID_RDU1 ?
 			DDS_EEPROM_SIZE_RDU1 : DDS_EEPROM_SIZE;

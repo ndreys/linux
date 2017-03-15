@@ -29,7 +29,6 @@
 #include <linux/zii-pic.h>
 
 #define CMD_SET_BACKLIGHT	0xA6
-#define RSP_SET_BACKLIGHT	0xC6
 
 static int zii_pic_bl_update_status(struct backlight_device *bd)
 {
@@ -47,7 +46,7 @@ static int zii_pic_bl_update_status(struct backlight_device *bd)
 	cmd[4] = 0;
 
 	return zii_pic_exec(zp, cmd, sizeof(cmd),
-			RSP_SET_BACKLIGHT, NULL, 0);
+			    NULL, 0);
 }
 
 static const struct backlight_ops zii_pic_bl_ops = {

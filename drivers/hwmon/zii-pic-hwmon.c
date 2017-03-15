@@ -92,13 +92,10 @@ static int halfdg_to_mdg(u8 *data)
 }
 
 #define CMD_RDU2_GET_VOLTAGE	0x22
-#define RSP_RDU2_GET_VOLTAGE	0x62
 
 #define CMD_RDU2_GET_CURRENT	0x23
-#define RSP_RDU2_GET_CURRENT	0x63
 
 #define CMD_RDU2_GET_TEMPERATURE	0x24
-#define RSP_RDU2_GET_TEMPERATURE	0x64
 
 static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 		enum zii_pic_sensor sensor)
@@ -114,7 +111,7 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[2] = sensor - ZII_PIC_SENSOR_RMB_3V3_PMIC;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				RSP_RDU2_GET_VOLTAGE, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 
@@ -128,7 +125,7 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[2] = 0;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				RSP_RDU2_GET_CURRENT, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 
@@ -143,7 +140,7 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[2] = sensor - ZII_PIC_SENSOR_TEMPERATURE;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				RSP_RDU2_GET_TEMPERATURE, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 
@@ -155,7 +152,6 @@ static int rdu2_read_sensor(struct zii_pic_hwmon *hwmon,
 }
 
 #define CMD_RDU1_GET_STATUS	0xA0
-#define RSP_RDU1_GET_STATUS	0xC0
 
 static int rdu1_read_sensor(struct zii_pic_hwmon *hwmon,
 		enum zii_pic_sensor sensor)
@@ -173,7 +169,7 @@ static int rdu1_read_sensor(struct zii_pic_hwmon *hwmon,
 
 	int ret = zii_pic_exec(hwmon->zp,
 			       cmd, sizeof(cmd),
-			RSP_RDU1_GET_STATUS, (u8 *)&rsp, sizeof(rsp));
+			       &rsp, sizeof(rsp));
 	if (ret)
 		return ret;
 
@@ -192,19 +188,14 @@ static int rdu1_read_sensor(struct zii_pic_hwmon *hwmon,
 }
 
 #define OCMD_GET_28V		0x1A
-#define ORSP_GET_28V		0x5A
 
 #define OCMD_GET_12V		0x2C
-#define ORSP_GET_12V		0x6C
 
 #define OCMD_GET_5V		0x2E
-#define ORSP_GET_5V		0x6E
 
 #define OCMD_GET_3V3		0x2F
-#define ORSP_GET_3V3		0x6F
 
 #define OCMD_GET_TERMERATURE	0x19
-#define ORSP_GET_TERMERATURE	0x59
 
 static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		enum zii_pic_sensor sensor)
@@ -218,7 +209,7 @@ static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[0] = OCMD_GET_28V;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				ORSP_GET_28V, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
@@ -227,7 +218,7 @@ static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[0] = OCMD_GET_12V;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				ORSP_GET_12V, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
@@ -236,7 +227,7 @@ static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[0] = OCMD_GET_5V;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				ORSP_GET_5V, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
@@ -245,7 +236,7 @@ static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[0] = OCMD_GET_3V3;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				ORSP_GET_3V3, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else
@@ -254,7 +245,7 @@ static int old_read_sensor(struct zii_pic_hwmon *hwmon,
 		cmd[0] = OCMD_GET_TERMERATURE;
 		ret = zii_pic_exec(hwmon->zp,
 				   cmd, sizeof(cmd),
-				ORSP_GET_TERMERATURE, rsp, sizeof(rsp));
+				   rsp, sizeof(rsp));
 		if (ret)
 			return ret;
 		else

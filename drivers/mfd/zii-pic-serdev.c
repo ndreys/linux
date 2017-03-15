@@ -117,43 +117,49 @@ static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 	return serdev_device_write(pic->serdev, frame, length);
 }
 
-int zii_pic_exec(struct zii_pic *zp,
-		 u8 *data, u8 data_size,
-		 u8 reply_code, u8 *reply_data, u8 reply_data_size)
+static u8 zii_pic_reply_code(u8 command)
+{
+	if (0xA0 <= command && command <= 0xBE)
+		return command + 0x20;
+	else
+		return command + 0x40;
+}
+
+int zii_pic_exec(struct zii_pic *pic,
+		 void *__data,  size_t data_size,
+		 void *reply_data, size_t reply_data_size)
 {
 	int ret = 0;
-	const u8 ackid = (u8)atomic_inc_return(&zp->ackid);
+	unsigned char *data = __data;
+	const u8 ackid = (u8)atomic_inc_return(&pic->ackid);
 	struct zii_pic_reply reply = {
-		.code     = reply_code,
+		.code     = zii_pic_reply_code(data[0]),
 		.ackid    = ackid,
 		.data     = reply_data,
 		.length   = reply_data_size,
 		.received = COMPLETION_INITIALIZER_ONSTACK(reply.received),
 	};
 
-	serdev_device_bus_lock(zp->serdev);
+	serdev_device_bus_lock(pic->serdev);
 
-	if (reply_code) {
-		mutex_lock(&zp->reply_lock);
-		zp->reply = &reply;
-		mutex_unlock(&zp->reply_lock);
-	}
+	mutex_lock(&pic->reply_lock);
+	pic->reply = &reply;
+	mutex_unlock(&pic->reply_lock);
 
 	data[1] = ackid;
 
-	zii_pic_write(zp, data, data_size);
+	zii_pic_write(pic, data, data_size);
 
-	if (reply_code &&
-	    !wait_for_completion_timeout(&reply.received, HZ)) {
-		dev_err(&zp->serdev->dev, "command timeout\n");
+	if (!wait_for_completion_timeout(&reply.received, HZ)) {
+		dev_err(&pic->serdev->dev, "command timeout\n");
 		ret = -ETIMEDOUT;
 
-		mutex_lock(&zp->reply_lock);
-		zp->reply = NULL;
-		mutex_unlock(&zp->reply_lock);
+		mutex_lock(&pic->reply_lock);
+		pic->reply = NULL;
+		mutex_unlock(&pic->reply_lock);
 	}
 
-	serdev_device_bus_unlock(zp->serdev);
+	serdev_device_bus_unlock(pic->serdev);
 	return ret;
 }
 EXPORT_SYMBOL(zii_pic_exec);

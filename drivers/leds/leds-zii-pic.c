@@ -119,7 +119,6 @@ static inline void zl_unlock(struct zii_pic_leds *zleds, enum zii_led_id id)
 }
 
 #define CMD_LEDS	0x28
-#define RSP_LEDS	0x68
 
 static int zl_fetch(struct zii_pic_leds *zleds, enum zii_led_id id)
 {
@@ -128,7 +127,7 @@ static int zl_fetch(struct zii_pic_leds *zleds, enum zii_led_id id)
 	int ret;
 
 	ret = zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
-			RSP_LEDS, rsp, sizeof(rsp));
+			   rsp, sizeof(rsp));
 	if (ret)
 		return ret;
 
@@ -172,7 +171,7 @@ static int zl_apply(struct zii_pic_leds *zleds, enum zii_led_id id)
 	cmd[10] = b;
 
 	return zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
-			RSP_LEDS, NULL, 0);
+			    NULL, 0);
 }
 
 static int zl_brightness_set(struct led_classdev *led_dev,
