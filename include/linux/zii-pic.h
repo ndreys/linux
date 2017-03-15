@@ -63,7 +63,6 @@ struct zii_pic_reply {
 struct zii_pic {
 	struct serdev_device		*sdev;
 	enum zii_pic_hw_id		hw_id;
-	u32				baud;
 
 	struct zii_pic_deframer deframer;
 	atomic_t ackid;
@@ -98,7 +97,7 @@ static inline u8 zii_pic_code(struct zii_pic *zp, u8 rdu, u8 old)
 	return zp->hw_id >= ZII_PIC_HW_ID_RDU1 ? rdu : old;
 }
 
-int zii_pic_comm_init(struct zii_pic *zp);
+int zii_pic_open(struct zii_pic *zp, unsigned int speed);
 
 /* reply_code = 0 means don't expect reply */
 int zii_pic_exec(struct zii_pic *zp,

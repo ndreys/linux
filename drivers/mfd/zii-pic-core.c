@@ -414,7 +414,7 @@ static int zii_pic_probe(struct serdev_device *sdev)
 {
 	struct zii_pic *zp;
 	const struct of_device_id *id;
-	u32 baud;
+	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
 	struct device_node *np;
 	int i, ret;
 
@@ -432,12 +432,9 @@ static int zii_pic_probe(struct serdev_device *sdev)
 	zp->hw_id = (enum zii_pic_hw_id)id->data;
 	dev_set_drvdata(&sdev->dev, zp);
 
-	if (of_property_read_u32(sdev->dev.of_node, "current-speed", &baud))
-		zp->baud = ZII_PIC_DEFAULT_BAUD_RATE;
-	else
-		zp->baud = baud;
+	of_property_read_u32(sdev->dev.of_node, "current-speed", &baud);
 
-	ret = zii_pic_comm_init(zp);
+	ret = zii_pic_open(zp, baud);
 	if (ret)
 		return ret;
 

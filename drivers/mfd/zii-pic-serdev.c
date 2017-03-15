@@ -312,7 +312,7 @@ static const struct serdev_device_ops zii_pic_serdev_device_ops = {
 	.receive_buf = zii_pic_receive_buf,
 };
 
-int zii_pic_comm_init(struct zii_pic *zp)
+int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 {
 	int ret;
 
@@ -332,6 +332,6 @@ int zii_pic_comm_init(struct zii_pic *zp)
 	if (ret)
 		return ret;
 
-	serdev_device_set_baudrate(zp->sdev, zp->baud);
+	serdev_device_set_baudrate(zp->sdev, speed);
 	return 0;
 }
