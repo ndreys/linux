@@ -61,7 +61,7 @@ struct zii_pic_reply {
 };
 
 struct zii_pic {
-	struct serdev_device		*sdev;
+	struct serdev_device		*serdev;
 	enum zii_pic_hw_id		hw_id;
 
 	struct zii_pic_deframer deframer;

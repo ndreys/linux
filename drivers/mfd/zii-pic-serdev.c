@@ -114,7 +114,7 @@ static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 	print_hex_dump(KERN_CRIT, "zii_pic tx: ", DUMP_PREFIX_NONE,
 		       16, 1, frame, length, false);
 
-	return serdev_device_write(pic->sdev, frame, length);
+	return serdev_device_write(pic->serdev, frame, length);
 }
 
 int zii_pic_exec(struct zii_pic *zp,
@@ -131,7 +131,7 @@ int zii_pic_exec(struct zii_pic *zp,
 		.received = COMPLETION_INITIALIZER_ONSTACK(reply.received),
 	};
 
-	serdev_device_bus_lock(zp->sdev);
+	serdev_device_bus_lock(zp->serdev);
 
 	if (reply_code) {
 		mutex_lock(&zp->reply_lock);
@@ -145,7 +145,7 @@ int zii_pic_exec(struct zii_pic *zp,
 
 	if (reply_code &&
 	    !wait_for_completion_timeout(&reply.received, HZ)) {
-		dev_err(&zp->sdev->dev, "command timeout\n");
+		dev_err(&zp->serdev->dev, "command timeout\n");
 		ret = -ETIMEDOUT;
 
 		mutex_lock(&zp->reply_lock);
@@ -153,15 +153,15 @@ int zii_pic_exec(struct zii_pic *zp,
 		mutex_unlock(&zp->reply_lock);
 	}
 
-	serdev_device_bus_unlock(zp->sdev);
+	serdev_device_bus_unlock(zp->serdev);
 	return ret;
 }
 EXPORT_SYMBOL(zii_pic_exec);
 
 void zii_pic_prepare_for_reset(struct zii_pic *zp)
 {
-	serdev_device_bus_lock(zp->sdev);
-	serdev_device_write_flush(zp->sdev);
+	serdev_device_bus_lock(zp->serdev);
+	serdev_device_write_flush(zp->serdev);
 }
 EXPORT_SYMBOL(zii_pic_prepare_for_reset);
 
@@ -205,7 +205,7 @@ static void zii_pic_receive_reply(struct zii_pic *zp,
 				complete(&reply->received);
 				zp->reply = NULL;
 			} else {
-				dev_warn(&zp->sdev->dev,
+				dev_warn(&zp->serdev->dev,
 					 "unexpected reply: need code=%02x ackid=%02x "
 					 "size>=%d, got code=%02x ackid=%02x size=%d\n",
 					 reply->code, reply->ackid,
@@ -213,7 +213,7 @@ static void zii_pic_receive_reply(struct zii_pic *zp,
 					 data[0], data[1], length - 2);
 			}
 		} else {
-			dev_warn(&zp->sdev->dev,
+			dev_warn(&zp->serdev->dev,
 				 "got reply frame when not expecting one");
 		}
 	}
@@ -232,14 +232,14 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 		       16, 1, data, length, false);
 
 	if (unlikely(length < 3)) {
-		dev_warn(&zp->sdev->dev, "dropping short frame\n");
+		dev_warn(&zp->serdev->dev, "dropping short frame\n");
 		return;
 	}
 
 	zp->csum(data, length - csum_size, crc_calculated);
 
 	if (memcmp(crc_calculated, crc_reported, csum_size)) {
-		dev_warn(&zp->sdev->dev, "dropping bad frame\n");
+		dev_warn(&zp->serdev->dev, "dropping bad frame\n");
 		return;
 	}
 
@@ -327,11 +327,11 @@ int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 		zp->csum = csum_ccitt;
 	}
 
-	serdev_device_set_client_ops(zp->sdev, &zii_pic_serdev_device_ops);
-	ret = serdev_device_open(zp->sdev);
+	serdev_device_set_client_ops(zp->serdev, &zii_pic_serdev_device_ops);
+	ret = serdev_device_open(zp->serdev);
 	if (ret)
 		return ret;
 
-	serdev_device_set_baudrate(zp->sdev, speed);
+	serdev_device_set_baudrate(zp->serdev, speed);
 	return 0;
 }

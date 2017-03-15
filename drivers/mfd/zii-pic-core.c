@@ -54,7 +54,7 @@ static void zii_pic_get_fw_version(struct zii_pic *zp)
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
 			(u8 *) &zp->fw_version, sizeof(zp->fw_version));
 	if (ret) {
-		dev_warn(&zp->sdev->dev, "failed to get fw version\n");
+		dev_warn(&zp->serdev->dev, "failed to get fw version\n");
 		memset(&zp->fw_version, 0, sizeof(zp->fw_version));
 	}
 }
@@ -76,7 +76,7 @@ static void zii_pic_get_bl_version(struct zii_pic *zp)
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code,
 			(u8 *) &zp->bl_version, sizeof(zp->bl_version));
 	if (ret) {
-		dev_warn(&zp->sdev->dev,
+		dev_warn(&zp->serdev->dev,
 				"failed to get bl version\n");
 		memset(&zp->bl_version, 0, sizeof(zp->bl_version));
 	}
@@ -98,7 +98,7 @@ static void zii_pic_get_reset_reason(struct zii_pic *zp)
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), reply_code, &zp->reset_reason, 1);
 	if (ret) {
-		dev_warn(&zp->sdev->dev, "failed to get reset reason\n");
+		dev_warn(&zp->serdev->dev, "failed to get reset reason\n");
 		zp->reset_reason = 0xFF;
 	}
 }
@@ -119,7 +119,7 @@ static void zii_pic_get_boot_source(struct zii_pic *zp)
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
 			reply_code, &zp->boot_source, 1);
 	if (ret) {
-		dev_warn(&zp->sdev->dev, "failed to get boot source\n");
+		dev_warn(&zp->serdev->dev, "failed to get boot source\n");
 		zp->boot_source = 0xFF;
 	}
 }
@@ -161,7 +161,7 @@ static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
 			RSP_GET_STATUS, (u8 *)&reply, sizeof(reply));
 	if (ret) {
-		dev_warn(&zp->sdev->dev, "failed to read RDU1 status\n");
+		dev_warn(&zp->serdev->dev, "failed to read RDU1 status\n");
 		memset(&zp->fw_version, 0, sizeof(zp->fw_version));
 		memset(&zp->bl_version, 0, sizeof(zp->bl_version));
 		zp->boot_source = 0xFF;
@@ -210,7 +210,7 @@ static int zii_pic_reset_handler(struct notifier_block *nb,
 		}
 
 		msleep(550);	/* PIC firmware waits 500 ms before reset */
-		dev_emerg(&zp->sdev->dev, "rewset timed out, retrying\n");
+		dev_emerg(&zp->serdev->dev, "rewset timed out, retrying\n");
 	}
 
 	return NOTIFY_OK;	/* unreachable but stops warning */
@@ -223,7 +223,7 @@ static void zii_pic_setup_reboot(struct zii_pic *zp)
 	zp->reboot_nb.notifier_call = zii_pic_reboot_notifier;
 	ret = register_reboot_notifier(&zp->reboot_nb);
 	if (ret) {
-		dev_warn(&zp->sdev->dev,
+		dev_warn(&zp->serdev->dev,
 				"could not register reboot notifier\n");
 		return;
 	}
@@ -232,7 +232,7 @@ static void zii_pic_setup_reboot(struct zii_pic *zp)
 	zp->reset_nb.priority = 255;
 	ret = register_restart_handler(&zp->reset_nb);
 	if (ret) {
-		dev_warn(&zp->sdev->dev,
+		dev_warn(&zp->serdev->dev,
 				"could not register restart handler\n");
 		unregister_reboot_notifier(&zp->reboot_nb);
 	}
@@ -379,7 +379,7 @@ const static struct of_device_id zii_pic_dt_ids[] = {
 	{}
 };
 
-static int zii_pic_probe(struct serdev_device *sdev)
+static int zii_pic_probe(struct serdev_device *serdev)
 {
 	struct zii_pic *zp;
 	const struct of_device_id *id;
@@ -388,19 +388,19 @@ static int zii_pic_probe(struct serdev_device *sdev)
 
 	pr_debug("%s: enter\n", __func__);
 
-	id = of_match_device(zii_pic_dt_ids, &sdev->dev);
+	id = of_match_device(zii_pic_dt_ids, &serdev->dev);
 	if (!id)
 		return -ENODEV;
 
-	zp = devm_kzalloc(&sdev->dev, sizeof(*zp), GFP_KERNEL);
+	zp = devm_kzalloc(&serdev->dev, sizeof(*zp), GFP_KERNEL);
 	if (!zp)
 		return -ENOMEM;
 
-	zp->sdev = sdev;
+	zp->serdev = serdev;
 	zp->hw_id = (enum zii_pic_hw_id)id->data;
-	dev_set_drvdata(&sdev->dev, zp);
+	dev_set_drvdata(&serdev->dev, zp);
 
-	of_property_read_u32(sdev->dev.of_node, "current-speed", &baud);
+	of_property_read_u32(serdev->dev.of_node, "current-speed", &baud);
 
 	ret = zii_pic_open(zp, baud);
 	if (ret)
@@ -416,38 +416,38 @@ static int zii_pic_probe(struct serdev_device *sdev)
 
 	zii_pic_get_boot_source(zp);
 
-	ret = sysfs_create_group(&sdev->dev.kobj, &zii_pic_attr_group);
+	ret = sysfs_create_group(&serdev->dev.kobj, &zii_pic_attr_group);
 	if (ret)
 		goto err_create_group;
 
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-		ret = device_create_file(&sdev->dev, &dev_attr_copper_rev);
+		ret = device_create_file(&serdev->dev, &dev_attr_copper_rev);
 		if (ret)
 			goto err_create_copper_attr;
 	}
 
 	zii_pic_setup_reboot(zp);
 
-	return of_platform_default_populate(sdev->dev.of_node, NULL, &sdev->dev);
+	return of_platform_default_populate(serdev->dev.of_node, NULL, &serdev->dev);
 
 err_create_copper_attr:
-	sysfs_remove_group(&sdev->dev.kobj, &zii_pic_attr_group);
+	sysfs_remove_group(&serdev->dev.kobj, &zii_pic_attr_group);
 err_create_group:
-	serdev_device_close(zp->sdev);
+	serdev_device_close(zp->serdev);
 	return ret;
 }
 
-static void zii_pic_remove(struct serdev_device *sdev)
+static void zii_pic_remove(struct serdev_device *serdev)
 {
-	struct zii_pic *zp = dev_get_drvdata(&sdev->dev);
+	struct zii_pic *zp = dev_get_drvdata(&serdev->dev);
 
-	of_platform_depopulate(&sdev->dev);
+	of_platform_depopulate(&serdev->dev);
 
 	zii_pic_cleanup_reboot(zp);
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1)
-		device_remove_file(&sdev->dev, &dev_attr_copper_rev);
-	sysfs_remove_group(&sdev->dev.kobj, &zii_pic_attr_group);
-	serdev_device_close(zp->sdev);
+		device_remove_file(&serdev->dev, &dev_attr_copper_rev);
+	sysfs_remove_group(&serdev->dev.kobj, &zii_pic_attr_group);
+	serdev_device_close(zp->serdev);
 }
 
 static struct serdev_device_driver zii_pic_drv = {
