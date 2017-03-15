@@ -37,37 +37,6 @@
 
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
 
-static const struct mfd_cell zii_pic_devices[] = {
-	{
-		.of_compatible = "zii,pic-main-eeprom",
-		.name = ZII_PIC_NAME_MAIN_EEPROM,
-	},
-	{
-		.of_compatible = "zii,pic-dds-eeprom",
-		.name = ZII_PIC_NAME_DDS_EEPROM,
-	},
-	{
-		.of_compatible = "zii,pic-watchdog",
-		.name = ZII_PIC_NAME_WATCHDOG,
-	},
-	{
-		.of_compatible = "zii,pic-hwmon",
-		.name = ZII_PIC_NAME_HWMON,
-	},
-	{
-		.of_compatible = "zii,pic-pwrbutton",
-		.name = ZII_PIC_NAME_PWRBUTTON,
-	},
-	{
-		.of_compatible = "zii,pic-backlight",
-		.name = ZII_PIC_NAME_BACKLIGHT,
-	},
-	{
-		.of_compatible = "zii,pic-leds",
-		.name = ZII_PIC_NAME_LEDS,
-	},
-};
-
 #define CMD_GET_FW_VERSION	0x20
 #define RSP_GET_FW_VERSION	0x60
 
@@ -415,8 +384,7 @@ static int zii_pic_probe(struct serdev_device *sdev)
 	struct zii_pic *zp;
 	const struct of_device_id *id;
 	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
-	struct device_node *np;
-	int i, ret;
+	int ret;
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -448,21 +416,6 @@ static int zii_pic_probe(struct serdev_device *sdev)
 
 	zii_pic_get_boot_source(zp);
 
-	/* register cells for devices defined in DT */
-	for_each_child_of_node(sdev->dev.of_node, np) {
-		for (i = 0; i < ARRAY_SIZE(zii_pic_devices); i++) {
-			const struct mfd_cell *cell = &zii_pic_devices[i];
-			if (of_device_is_compatible(np, cell->of_compatible)) {
-				ret = mfd_add_devices(&sdev->dev,
-					PLATFORM_DEVID_NONE, cell, 1,
-					NULL, 0, NULL);
-				if (ret)
-					return ret;
-				break;
-			}
-		}
-	}
-
 	ret = sysfs_create_group(&sdev->dev.kobj, &zii_pic_attr_group);
 	if (ret)
 		goto err_create_group;
@@ -475,7 +428,7 @@ static int zii_pic_probe(struct serdev_device *sdev)
 
 	zii_pic_setup_reboot(zp);
 
-	return 0;
+	return of_platform_default_populate(sdev->dev.of_node, NULL, &sdev->dev);
 
 err_create_copper_attr:
 	sysfs_remove_group(&sdev->dev.kobj, &zii_pic_attr_group);
@@ -487,6 +440,8 @@ err_create_group:
 static void zii_pic_remove(struct serdev_device *sdev)
 {
 	struct zii_pic *zp = dev_get_drvdata(&sdev->dev);
+
+	of_platform_depopulate(&sdev->dev);
 
 	zii_pic_cleanup_reboot(zp);
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1)

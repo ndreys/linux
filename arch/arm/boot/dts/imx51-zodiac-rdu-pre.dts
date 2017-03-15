@@ -495,7 +495,7 @@
 	status = "okay";
 
 	pic {
-		compatible = "zii,pic-rdu1";
+		compatible = "zii,pic-rdu1", "simple-mfd";
 		status = "okay";
 		current-speed = <38400>;
 
