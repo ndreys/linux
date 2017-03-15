@@ -335,8 +335,3 @@ int zii_pic_comm_init(struct zii_pic *zp)
 	serdev_device_set_baudrate(zp->sdev, zp->baud);
 	return 0;
 }
-
-void zii_pic_comm_cleanup(struct zii_pic *zp)
-{
-	serdev_device_close(zp->sdev);
-}

@@ -99,7 +99,6 @@ static inline u8 zii_pic_code(struct zii_pic *zp, u8 rdu, u8 old)
 }
 
 int zii_pic_comm_init(struct zii_pic *zp);
-void zii_pic_comm_cleanup(struct zii_pic *zp);
 
 /* reply_code = 0 means don't expect reply */
 int zii_pic_exec(struct zii_pic *zp,

@@ -483,7 +483,7 @@ static int zii_pic_probe(struct serdev_device *sdev)
 err_create_copper_attr:
 	sysfs_remove_group(&sdev->dev.kobj, &zii_pic_attr_group);
 err_create_group:
-	zii_pic_comm_cleanup(zp);
+	serdev_device_close(zp->sdev);
 	return ret;
 }
 
@@ -495,7 +495,7 @@ static void zii_pic_remove(struct serdev_device *sdev)
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1)
 		device_remove_file(&sdev->dev, &dev_attr_copper_rev);
 	sysfs_remove_group(&sdev->dev.kobj, &zii_pic_attr_group);
-	zii_pic_comm_cleanup(zp);
+	serdev_device_close(zp->sdev);
 }
 
 static struct serdev_device_driver zii_pic_drv = {
