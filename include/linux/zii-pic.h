@@ -60,6 +60,11 @@ struct zii_pic_reply {
 	struct completion received;
 };
 
+struct zii_pic_checksum_implementation {
+	size_t length;
+	void (*subroutine) (const u8 *, size_t, u8 *);
+};
+
 struct zii_pic {
 	struct serdev_device		*serdev;
 	enum zii_pic_hw_id		hw_id;
@@ -75,8 +80,7 @@ struct zii_pic {
 	u8				reset_reason;
 	u8				boot_source;
 
-	void (*csum) (const u8 *, size_t, u8 *);
-	size_t csum_size;
+	const struct zii_pic_checksum_implementation *checksum;
 
 	struct notifier_block		reboot_nb,
 					reset_nb;

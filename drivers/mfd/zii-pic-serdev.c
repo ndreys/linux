@@ -49,6 +49,7 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 #include <linux/crc-ccitt.h>
+#include <linux/of.h>
 
 #define STX			0x02
 #define ETX			0x03
@@ -95,18 +96,17 @@ static void *stuff(unsigned char *dest, const unsigned char *src, size_t n)
 static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 {
 	size_t length;
-	const size_t csum_size = pic->csum_size;
-	unsigned char crc[csum_size];
+	unsigned char crc[pic->checksum->length];
 	unsigned char frame[ZII_PIC_TX_BUF_SIZE];
 	unsigned char *dest = frame;
 
 	BUG_ON(data_size > ZII_PIC_TX_BUF_SIZE);
 
-	pic->csum(data, data_size, crc);
+	pic->checksum->subroutine(data, data_size, crc);
 
 	*dest++ = STX;
 	dest = stuff(dest, data, data_size);
-	dest = stuff(dest, crc, csum_size);
+	dest = stuff(dest, crc, pic->checksum->length);
 	*dest++ = ETX;
 
 	length = dest - frame;
@@ -230,9 +230,8 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 				  const unsigned char *data,
 				  size_t length)
 {
-	const size_t csum_size = zp->csum_size;
-	u8 crc_calculated[csum_size];
-	const u8 *crc_reported = &data[length - zp->csum_size];
+	const u8 *crc_reported = &data[length - zp->checksum->length];
+	u8 crc_calculated[zp->checksum->length];
 
 	print_hex_dump(KERN_CRIT, "zii-pic rx: ", DUMP_PREFIX_NONE,
 		       16, 1, data, length, false);
@@ -242,14 +241,16 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 		return;
 	}
 
-	zp->csum(data, length - csum_size, crc_calculated);
+	zp->checksum->subroutine(data, length - zp->checksum->length,
+				 crc_calculated);
 
-	if (memcmp(crc_calculated, crc_reported, csum_size)) {
+	if (memcmp(crc_calculated,
+		   crc_reported, zp->checksum->length)) {
 		dev_warn(&zp->serdev->dev, "dropping bad frame\n");
 		return;
 	}
 
-	length -= csum_size;
+	length -= zp->checksum->length;
 
 	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
 	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
@@ -318,6 +319,16 @@ static const struct serdev_device_ops zii_pic_serdev_device_ops = {
 	.receive_buf = zii_pic_receive_buf,
 };
 
+const static struct zii_pic_checksum_implementation zii_pic_csum_8b2c = {
+	.length     = 1,
+	.subroutine = csum_8b2c,
+};
+
+const static struct zii_pic_checksum_implementation zii_pic_csum_ccitt = {
+	.length     = 2,
+	.subroutine = csum_ccitt,
+};
+
 int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 {
 	int ret;
@@ -325,13 +336,10 @@ int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 	mutex_init(&zp->reply_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
-		zp->csum_size  = 1;
-		zp->csum = csum_8b2c;
-	} else {
-		zp->csum_size  = 2;
-		zp->csum = csum_ccitt;
-	}
+	if (of_device_is_compatible(zp->serdev->dev.of_node, "zii,pic-rdu2"))
+		zp->checksum = &zii_pic_csum_ccitt;
+	else
+		zp->checksum = &zii_pic_csum_8b2c;
 
 	serdev_device_set_client_ops(zp->serdev, &zii_pic_serdev_device_ops);
 	ret = serdev_device_open(zp->serdev);
