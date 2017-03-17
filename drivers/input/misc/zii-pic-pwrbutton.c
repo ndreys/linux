@@ -73,8 +73,6 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 
 	if (!zp)
 		return -EINVAL;
-	if (zp->hw_id < ZII_PIC_HW_ID_RDU1)
-		return -ENODEV;
 
 	picpb = devm_kzalloc(&pdev->dev, sizeof(*picpb), GFP_KERNEL);
 	dev_set_drvdata(&pdev->dev, picpb);

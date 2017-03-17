@@ -219,8 +219,10 @@ static int zii_pic_leds_probe(struct platform_device *pdev)
 
 	if (!zp)
 		return -EINVAL;
+#if 0	
 	if (zp->hw_id != ZII_PIC_HW_ID_RDU2)
 		return -ENODEV;		/* currently only RDU2 is supported */
+#endif	
 
 	zleds = devm_kzalloc(dev, sizeof(*zleds), GFP_KERNEL);
 	if (!zleds)

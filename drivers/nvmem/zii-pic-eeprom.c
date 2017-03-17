@@ -220,7 +220,7 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 	config.owner = THIS_MODULE;
 	config.dev = dev;
 	config.priv = zpe;
-
+#if 0
 	if (zp->hw_id < ZII_PIC_HW_ID_RDU1) {
 		if (id->data == (void *)DDS_EEPROM)
 			return -ENXIO;
@@ -237,7 +237,7 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 		config.size = zp->hw_id == ZII_PIC_HW_ID_RDU1 ?
 			DDS_EEPROM_SIZE_RDU1 : DDS_EEPROM_SIZE;
 	}
-
+#endif
 	config.reg_read = zii_pic_eeprom_reg_read;
 	config.reg_write = zii_pic_eeprom_reg_write;
 	config.word_size = 1;

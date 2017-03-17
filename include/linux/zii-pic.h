@@ -19,14 +19,6 @@ struct zii_pic;
 
 struct serdev_device;
 
-enum zii_pic_hw_id {
-	ZII_PIC_HW_ID_NIU,
-	ZII_PIC_HW_ID_MEZZ,
-	ZII_PIC_HW_ID_ESB,
-	ZII_PIC_HW_ID_RDU1,
-	ZII_PIC_HW_ID_RDU2,
-};
-
 struct zii_pic_version {
 	u8	hw;
 	u16	major;
@@ -39,6 +31,17 @@ struct zii_pic_version {
 #define ZII_PIC_EVENT_CODE_MAX		0xEF
 
 /* For now, assume no data in event reply */
+
+enum zii_pic_command {
+	ZII_PIC_CMD_GET_FIRMWARE_VERSION	= 0x20,
+	ZII_PIC_CMD_GET_BOOTLOADER_VERSION	= 0x21,
+	ZII_PIC_CMD_BOOT_SOURCE			= 0x26,
+	ZII_PIC_CMD_GET_BOARD_COPPER_REV	= 0x2B,
+	ZII_PIC_CMD_STATUS			= 0xA0,
+	ZII_PIC_CMD_PET_WDT			= 0xA2,
+	ZII_PIC_CMD_RESET			= 0xA7,
+	ZII_PIC_CMD_RESET_REASON		= 0xA8,
+};
 
 enum zii_pic_deframer_state {
 	ZII_PIC_EXPECT_SOF,
@@ -60,14 +63,24 @@ struct zii_pic_reply {
 	struct completion received;
 };
 
-struct zii_pic_checksum_implementation {
+struct zii_pic_checksum {
 	size_t length;
 	void (*subroutine) (const u8 *, size_t, u8 *);
 };
 
+struct zii_pic_variant {
+	const struct zii_pic_checksum *checksum;
+
+	struct {
+		void (*reset)       (struct zii_pic *);
+		int  (*translate)   (enum zii_pic_command);
+	} cmd;
+
+	void (*read_status) (struct zii_pic *);
+};
+
 struct zii_pic {
 	struct serdev_device		*serdev;
-	enum zii_pic_hw_id		hw_id;
 
 	struct zii_pic_deframer deframer;
 	atomic_t ackid;
@@ -80,7 +93,7 @@ struct zii_pic {
 	u8				reset_reason;
 	u8				boot_source;
 
-	const struct zii_pic_checksum_implementation *checksum;
+	const struct zii_pic_variant *variant;
 
 	struct notifier_block		reboot_nb,
 					reset_nb;
@@ -95,12 +108,6 @@ static inline struct zii_pic *zii_pic_parent(struct device *dev)
 	else
 		return NULL;
 }
-
-static inline u8 zii_pic_code(struct zii_pic *zp, u8 rdu, u8 old)
-{
-	return zp->hw_id >= ZII_PIC_HW_ID_RDU1 ? rdu : old;
-}
-
 
 int zii_pic_exec(struct zii_pic *zp,
 		 void *data,  size_t data_size,

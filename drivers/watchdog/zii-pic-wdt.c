@@ -43,6 +43,7 @@ struct zii_pic_wdt {
 
 static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 {
+#if 0
 	if (zpw->zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
 		u8 cmd[4];
 		cmd[0] = CMD_SET_WDT;
@@ -61,15 +62,14 @@ static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 		return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
 				    NULL, 0);
 	}
+#else
+	return -ENOTSUPP;
+#endif
 }
-
-#define CMD_PET_WDT	0xA2
-#define OCMD_PET_WDT	0x1D
-
 
 static int zii_pic_wdt_pet(struct zii_pic_wdt *zpw)
 {
-	u8 cmd[] = { zii_pic_code(zpw->zp, CMD_PET_WDT, OCMD_PET_WDT), 0 };
+	u8 cmd[] = { ZII_PIC_CMD_PET_WDT, 0 };
 	return zii_pic_exec(zpw->zp,
 			    cmd, sizeof(cmd),
 			    NULL, 0);
@@ -161,6 +161,8 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	zpw->wdt.parent = dev;
 	zpw->wdt.info = &zii_pic_wdt_info;
 	zpw->wdt.ops = &zii_pic_wdt_ops;
+
+#if 0
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
 		zpw->wdt.min_timeout = 60;
 		zpw->wdt.max_timeout = 180;
@@ -168,6 +170,7 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 		zpw->wdt.min_timeout = 1;
 		zpw->wdt.max_timeout = 255;
 	}
+#endif
 	zpw->wdt.status = WATCHDOG_NOWAYOUT_INIT_STATUS;
 
 	cell = nvmem_cell_get(dev, "wdt_timeout");

@@ -45,13 +45,9 @@ static void zii_pic_prepare_for_reset(struct zii_pic *zp);
 
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
 
-#define CMD_GET_FW_VERSION	0x20
-#define OCMD_GET_FW_VERSION	0x11
-
 static void zii_pic_get_fw_version(struct zii_pic *zp)
 {
-	u8 cmd[2] = { zii_pic_code(zp,
-				   CMD_GET_FW_VERSION, OCMD_GET_FW_VERSION), 0};
+	u8 cmd[2] = { ZII_PIC_CMD_GET_FIRMWARE_VERSION };
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
@@ -62,13 +58,9 @@ static void zii_pic_get_fw_version(struct zii_pic *zp)
 	}
 }
 
-#define CMD_GET_BL_VERSION	0x21
-#define OCMD_GET_BL_VERSION	0x12
-
 static void zii_pic_get_bl_version(struct zii_pic *zp)
 {
-	u8 cmd[2] = { zii_pic_code(zp,
-				   CMD_GET_BL_VERSION, OCMD_GET_BL_VERSION), 0 };
+	u8 cmd[2] = { ZII_PIC_CMD_GET_BOOTLOADER_VERSION };
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
@@ -80,13 +72,9 @@ static void zii_pic_get_bl_version(struct zii_pic *zp)
 	}
 }
 
-#define CMD_GET_RESET_REASON	0xA8
-#define OCMD_GET_RESET_REASON	0x1F
-
 static void zii_pic_get_reset_reason(struct zii_pic *zp)
 {
-	u8 cmd[2] = { zii_pic_code(zp,
-				   CMD_GET_RESET_REASON, OCMD_GET_RESET_REASON), 0 };
+	u8 cmd[2] = { ZII_PIC_CMD_RESET_REASON };
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), &zp->reset_reason, 1);
@@ -96,13 +84,9 @@ static void zii_pic_get_reset_reason(struct zii_pic *zp)
 	}
 }
 
-#define CMD_BOOT_SOURCE		0x26
-#define OCMD_BOOT_SOURCE	0x14
-
 static void zii_pic_get_boot_source(struct zii_pic *zp)
 {
-	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
-	u8 cmd[] = {code, 0, 0, 0};
+	u8 cmd[] = { ZII_PIC_CMD_BOOT_SOURCE, 0, 0, 0};
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
@@ -115,8 +99,7 @@ static void zii_pic_get_boot_source(struct zii_pic *zp)
 
 static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
 {
-	u8 code = zii_pic_code(zp, CMD_BOOT_SOURCE, OCMD_BOOT_SOURCE);
-	u8 cmd[] = {code, 0, 1, boot_src};
+	u8 cmd[] = { ZII_PIC_CMD_BOOT_SOURCE, 0, 1, boot_src };
 	int ret;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), NULL, 0);
@@ -130,10 +113,7 @@ static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
 	return 0;
 }
 
-
-#define CMD_GET_STATUS		0xA0
-
-static void zii_pic_get_status_rdu1(struct zii_pic *zp)
+static void zii_pic_rdu1_read_status(struct zii_pic *zp)
 {
 	struct {
 		u8 bl[6];
@@ -143,7 +123,7 @@ static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 	} __packed reply;
 
 	int ret;
-	u8 cmd[] = {CMD_GET_STATUS, 0};
+	u8 cmd[] = { ZII_PIC_CMD_STATUS, 0};
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
 			   &reply, sizeof(reply));
@@ -159,12 +139,6 @@ static void zii_pic_get_status_rdu1(struct zii_pic *zp)
 	}
 }
 
-static int zii_pic_set_boot_source_rdu1(struct zii_pic *zp, u8 boot_src)
-{
-	/* TODO: port old eeprom access code */
-	return -EIO;
-}
-
 static int zii_pic_reboot_notifier(struct notifier_block *nb,
 		unsigned long action, void *data)
 {
@@ -178,23 +152,13 @@ static int zii_pic_reboot_notifier(struct notifier_block *nb,
 
 }
 
-#define CMD_PIC_RESET	0xA7
-#define OCMD_PIC_RESET	0x1E
-
 static int zii_pic_reset_handler(struct notifier_block *nb,
 		unsigned long action, void *data)
 {
 	struct zii_pic *zp = container_of(nb, struct zii_pic, reset_nb);
 
 	while (1) {
-
-		if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-			u8 cmd[] = { CMD_PIC_RESET, 1, 0 };
-			zii_pic_exec_reset(zp, cmd, sizeof(cmd));
-		} else {
-			u8 cmd[] = { OCMD_PIC_RESET, 1 };
-			zii_pic_exec_reset(zp, cmd, sizeof(cmd));
-		}
+		zp->variant->cmd.reset(zp);
 
 		msleep(550);	/* PIC firmware waits 500 ms before reset */
 		dev_emerg(&zp->serdev->dev, "rewset timed out, retrying\n");
@@ -294,10 +258,7 @@ static ssize_t zii_pic_store_boot_source(struct device *dev,
 	if (boot_src > 2)
 		return -EINVAL;
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU1)
-		ret = zii_pic_set_boot_source_rdu1(zp, boot_src);
-	else
-		ret = zii_pic_set_boot_source(zp, boot_src);
+	ret = zii_pic_set_boot_source(zp, boot_src);
 	if (ret)
 		return ret;
 
@@ -319,10 +280,6 @@ static const struct attribute_group zii_pic_attr_group = {
 	.attrs = zii_pic_dev_attrs,
 };
 
-#define CMD_COPPER_REV_RDU1	0x28
-
-#define CMD_COPPER_REV_RDU2	0x2B
-
 static ssize_t zii_pic_show_copper_rev(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -330,12 +287,7 @@ static ssize_t zii_pic_show_copper_rev(struct device *dev,
 	int ret;
 	u8 cmd[2], res;
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU2) {
-		cmd[0] = CMD_COPPER_REV_RDU2;
-	} else if (zp->hw_id == ZII_PIC_HW_ID_RDU1) {
-		cmd[0] = CMD_COPPER_REV_RDU1;
-	} else
-		return -ENOTSUPP;
+	cmd[0] = ZII_PIC_CMD_GET_BOARD_COPPER_REV;
 
 	ret = zii_pic_exec(zp, cmd, sizeof(cmd), &res, sizeof(res));
 	if (ret)
@@ -436,17 +388,18 @@ static void *stuff(unsigned char *dest, const unsigned char *src, size_t n)
 static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 {
 	size_t length;
-	unsigned char crc[pic->checksum->length];
+	const size_t checksum_length = pic->variant->checksum->length;
+	unsigned char crc[checksum_length];
 	unsigned char frame[ZII_PIC_TX_BUF_SIZE];
 	unsigned char *dest = frame;
 
 	BUG_ON(data_size > ZII_PIC_TX_BUF_SIZE);
 
-	pic->checksum->subroutine(data, data_size, crc);
+	pic->variant->checksum->subroutine(data, data_size, crc);
 
 	*dest++ = STX;
 	dest = stuff(dest, data, data_size);
-	dest = stuff(dest, crc, pic->checksum->length);
+	dest = stuff(dest, crc, checksum_length);
 	*dest++ = ETX;
 
 	length = dest - frame;
@@ -479,6 +432,10 @@ int zii_pic_exec(struct zii_pic *pic,
 		.length   = reply_data_size,
 		.received = COMPLETION_INITIALIZER_ONSTACK(reply.received),
 	};
+	const int command = pic->variant->cmd.translate(data[0]);
+
+	if (command < 0)
+		return command;
 
 	serdev_device_bus_lock(pic->serdev);
 
@@ -486,6 +443,7 @@ int zii_pic_exec(struct zii_pic *pic,
 	pic->reply = &reply;
 	mutex_unlock(&pic->reply_lock);
 
+	data[0] = (u8)command;
 	data[1] = ackid;
 
 	zii_pic_write(pic, data, data_size);
@@ -569,27 +527,25 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 				  const unsigned char *data,
 				  size_t length)
 {
-	const u8 *crc_reported = &data[length - zp->checksum->length];
-	u8 crc_calculated[zp->checksum->length];
+	const size_t checksum_length = zp->variant->checksum->length;
+	const size_t payload_length  = length - checksum_length;
+	const u8 *crc_reported       = &data[payload_length];
+	u8 crc_calculated[checksum_length];
 
 	print_hex_dump(KERN_CRIT, "zii-pic rx: ", DUMP_PREFIX_NONE,
 		       16, 1, data, length, false);
 
-	if (unlikely(length < 3)) {
+	if (unlikely(length <= checksum_length)) {
 		dev_warn(&zp->serdev->dev, "dropping short frame\n");
 		return;
 	}
 
-	zp->checksum->subroutine(data, length - zp->checksum->length,
-				 crc_calculated);
+	zp->variant->checksum->subroutine(data, payload_length, crc_calculated);
 
-	if (memcmp(crc_calculated,
-		   crc_reported, zp->checksum->length)) {
+	if (memcmp(crc_calculated, crc_reported, checksum_length)) {
 		dev_warn(&zp->serdev->dev, "dropping bad frame\n");
 		return;
 	}
-
-	length -= zp->checksum->length;
 
 	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
 	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
@@ -658,27 +614,12 @@ static const struct serdev_device_ops zii_pic_serdev_device_ops = {
 	.receive_buf = zii_pic_receive_buf,
 };
 
-const static struct zii_pic_checksum_implementation zii_pic_csum_8b2c = {
-	.length     = 1,
-	.subroutine = csum_8b2c,
-};
-
-const static struct zii_pic_checksum_implementation zii_pic_csum_ccitt = {
-	.length     = 2,
-	.subroutine = csum_ccitt,
-};
-
 static int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 {
 	int ret;
 
 	mutex_init(&zp->reply_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
-
-	if (of_device_is_compatible(zp->serdev->dev.of_node, "zii,pic-rdu2"))
-		zp->checksum = &zii_pic_csum_ccitt;
-	else
-		zp->checksum = &zii_pic_csum_8b2c;
 
 	serdev_device_set_client_ops(zp->serdev, &zii_pic_serdev_device_ops);
 	ret = serdev_device_open(zp->serdev);
@@ -689,18 +630,106 @@ static int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 	return 0;
 }
 
+static void zii_pic_default_reset(struct zii_pic *pic)
+{
+	u8 cmd[] = { ZII_PIC_CMD_RESET, 1 };
+	zii_pic_exec_reset(pic, cmd, sizeof(cmd));
+}
+
+static void zii_pic_rdu_reset(struct zii_pic *pic)
+{
+	u8 cmd[] = { ZII_PIC_CMD_RESET, 1, 0 };
+	zii_pic_exec_reset(pic, cmd, sizeof(cmd));
+}
+
+static int zii_pic_rdu1_cmd_translate(enum zii_pic_command command)
+{
+	/* FIXME: This command is not in ICD */
+#define CMD_COPPER_REV_RDU1	0x28
+
+	if (0xA0 <= command && command <= 0xBB)
+		return command;
+	else
+		return -EINVAL;
+}
+
+static int zii_pic_rdu2_cmd_translate(enum zii_pic_command command)
+{
+	if (0x20 <= command && command <= 0x2F)
+		return command;
+	else
+		return zii_pic_rdu1_cmd_translate(command);
+}
+
+static int zii_pic_default_cmd_translate(enum zii_pic_command command)
+{
+	switch (command) {
+	case ZII_PIC_CMD_GET_FIRMWARE_VERSION:
+		return 0x11;
+	case ZII_PIC_CMD_GET_BOOTLOADER_VERSION:
+		return 0x12;
+	case ZII_PIC_CMD_RESET_REASON:
+		return 0x1F;
+	case ZII_PIC_CMD_BOOT_SOURCE:
+		return 0x14;
+	case ZII_PIC_CMD_RESET:
+		return 0x1E;
+	default:
+		return -EINVAL;
+	}
+}
+
+static void zii_pic_default_read_status(struct zii_pic *pic)
+{
+	zii_pic_get_fw_version(pic);
+	zii_pic_get_bl_version(pic);
+	zii_pic_get_reset_reason(pic);
+}
+
+const static struct zii_pic_checksum zii_pic_checksum_8b2c = {
+	.length     = 1,
+	.subroutine = csum_8b2c,
+};
+
+const static struct zii_pic_checksum zii_pic_checksum_ccitt = {
+	.length     = 2,
+	.subroutine = csum_ccitt,
+};
+
+const static struct zii_pic_variant zii_pic_legacy = {
+	.checksum = &zii_pic_checksum_8b2c,
+	.cmd = {
+		.reset = zii_pic_default_reset,
+		.translate = zii_pic_default_cmd_translate,
+	},
+	.read_status = zii_pic_default_read_status,
+};
+
+const static struct zii_pic_variant zii_pic_rdu1 = {
+	.checksum = &zii_pic_checksum_8b2c,
+	.cmd = {
+		.reset       = zii_pic_rdu_reset,
+		.translate   = zii_pic_rdu1_cmd_translate,
+	},
+	.read_status = zii_pic_rdu1_read_status,
+};
+
+const static struct zii_pic_variant zii_pic_rdu2 = {
+	.checksum = &zii_pic_checksum_ccitt,
+	.cmd  = {
+		.reset       = zii_pic_rdu_reset,
+		.translate   = zii_pic_rdu2_cmd_translate,
+	},
+	.read_status = zii_pic_default_read_status,
+};
+
 const static struct of_device_id zii_pic_dt_ids[] = {
-	{ .compatible = "zii,pic-niu",
-		.data = (const void *)ZII_PIC_HW_ID_NIU},
-	{ .compatible = "zii,pic-mezz",
-		.data = (const void *)ZII_PIC_HW_ID_MEZZ},
-	{ .compatible = "zii,pic-esb",
-		.data = (const void *)ZII_PIC_HW_ID_ESB},
-	{ .compatible = "zii,pic-rdu1",
-		.data = (const void *)ZII_PIC_HW_ID_RDU1},
-	{ .compatible = "zii,pic-rdu2",
-		.data = (const void *)ZII_PIC_HW_ID_RDU2},
-	{}
+	{ .compatible = "zii,pic-niu",  .data = &zii_pic_legacy },
+	{ .compatible = "zii,pic-mezz",	.data = &zii_pic_legacy },
+	{ .compatible = "zii,pic-esb",	.data = &zii_pic_legacy },
+	{ .compatible = "zii,pic-rdu1",	.data = &zii_pic_rdu1   },
+	{ .compatible = "zii,pic-rdu2",	.data = &zii_pic_rdu2   },
+	{ /* sentinel */ }
 };
 
 static int zii_pic_probe(struct serdev_device *serdev)
@@ -711,44 +740,36 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
 	int ret;
 
-	id = of_match_device(zii_pic_dt_ids, dev);
-	if (!id)
-		return -ENODEV;
-
 	zp = devm_kzalloc(dev, sizeof(*zp), GFP_KERNEL);
 	if (!zp)
 		return -ENOMEM;
 
 	zp->serdev = serdev;
-	zp->hw_id = (enum zii_pic_hw_id)id->data;
 	dev_set_drvdata(dev, zp);
 
-	of_property_read_u32(dev->of_node, "current-speed", &baud);
+	zp->variant = of_device_get_match_data(dev);
+	if (!zp->variant)
+		return -ENODEV;
 
+	of_property_read_u32(dev->of_node, "current-speed", &baud);
 	ret = zii_pic_open(zp, baud);
 	if (ret)
 		return ret;
 
-	if (zp->hw_id == ZII_PIC_HW_ID_RDU1)
-		zii_pic_get_status_rdu1(zp);
-	else {
-		zii_pic_get_fw_version(zp);
-		zii_pic_get_bl_version(zp);
-		zii_pic_get_reset_reason(zp);
-	}
+	zp->variant->read_status(zp);
 
 	zii_pic_get_boot_source(zp);
 
 	ret = sysfs_create_group(&dev->kobj, &zii_pic_attr_group);
 	if (ret)
 		goto err_create_group;
-
+#if 0
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
 		ret = device_create_file(dev, &dev_attr_copper_rev);
 		if (ret)
 			goto err_create_copper_attr;
 	}
-
+#endif
 	zii_pic_setup_reboot(zp);
 
 	return of_platform_default_populate(dev->of_node, NULL, dev);
@@ -767,8 +788,10 @@ static void zii_pic_remove(struct serdev_device *serdev)
 	of_platform_depopulate(&serdev->dev);
 
 	zii_pic_cleanup_reboot(zp);
+#if 0
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1)
 		device_remove_file(&serdev->dev, &dev_attr_copper_rev);
+#endif
 	sysfs_remove_group(&serdev->dev.kobj, &zii_pic_attr_group);
 	serdev_device_close(zp->serdev);
 }

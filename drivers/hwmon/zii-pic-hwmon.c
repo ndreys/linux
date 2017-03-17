@@ -261,14 +261,16 @@ static ssize_t zii_pic_read_sensor(struct device *dev,
 	struct zii_pic_hwmon *hwmon = dev_get_drvdata(dev);
 	int idx = to_sensor_dev_attr(attr)->index;
 	int ret;
-
+#if 0
 	if (hwmon->zp->hw_id == ZII_PIC_HW_ID_RDU2)
 		ret = rdu2_read_sensor(hwmon, idx);
 	else if (hwmon->zp->hw_id == ZII_PIC_HW_ID_RDU1)
 		ret = rdu1_read_sensor(hwmon, idx);
 	else
 		ret = old_read_sensor(hwmon, idx);
-
+#else
+	ret = -ENOTSUPP;
+#endif
 	if (ret < 0)
 		return ret;
 	else
