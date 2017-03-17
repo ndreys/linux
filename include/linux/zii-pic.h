@@ -101,19 +101,11 @@ static inline u8 zii_pic_code(struct zii_pic *zp, u8 rdu, u8 old)
 	return zp->hw_id >= ZII_PIC_HW_ID_RDU1 ? rdu : old;
 }
 
-int zii_pic_open(struct zii_pic *zp, unsigned int speed);
 
 int zii_pic_exec(struct zii_pic *zp,
 		 void *data,  size_t data_size,
 		 void *reply, size_t reply_size);
 
-
-/* Special handling for sending reset command:
- * - call zii_pic_prepare_for_reset() when scheduling is still available,
- * - call zii_pic_do_reset() when already in machine_restart()
- */
-void zii_pic_prepare_for_reset(struct zii_pic *zp);
-void zii_pic_exec_reset(struct zii_pic *zp, const u8 *data, u8 data_size);
 
 #define ZII_PIC_NAME_WATCHDOG		"pic-watchdog"
 #define ZII_PIC_NAME_HWMON		"pic-hwmon"
