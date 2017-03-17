@@ -114,7 +114,6 @@ int zii_pic_exec(struct zii_pic *zp,
 		 void *reply, size_t reply_size);
 
 
-#define ZII_PIC_NAME_WATCHDOG		"pic-watchdog"
 #define ZII_PIC_NAME_HWMON		"pic-hwmon"
 #define ZII_PIC_NAME_EEPROM		"pic-eeprom"
 #define ZII_PIC_NAME_MAIN_EEPROM	"pic-main-eeprom"

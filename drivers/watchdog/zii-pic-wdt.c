@@ -213,7 +213,7 @@ static struct platform_driver zii_pic_wdt_driver = {
 	.probe = zii_pic_wdt_probe,
 	.remove = zii_pic_wdt_remove,
 	.driver = {
-		.name = ZII_PIC_NAME_WATCHDOG,
+		.name = KBUILD_MODNAME,
 		.of_match_table = zii_pic_wdt_of_match,
 	},
 };
