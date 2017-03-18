@@ -49,6 +49,11 @@ struct zii_pic_wdt {
 	const struct zii_pic_wdt_variant *variant;
 };
 
+static struct zii_pic_wdt *to_zii_pic_wdt(struct watchdog_device *wdd)
+{
+	return container_of(wdd, struct zii_pic_wdt, wdt);
+}
+
 static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 {
 	return zpw->variant->set(zpw, enable);
@@ -91,7 +96,7 @@ static int zii_pic_wdt_pet(struct zii_pic_wdt *zpw)
 
 static int zii_pic_wdt_start(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = container_of(wdt, struct zii_pic_wdt, wdt);
+	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 	int ret;
 
 	ret = zii_pic_wdt_set(zpw, true);
@@ -105,7 +110,7 @@ static int zii_pic_wdt_start(struct watchdog_device *wdt)
 
 static int zii_pic_wdt_stop(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = container_of(wdt, struct zii_pic_wdt, wdt);
+	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 	int ret;
 
 	ret = zii_pic_wdt_set(zpw, false);
@@ -119,7 +124,7 @@ static int zii_pic_wdt_stop(struct watchdog_device *wdt)
 
 static int zii_pic_wdt_ping(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = container_of(wdt, struct zii_pic_wdt, wdt);
+	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 
 	return zii_pic_wdt_pet(zpw);
 }
@@ -127,7 +132,7 @@ static int zii_pic_wdt_ping(struct watchdog_device *wdt)
 static int zii_pic_wdt_set_timeout(struct watchdog_device *wdt,
 				   unsigned int timeout)
 {
-	struct zii_pic_wdt *zpw = container_of(wdt, struct zii_pic_wdt, wdt);
+	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 
 	zpw->wdt.timeout = timeout;
 
