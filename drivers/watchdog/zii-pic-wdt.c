@@ -40,7 +40,7 @@ struct zii_pic_wdt_variant {
 	unsigned int max_timeout;
 	unsigned int min_timeout;
 
-	int (*set) (struct zii_pic_wdt *, bool);
+	int (*set) (struct watchdog_device *, bool);
 };
 
 struct zii_pic_wdt {
@@ -54,44 +54,48 @@ static struct zii_pic_wdt *to_zii_pic_wdt(struct watchdog_device *wdd)
 	return container_of(wdd, struct zii_pic_wdt, wdt);
 }
 
-static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
+static int zii_pic_wdt_exec(struct watchdog_device *wdd,
+			    void *data,  size_t data_size)
 {
-	return zpw->variant->set(zpw, enable);
+	struct zii_pic_wdt *pic_wdd = to_zii_pic_wdt(wdd);
+	return zii_pic_exec(pic_wdd->zp, data, data_size, NULL, 0);
 }
 
-static int zii_pic_wdt_legacy_set(struct zii_pic_wdt *zpw, bool enable)
+static int zii_pic_wdt_set(struct watchdog_device *wdd, bool enable)
+{
+	struct zii_pic_wdt *pic_wdd = to_zii_pic_wdt(wdd);
+	return pic_wdd->variant->set(wdd, enable);
+}
+
+static int zii_pic_wdt_legacy_set(struct watchdog_device *wdd, bool enable)
 {
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_SW_WDT,
 		[1] = 0,
 		[2] = 0,
 		[3] = !!enable,
-		[4] = enable ? zpw->wdt.timeout : 0,
+		[4] = enable ? wdd->timeout : 0,
 	};
-	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-			    NULL, 0);
-
+	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
-static int zii_pic_wdt_rdu_set(struct zii_pic_wdt *zpw, bool enable)
+static int zii_pic_wdt_rdu_set(struct watchdog_device *wdd, bool enable)
 {
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_SW_WDT,
 		[1] = 0,
 		[2] = !!enable,
-		[3] = (u8) zpw->wdt.timeout,
-		[4] = (u8) (zpw->wdt.timeout >> 8),
+		[3] = (u8) wdd->timeout,
+		[4] = (u8) (wdd->timeout >> 8),
 	};
-	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-			    NULL, 0);
+	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
 static int zii_pic_wdt_start(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 	int ret;
 
-	ret = zii_pic_wdt_set(zpw, true);
+	ret = zii_pic_wdt_set(wdt, true);
 	if (!ret)
 		set_bit(WDOG_HW_RUNNING, &wdt->status);
 	else
@@ -102,10 +106,9 @@ static int zii_pic_wdt_start(struct watchdog_device *wdt)
 
 static int zii_pic_wdt_stop(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
 	int ret;
 
-	ret = zii_pic_wdt_set(zpw, false);
+	ret = zii_pic_wdt_set(wdt, false);
 	if (!ret)
 		clear_bit(WDOG_HW_RUNNING, &wdt->status);
 	else
@@ -116,21 +119,21 @@ static int zii_pic_wdt_stop(struct watchdog_device *wdt)
 
 static int zii_pic_wdt_ping(struct watchdog_device *wdt)
 {
-	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
-	u8 cmd[] = { ZII_PIC_CMD_PET_WDT, 0 };
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_PET_WDT,
+		[1] = 0,
+	};
 
-	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd), NULL, 0);
+	return zii_pic_wdt_exec(wdt, cmd, sizeof(cmd));
 }
 
 static int zii_pic_wdt_set_timeout(struct watchdog_device *wdt,
 				   unsigned int timeout)
 {
-	struct zii_pic_wdt *zpw = to_zii_pic_wdt(wdt);
-
-	zpw->wdt.timeout = timeout;
+	wdt->timeout = timeout;
 
 	if (test_bit(WDOG_HW_RUNNING, &wdt->status))
-		return zii_pic_wdt_set(zpw, true);
+		return zii_pic_wdt_set(wdt, true);
 	else
 		return 0;
 }
