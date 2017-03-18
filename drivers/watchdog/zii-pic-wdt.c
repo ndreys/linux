@@ -191,12 +191,10 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	if (!zpw)
 		return -ENOMEM;
 
-	zpw->zp = zp;
-	dev_set_drvdata(dev, zpw);
-
+	zpw->zp         = zp;
 	zpw->wdt.parent = dev;
-	zpw->wdt.info = &zii_pic_wdt_info;
-	zpw->wdt.ops = &zii_pic_wdt_ops;
+	zpw->wdt.info   = &zii_pic_wdt_info;
+	zpw->wdt.ops    = &zii_pic_wdt_ops;
 
 	id = of_match_device(zii_pic_wdt_variants, dev->parent);
 	if (WARN_ON(!id))
@@ -231,21 +229,11 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	zpw->wdt.max_hw_heartbeat_ms = zpw->wdt.max_timeout * 1000;
 	zii_pic_wdt_start(&zpw->wdt);
 
-	return watchdog_register_device(&zpw->wdt);
-}
-
-static int zii_pic_wdt_remove(struct platform_device *pdev)
-{
-	struct zii_pic_wdt *zpw = dev_get_drvdata(&pdev->dev);
-
-	watchdog_unregister_device(&zpw->wdt);
-
-	return 0;
+	return devm_watchdog_register_device(dev, &zpw->wdt);
 }
 
 static struct platform_driver zii_pic_wdt_driver = {
 	.probe = zii_pic_wdt_probe,
-	.remove = zii_pic_wdt_remove,
 	.driver = {
 		.name = KBUILD_MODNAME,
 		.of_match_table = zii_pic_wdt_of_match,
