@@ -40,7 +40,7 @@ struct zii_pic_wdt_variant {
 	unsigned int max_timeout;
 	unsigned int min_timeout;
 
-	int (*set) (struct watchdog_device *, bool);
+	int (*configure) (struct watchdog_device *);
 };
 
 struct zii_pic_wdt {
@@ -61,14 +61,9 @@ static int zii_pic_wdt_exec(struct watchdog_device *wdd,
 	return zii_pic_exec(pic_wdd->zp, data, data_size, NULL, 0);
 }
 
-static int zii_pic_wdt_set(struct watchdog_device *wdd, bool enable)
+static int zii_pic_wdt_legacy_configure(struct watchdog_device *wdd)
 {
-	struct zii_pic_wdt *pic_wdd = to_zii_pic_wdt(wdd);
-	return pic_wdd->variant->set(wdd, enable);
-}
-
-static int zii_pic_wdt_legacy_set(struct watchdog_device *wdd, bool enable)
-{
+	const bool enable = watchdog_hw_running(wdd);
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_SW_WDT,
 		[1] = 0,
@@ -79,42 +74,34 @@ static int zii_pic_wdt_legacy_set(struct watchdog_device *wdd, bool enable)
 	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
-static int zii_pic_wdt_rdu_set(struct watchdog_device *wdd, bool enable)
+static int zii_pic_wdt_rdu_configure(struct watchdog_device *wdd)
 {
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_SW_WDT,
 		[1] = 0,
-		[2] = !!enable,
+		[2] = watchdog_hw_running(wdd),
 		[3] = (u8) wdd->timeout,
 		[4] = (u8) (wdd->timeout >> 8),
 	};
 	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
-static int zii_pic_wdt_start(struct watchdog_device *wdt)
+static int zii_pic_wdt_configure(struct watchdog_device *wdd)
 {
-	int ret;
-
-	ret = zii_pic_wdt_set(wdt, true);
-	if (!ret)
-		set_bit(WDOG_HW_RUNNING, &wdt->status);
-	else
-		dev_warn(wdt->parent, "start op failed, status unknown!\n");
-
-	return ret ? -EIO : 0;
+	return to_zii_pic_wdt(wdd)->variant->configure(wdd);
 }
 
-static int zii_pic_wdt_stop(struct watchdog_device *wdt)
+static int zii_pic_wdt_start(struct watchdog_device *wdd)
 {
-	int ret;
+	set_bit(WDOG_HW_RUNNING, &wdd->status);
+	return zii_pic_wdt_configure(wdd);
+}
 
-	ret = zii_pic_wdt_set(wdt, false);
-	if (!ret)
-		clear_bit(WDOG_HW_RUNNING, &wdt->status);
-	else
-		dev_warn(wdt->parent, "stop op failed, status unknown!\n");
-
-	return ret ? -EIO : 0;
+static int zii_pic_wdt_set_timeout(struct watchdog_device *wdd,
+				   unsigned int timeout)
+{
+	wdd->timeout = timeout;
+	return zii_pic_wdt_configure(wdd);
 }
 
 static int zii_pic_wdt_ping(struct watchdog_device *wdt)
@@ -127,17 +114,6 @@ static int zii_pic_wdt_ping(struct watchdog_device *wdt)
 	return zii_pic_wdt_exec(wdt, cmd, sizeof(cmd));
 }
 
-static int zii_pic_wdt_set_timeout(struct watchdog_device *wdt,
-				   unsigned int timeout)
-{
-	wdt->timeout = timeout;
-
-	if (test_bit(WDOG_HW_RUNNING, &wdt->status))
-		return zii_pic_wdt_set(wdt, true);
-	else
-		return 0;
-}
-
 static const struct watchdog_info zii_pic_wdt_info = {
 	.options = WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING | WDIOF_MAGICCLOSE,
 	.identity = "ZII PIC Watchdog",
@@ -146,7 +122,7 @@ static const struct watchdog_info zii_pic_wdt_info = {
 static const struct watchdog_ops zii_pic_wdt_ops = {
 	.owner = THIS_MODULE,
 	.start = zii_pic_wdt_start,
-	.stop = zii_pic_wdt_stop,
+	.stop = zii_pic_wdt_configure,
 	.ping = zii_pic_wdt_ping,
 	.set_timeout = zii_pic_wdt_set_timeout,
 };
@@ -159,13 +135,13 @@ static const struct of_device_id zii_pic_wdt_of_match[] = {
 const static struct zii_pic_wdt_variant zii_pic_wdt_legacy = {
 	.max_timeout = 255,
 	.min_timeout = 1,
-	.set = zii_pic_wdt_legacy_set,
+	.configure = zii_pic_wdt_legacy_configure,
 };
 
 const static struct zii_pic_wdt_variant zii_pic_wdt_rdu = {
 	.max_timeout = 180,
 	.min_timeout = 60,
-	.set = zii_pic_wdt_rdu_set,
+	.configure = zii_pic_wdt_rdu_configure,
 };
 
 const static struct of_device_id zii_pic_wdt_variants[] = {
