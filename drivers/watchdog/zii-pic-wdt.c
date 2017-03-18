@@ -32,10 +32,6 @@
 #include <linux/nvmem-consumer.h>
 #include <linux/slab.h>
 
-#define DEFAULT_TIMEOUT		60
-
-struct zii_pic_wdt;
-
 struct zii_pic_wdt_variant {
 	unsigned int max_timeout;
 	unsigned int min_timeout;
@@ -44,21 +40,20 @@ struct zii_pic_wdt_variant {
 };
 
 struct zii_pic_wdt {
-	struct watchdog_device	wdt;
-	struct zii_pic		*zp;
+	struct watchdog_device wdd;
+	struct zii_pic *pic;
 	const struct zii_pic_wdt_variant *variant;
 };
 
 static struct zii_pic_wdt *to_zii_pic_wdt(struct watchdog_device *wdd)
 {
-	return container_of(wdd, struct zii_pic_wdt, wdt);
+	return container_of(wdd, struct zii_pic_wdt, wdd);
 }
 
-static int zii_pic_wdt_exec(struct watchdog_device *wdd,
-			    void *data,  size_t data_size)
+static int zii_pic_wdt_exec(struct watchdog_device *wdd, void *data,
+			    size_t data_size)
 {
-	struct zii_pic_wdt *pic_wdd = to_zii_pic_wdt(wdd);
-	return zii_pic_exec(pic_wdd->zp, data, data_size, NULL, 0);
+	return zii_pic_exec(to_zii_pic_wdt(wdd)->pic, data, data_size, NULL, 0);
 }
 
 static int zii_pic_wdt_legacy_configure(struct watchdog_device *wdd)
@@ -104,14 +99,14 @@ static int zii_pic_wdt_set_timeout(struct watchdog_device *wdd,
 	return zii_pic_wdt_configure(wdd);
 }
 
-static int zii_pic_wdt_ping(struct watchdog_device *wdt)
+static int zii_pic_wdt_ping(struct watchdog_device *wdd)
 {
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_PET_WDT,
 		[1] = 0,
 	};
 
-	return zii_pic_wdt_exec(wdt, cmd, sizeof(cmd));
+	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
 static const struct watchdog_info zii_pic_wdt_info = {
@@ -156,33 +151,32 @@ const static struct of_device_id zii_pic_wdt_variants[] = {
 static int zii_pic_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = zii_pic_parent(dev);
-	struct zii_pic_wdt *zpw;
-	struct nvmem_cell *cell;
 	const struct of_device_id *id;
+	struct zii_pic_wdt *pic_wd;
+	struct nvmem_cell *cell;
 	__le16 timeout = 0;
 
-	if (!zp)
-		return -EINVAL;
-
-	zpw = devm_kzalloc(dev, sizeof(*zpw), GFP_KERNEL);
-	if (!zpw)
+	pic_wd = devm_kzalloc(dev, sizeof(*pic_wd), GFP_KERNEL);
+	if (!pic_wd)
 		return -ENOMEM;
 
-	zpw->zp         = zp;
-	zpw->wdt.parent = dev;
-	zpw->wdt.info   = &zii_pic_wdt_info;
-	zpw->wdt.ops    = &zii_pic_wdt_ops;
+	pic_wd->pic        = dev_get_drvdata(dev->parent);
+	pic_wd->wdd.parent = dev;
+	pic_wd->wdd.info   = &zii_pic_wdt_info;
+	pic_wd->wdd.ops    = &zii_pic_wdt_ops;
+
+	if (WARN_ON(!pic_wd->pic))
+		return -ENODEV;
 
 	id = of_match_device(zii_pic_wdt_variants, dev->parent);
 	if (WARN_ON(!id))
 		return -ENODEV;
 
-	zpw->variant         = id->data;
-	zpw->wdt.min_timeout = zpw->variant->min_timeout;
-	zpw->wdt.max_timeout = zpw->variant->max_timeout;
-	zpw->wdt.status      = WATCHDOG_NOWAYOUT_INIT_STATUS;
-	zpw->wdt.timeout     = DEFAULT_TIMEOUT;
+	pic_wd->variant         = id->data;
+	pic_wd->wdd.min_timeout = pic_wd->variant->min_timeout;
+	pic_wd->wdd.max_timeout = pic_wd->variant->max_timeout;
+	pic_wd->wdd.status      = WATCHDOG_NOWAYOUT_INIT_STATUS;
+	pic_wd->wdd.timeout     = 60;
 
 	cell = nvmem_cell_get(dev, "wdt_timeout");
 	if (!IS_ERR(cell)) {
@@ -195,14 +189,14 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 		}
 		nvmem_cell_put(cell);
 	}
-	watchdog_init_timeout(&zpw->wdt, le16_to_cpu(timeout), dev);
+	watchdog_init_timeout(&pic_wd->wdd, le16_to_cpu(timeout), dev);
 
 	/* We don't know if watchdog is running now. To be sure, let's start
 	 * it and depend on watchdog core to ping it */
-	zpw->wdt.max_hw_heartbeat_ms = zpw->wdt.max_timeout * 1000;
-	zii_pic_wdt_start(&zpw->wdt);
+	pic_wd->wdd.max_hw_heartbeat_ms = pic_wd->wdd.max_timeout * 1000;
+	zii_pic_wdt_start(&pic_wd->wdd);
 
-	return devm_watchdog_register_device(dev, &zpw->wdt);
+	return devm_watchdog_register_device(dev, &pic_wd->wdd);
 }
 
 static struct platform_driver zii_pic_wdt_driver = {
