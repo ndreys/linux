@@ -74,7 +74,8 @@ static int zii_pic_wdt_rdu_set(struct zii_pic_wdt *zpw, bool enable)
 		[0] = ZII_PIC_CMD_SW_WDT,
 		[1] = 0,
 		[2] = !!enable,
-		[3] = zpw->wdt.timeout,
+		[3] = (u8) zpw->wdt.timeout,
+		[4] = (u8) (zpw->wdt.timeout >> 8),
 	};
 	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
 			    NULL, 0);
