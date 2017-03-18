@@ -183,6 +183,7 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	struct zii_pic_wdt *zpw;
 	struct nvmem_cell *cell;
 	const struct of_device_id *id;
+	__le16 timeout = 0;
 
 	if (!zp)
 		return -EINVAL;
@@ -204,25 +205,20 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	zpw->wdt.min_timeout = zpw->variant->min_timeout;
 	zpw->wdt.max_timeout = zpw->variant->max_timeout;
 	zpw->wdt.status      = WATCHDOG_NOWAYOUT_INIT_STATUS;
+	zpw->wdt.timeout     = DEFAULT_TIMEOUT;
 
 	cell = nvmem_cell_get(dev, "wdt_timeout");
 	if (!IS_ERR(cell)) {
-		void *value;
 		size_t len;
+		void *value = nvmem_cell_read(cell, &len);
 
-		value = nvmem_cell_read(cell, &len);
 		if (!IS_ERR(value)) {
-			if (len == 1)
-				zpw->wdt.timeout = *(u8*)value;
-			else if (len == 2)
-				zpw->wdt.timeout = *(u16*)value;
+			memcpy(&timeout, value, min(len, sizeof(timeout)));
 			kfree(value);
 		}
 		nvmem_cell_put(cell);
 	}
-	if (zpw->wdt.timeout < zpw->wdt.min_timeout ||
-	    zpw->wdt.timeout > zpw->wdt.max_timeout)
-		zpw->wdt.timeout = DEFAULT_TIMEOUT;
+	watchdog_init_timeout(&zpw->wdt, le16_to_cpu(timeout), dev);
 
 	/* We don't know if watchdog is running now. To be sure, let's start
 	 * it and depend on watchdog core to ping it */
