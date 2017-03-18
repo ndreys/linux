@@ -674,6 +674,8 @@ static int zii_pic_default_cmd_translate(enum zii_pic_command command)
 		return 0x14;
 	case ZII_PIC_CMD_RESET:
 		return 0x1E;
+	case ZII_PIC_CMD_SW_WDT:
+		return 0x1C;
 	default:
 		return -EINVAL;
 	}
@@ -724,11 +726,11 @@ const static struct zii_pic_variant zii_pic_rdu2 = {
 };
 
 const static struct of_device_id zii_pic_dt_ids[] = {
-	{ .compatible = "zii,pic-niu",  .data = &zii_pic_legacy },
-	{ .compatible = "zii,pic-mezz",	.data = &zii_pic_legacy },
-	{ .compatible = "zii,pic-esb",	.data = &zii_pic_legacy },
-	{ .compatible = "zii,pic-rdu1",	.data = &zii_pic_rdu1   },
-	{ .compatible = "zii,pic-rdu2",	.data = &zii_pic_rdu2   },
+	{ .compatible = COMPATIBLE_ZII_PIC_NIU,  .data = &zii_pic_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_MEZZ, .data = &zii_pic_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_ESB,	 .data = &zii_pic_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_RDU1, .data = &zii_pic_rdu1   },
+	{ .compatible = COMPATIBLE_ZII_PIC_RDU2, .data = &zii_pic_rdu2   },
 	{ /* sentinel */ }
 };
 

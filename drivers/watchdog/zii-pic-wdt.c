@@ -25,6 +25,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/zii-pic.h>
 #include <linux/watchdog.h>
@@ -33,38 +34,50 @@
 
 #define DEFAULT_TIMEOUT		60
 
+struct zii_pic_wdt;
+
+struct zii_pic_wdt_variant {
+	unsigned int max_timeout;
+	unsigned int min_timeout;
+
+	int (*set) (struct zii_pic_wdt *, bool);
+};
+
 struct zii_pic_wdt {
 	struct watchdog_device	wdt;
 	struct zii_pic		*zp;
+	const struct zii_pic_wdt_variant *variant;
 };
-
-#define CMD_SET_WDT	0xA1
-#define OCMD_SET_WDT	0x1C
 
 static int zii_pic_wdt_set(struct zii_pic_wdt *zpw, bool enable)
 {
-#if 0
-	if (zpw->zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-		u8 cmd[4];
-		cmd[0] = CMD_SET_WDT;
-		cmd[1] = 0;
-		cmd[2] = enable ? 1 : 0;
-		cmd[3] = enable ? zpw->wdt.timeout : 0;
-		return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-				    NULL, 0);
-	} else {
-		u8 cmd[5];
-		cmd[0] = OCMD_SET_WDT;
-		cmd[1] = 0;
-		cmd[2] = 0;
-		cmd[3] = enable ? 1 : 0;
-		cmd[4] = enable ? zpw->wdt.timeout : 0;
-		return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
-				    NULL, 0);
-	}
-#else
-	return -ENOTSUPP;
-#endif
+	return zpw->variant->set(zpw, enable);
+}
+
+static int zii_pic_wdt_legacy_set(struct zii_pic_wdt *zpw, bool enable)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_SW_WDT,
+		[1] = 0,
+		[2] = 0,
+		[3] = !!enable,
+		[4] = enable ? zpw->wdt.timeout : 0,
+	};
+	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
+			    NULL, 0);
+
+}
+
+static int zii_pic_wdt_rdu_set(struct zii_pic_wdt *zpw, bool enable)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_SW_WDT,
+		[1] = 0,
+		[2] = !!enable,
+		[3] = zpw->wdt.timeout,
+	};
+	return zii_pic_exec(zpw->zp, cmd, sizeof(cmd),
+			    NULL, 0);
 }
 
 static int zii_pic_wdt_pet(struct zii_pic_wdt *zpw)
@@ -141,12 +154,34 @@ static const struct of_device_id zii_pic_wdt_of_match[] = {
 	{}
 };
 
+const static struct zii_pic_wdt_variant zii_pic_wdt_legacy = {
+	.max_timeout = 255,
+	.min_timeout = 1,
+	.set = zii_pic_wdt_legacy_set,
+};
+
+const static struct zii_pic_wdt_variant zii_pic_wdt_rdu = {
+	.max_timeout = 180,
+	.min_timeout = 60,
+	.set = zii_pic_wdt_rdu_set,
+};
+
+const static struct of_device_id zii_pic_wdt_variants[] = {
+	{ .compatible = COMPATIBLE_ZII_PIC_NIU,  .data = &zii_pic_wdt_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_MEZZ, .data = &zii_pic_wdt_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_ESB,	 .data = &zii_pic_wdt_legacy },
+	{ .compatible = COMPATIBLE_ZII_PIC_RDU1, .data = &zii_pic_wdt_rdu    },
+	{ .compatible = COMPATIBLE_ZII_PIC_RDU2, .data = &zii_pic_wdt_rdu    },
+	{ /* sentinel */ }
+};
+
 static int zii_pic_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct zii_pic *zp = zii_pic_parent(dev);
 	struct zii_pic_wdt *zpw;
 	struct nvmem_cell *cell;
+	const struct of_device_id *id;
 
 	if (!zp)
 		return -EINVAL;
@@ -162,16 +197,14 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	zpw->wdt.info = &zii_pic_wdt_info;
 	zpw->wdt.ops = &zii_pic_wdt_ops;
 
-#if 0
-	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1) {
-		zpw->wdt.min_timeout = 60;
-		zpw->wdt.max_timeout = 180;
-	} else {
-		zpw->wdt.min_timeout = 1;
-		zpw->wdt.max_timeout = 255;
-	}
-#endif
-	zpw->wdt.status = WATCHDOG_NOWAYOUT_INIT_STATUS;
+	id = of_match_device(zii_pic_wdt_variants, dev->parent);
+	if (WARN_ON(!id))
+		return -ENODEV;
+
+	zpw->variant         = id->data;
+	zpw->wdt.min_timeout = zpw->variant->min_timeout;
+	zpw->wdt.max_timeout = zpw->variant->max_timeout;
+	zpw->wdt.status      = WATCHDOG_NOWAYOUT_INIT_STATUS;
 
 	cell = nvmem_cell_get(dev, "wdt_timeout");
 	if (!IS_ERR(cell)) {

@@ -38,6 +38,7 @@ enum zii_pic_command {
 	ZII_PIC_CMD_BOOT_SOURCE			= 0x26,
 	ZII_PIC_CMD_GET_BOARD_COPPER_REV	= 0x2B,
 	ZII_PIC_CMD_STATUS			= 0xA0,
+	ZII_PIC_CMD_SW_WDT			= 0xA1,
 	ZII_PIC_CMD_PET_WDT			= 0xA2,
 	ZII_PIC_CMD_RESET			= 0xA7,
 	ZII_PIC_CMD_RESET_REASON		= 0xA8,
@@ -112,6 +113,12 @@ static inline struct zii_pic *zii_pic_parent(struct device *dev)
 int zii_pic_exec(struct zii_pic *zp,
 		 void *data,  size_t data_size,
 		 void *reply, size_t reply_size);
+
+#define COMPATIBLE_ZII_PIC_NIU		"zii,pic-niu"
+#define COMPATIBLE_ZII_PIC_MEZZ		"zii,pic-mezz"
+#define COMPATIBLE_ZII_PIC_ESB		"zii,pic-esb"
+#define COMPATIBLE_ZII_PIC_RDU1		"zii,pic-rdu1"
+#define COMPATIBLE_ZII_PIC_RDU2		"zii,pic-rdu2"
 
 
 #define ZII_PIC_NAME_HWMON		"pic-hwmon"
