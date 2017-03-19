@@ -120,13 +120,4 @@ int zii_pic_exec(struct zii_pic *zp,
 #define COMPATIBLE_ZII_PIC_RDU1		"zii,pic-rdu1"
 #define COMPATIBLE_ZII_PIC_RDU2		"zii,pic-rdu2"
 
-
-#define ZII_PIC_NAME_HWMON		"pic-hwmon"
-#define ZII_PIC_NAME_EEPROM		"pic-eeprom"
-#define ZII_PIC_NAME_MAIN_EEPROM	"pic-main-eeprom"
-#define ZII_PIC_NAME_DDS_EEPROM		"pic-dds-eeprom"
-#define ZII_PIC_NAME_PWRBUTTON		"pic-pwrbutton"
-#define ZII_PIC_NAME_BACKLIGHT		"pic-backlight"
-#define ZII_PIC_NAME_LEDS		"pic-leds"
-
 #endif /* _LINUX_ZII_PIC_H_ */

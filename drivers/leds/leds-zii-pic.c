@@ -293,7 +293,7 @@ static const struct of_device_id zii_pic_leds_of_match[] = {
 static struct platform_driver zii_pic_leds_driver = {
 	.probe = zii_pic_leds_probe,
 	.driver = {
-		.name = ZII_PIC_NAME_LEDS,
+		.name = KBUILD_MODNAME,
 		.of_match_table = zii_pic_leds_of_match,
 	},
 };

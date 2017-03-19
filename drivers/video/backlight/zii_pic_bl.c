@@ -74,7 +74,7 @@ static int zii_pic_backlight_probe(struct platform_device *pdev)
 	if (!zp)
 		return -EINVAL;
 
-	bd = devm_backlight_device_register(dev, ZII_PIC_NAME_BACKLIGHT,
+	bd = devm_backlight_device_register(dev, KBUILD_MODNAME,
 					    dev, zp, &zii_pic_bl_ops,
 					    &zii_pic_bl_props);
 	if (IS_ERR(bd))
@@ -89,7 +89,7 @@ static int zii_pic_backlight_probe(struct platform_device *pdev)
 static struct platform_driver zii_pic_backlight_driver = {
 	.probe		= zii_pic_backlight_probe,
 	.driver		= {
-		.name	= ZII_PIC_NAME_BACKLIGHT,
+		.name	= KBUILD_MODNAME,
 		.of_match_table = zii_pic_bl_of_match,
 	},
 };

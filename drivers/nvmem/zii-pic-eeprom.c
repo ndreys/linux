@@ -263,7 +263,7 @@ static struct platform_driver zii_pic_eeprom_driver = {
 	.probe = zii_pic_eeprom_probe,
 	.remove = zii_pic_eeprom_remove,
 	.driver = {
-		.name = ZII_PIC_NAME_EEPROM,
+		.name = KBUILD_MODNAME,
 		.of_match_table = zii_pic_eeprom_of_match,
 	},
 };

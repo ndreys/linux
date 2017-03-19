@@ -474,7 +474,7 @@ static int zii_pic_hwmon_probe(struct platform_device *pdev)
 static struct platform_driver zii_pic_hwmon_driver = {
 	.probe = zii_pic_hwmon_probe,
 	.driver = {
-		.name = ZII_PIC_NAME_HWMON,
+		.name = KBUILD_MODNAME,
 		.of_match_table = zii_pic_hwmon_of_match,
 	},
 };

@@ -86,7 +86,7 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 	picpb->nb.notifier_call = zii_pic_power_button_event;
 	picpb->nb.priority = 128;
 
-	picpb->idev->name = ZII_PIC_NAME_PWRBUTTON;
+	picpb->idev->name = KBUILD_MODNAME;
 	picpb->idev->dev.parent = dev;
 
 	input_set_capability(picpb->idev, EV_KEY, KEY_POWER);
@@ -112,7 +112,7 @@ static struct platform_driver zii_pic_pwrbutton_driver = {
 	.probe		= zii_pic_pwrbutton_probe,
 	.remove		= zii_pic_pwrbutton_remove,
 	.driver		= {
-		.name	= ZII_PIC_NAME_PWRBUTTON,
+		.name	= KBUILD_MODNAME,
 		.of_match_table = zii_pic_pwrbutton_of_match,
 	},
 };
