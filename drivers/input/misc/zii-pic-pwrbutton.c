@@ -95,22 +95,11 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	return blocking_notifier_chain_register(&zp->event_notifier_list,
-						&picpb->nb);
-}
-
-static int zii_pic_pwrbutton_remove(struct platform_device *pdev)
-{
-	struct zii_pic *zp = dev_get_drvdata(pdev->dev.parent);
-	struct zii_pic_power_button *picpb = dev_get_drvdata(&pdev->dev);
-
-	return blocking_notifier_chain_unregister(&zp->event_notifier_list,
-						  &picpb->nb);
+	return devm_zii_pic_register_event_notifier(dev, &picpb->nb);
 }
 
 static struct platform_driver zii_pic_pwrbutton_driver = {
 	.probe		= zii_pic_pwrbutton_probe,
-	.remove		= zii_pic_pwrbutton_remove,
 	.driver		= {
 		.name	= KBUILD_MODNAME,
 		.of_match_table = zii_pic_pwrbutton_of_match,

@@ -57,7 +57,119 @@
 
 /* #include <linux/mfd/core.h> */
 
+struct zii_pic_version {
+	u8	hw;
+	u16	major;
+	u8	minor;
+	u8	letter_1;
+	u8	letter_2;
+} __packed;
+
+#define ZII_PIC_EVENT_CODE_MIN		0xE0
+#define ZII_PIC_EVENT_CODE_MAX		0xEF
+
+
+#define ZII_PIC_MAX_DATA_SIZE	64
+
+/* For Tx, <STX DATA CSUM ETX> is stored, and all but STX/ETX can be escaped */
+#define ZII_PIC_TX_BUF_SIZE (1 + 2*ZII_PIC_MAX_DATA_SIZE + 2*2 + 1)
+
+/* For Rx, only frame data and csum is stored */
+#define ZII_PIC_RX_BUF_SIZE (ZII_PIC_MAX_DATA_SIZE + 2)
+
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
+
+enum zii_pic_deframer_state {
+	ZII_PIC_EXPECT_SOF,
+	ZII_PIC_EXPECT_DATA,
+	ZII_PIC_EXPECT_ESCAPED_DATA,
+};
+
+struct zii_pic_deframer {
+	enum zii_pic_deframer_state state;
+	unsigned char data[ZII_PIC_RX_BUF_SIZE];
+	size_t length;
+};
+
+struct zii_pic_reply {
+	size_t length;
+	void  *data;
+	u8     code;
+	u8     ackid;
+	struct completion received;
+};
+
+struct zii_pic_checksum {
+	size_t length;
+	void (*subroutine) (const u8 *, size_t, u8 *);
+};
+
+struct zii_pic_variant {
+	const struct zii_pic_checksum *checksum;
+
+	struct {
+		void (*reset)       (struct zii_pic *);
+		int  (*translate)   (enum zii_pic_command);
+	} cmd;
+
+	void (*read_status) (struct zii_pic *);
+};
+
+struct zii_pic {
+	struct serdev_device		*serdev;
+
+	struct zii_pic_deframer deframer;
+	atomic_t ackid;
+
+	struct mutex          reply_lock;
+	struct zii_pic_reply *reply;
+
+	struct zii_pic_version		fw_version;
+	struct zii_pic_version		bl_version;
+	u8				reset_reason;
+	u8				boot_source;
+
+	const struct zii_pic_variant *variant;
+
+	struct notifier_block		reboot_nb,
+					reset_nb;
+
+	struct blocking_notifier_head   event_notifier_list;
+};
+
+static void devm_zii_pic_unregister_event_notifier(struct device *dev, void *res)
+{
+	struct zii_pic *pic = dev_get_drvdata(dev->parent);
+	struct notifier_block *nb = *(struct notifier_block **)res;
+	struct blocking_notifier_head *bnh = &pic->event_notifier_list;
+
+	WARN_ON(blocking_notifier_chain_unregister(bnh, nb));
+}
+
+int devm_zii_pic_register_event_notifier(struct device *dev,
+					 struct notifier_block *nb)
+{
+	struct zii_pic *pic = dev_get_drvdata(dev->parent);
+	struct notifier_block **rcnb;
+	int ret;
+
+	rcnb = devres_alloc(devm_zii_pic_unregister_event_notifier,
+			    sizeof(*rcnb), GFP_KERNEL);
+	if (!rcnb)
+		return -ENOMEM;
+
+	ret = blocking_notifier_chain_register(&pic->event_notifier_list, nb);
+	if (!ret) {
+		*rcnb = nb;
+		devres_add(dev, rcnb);
+	} else {
+		devres_free(rcnb);
+	}
+
+	return ret;
+	
+}
+EXPORT_SYMBOL_GPL(devm_zii_pic_register_event_notifier);
 
 static void zii_pic_get_fw_version(struct zii_pic *zp)
 {
