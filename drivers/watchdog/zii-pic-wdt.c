@@ -23,6 +23,7 @@
 
 /* FIXME: will have to communicate with watchdog if/when porting fw update */
 
+#include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -30,19 +31,28 @@
 #include <linux/zii-pic.h>
 #include <linux/watchdog.h>
 #include <linux/nvmem-consumer.h>
+#include <linux/reboot.h>
 #include <linux/slab.h>
+
+enum {
+	ZII_PIC_RESET_BYTE = 1,
+	ZII_PIC_RESET_REASON_NORMAL = 0,
+	ZII_PIC_RESET_DELAY_MS = 500,
+};
 
 struct zii_pic_wdt_variant {
 	unsigned int max_timeout;
 	unsigned int min_timeout;
 
 	int (*configure) (struct watchdog_device *);
+	int (*restart)   (struct watchdog_device *);
 };
 
 struct zii_pic_wdt {
 	struct watchdog_device wdd;
 	struct zii_pic *pic;
 	const struct zii_pic_wdt_variant *variant;
+	struct notifier_block reboot_notifier;
 };
 
 static struct zii_pic_wdt *to_zii_pic_wdt(struct watchdog_device *wdd)
@@ -86,6 +96,65 @@ static int zii_pic_wdt_configure(struct watchdog_device *wdd)
 	return to_zii_pic_wdt(wdd)->variant->configure(wdd);
 }
 
+static int zii_pic_wdt_legacy_restart(struct watchdog_device *wdd)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_RESET,
+		[1] = 0,
+		[2] = ZII_PIC_RESET_BYTE
+	};
+	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
+}
+
+static int zii_pic_wdt_rdu_restart(struct watchdog_device *wdd)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_RESET,
+		[1] = 0,
+		[2] = ZII_PIC_RESET_BYTE,
+		[3] = ZII_PIC_RESET_REASON_NORMAL
+	};
+	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
+}
+
+static int zii_pic_wdt_reboot_notifier(struct notifier_block *nb,
+				       unsigned long action, void *data)
+{
+	/*
+	 * Restart handler is called in atomic context which means we
+	 * can't commuicate to PIC via UART. Luckily for use PIC will
+	 * wait 500ms before actually reseting us, so we ask it to do
+	 * so here and let the rest of the system go on wrapping
+	 * things up.
+	 */
+	if (action == SYS_DOWN || action == SYS_HALT) {
+		struct zii_pic_wdt *pic_wd =
+			container_of(nb, struct zii_pic_wdt, reboot_notifier);
+
+		const int ret = pic_wd->variant->restart(&pic_wd->wdd);
+
+		if (ret < 0)
+			dev_err(pic_wd->wdd.parent,
+				"Failed to issue restart command (%d)", ret);
+		return NOTIFY_OK;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int zii_pic_wdt_restart(struct watchdog_device *wdd,
+			       unsigned long action, void *data)
+{
+	/*
+	 * The actual work was done by reboot notifier above. PIC
+	 * firmware waits 500 ms before issuing reset, so let's hang
+	 * here for one second and hopefuly we'd never reach that
+	 * return statement
+	 */
+	mdelay(ZII_PIC_RESET_DELAY_MS);
+	return -EIO;
+}
+
 static int zii_pic_wdt_start(struct watchdog_device *wdd)
 {
 	set_bit(WDOG_HW_RUNNING, &wdd->status);
@@ -120,6 +189,7 @@ static const struct watchdog_ops zii_pic_wdt_ops = {
 	.stop = zii_pic_wdt_configure,
 	.ping = zii_pic_wdt_ping,
 	.set_timeout = zii_pic_wdt_set_timeout,
+	.restart = zii_pic_wdt_restart,
 };
 
 static const struct of_device_id zii_pic_wdt_of_match[] = {
@@ -131,12 +201,14 @@ const static struct zii_pic_wdt_variant zii_pic_wdt_legacy = {
 	.max_timeout = 255,
 	.min_timeout = 1,
 	.configure = zii_pic_wdt_legacy_configure,
+	.restart   = zii_pic_wdt_legacy_restart,
 };
 
 const static struct zii_pic_wdt_variant zii_pic_wdt_rdu = {
 	.max_timeout = 180,
 	.min_timeout = 60,
 	.configure = zii_pic_wdt_rdu_configure,
+	.restart   = zii_pic_wdt_rdu_restart,
 };
 
 const static struct of_device_id zii_pic_wdt_variants[] = {
@@ -155,6 +227,7 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 	struct zii_pic_wdt *pic_wd;
 	struct nvmem_cell *cell;
 	__le16 timeout = 0;
+	int ret;
 
 	pic_wd = devm_kzalloc(dev, sizeof(*pic_wd), GFP_KERNEL);
 	if (!pic_wd)
@@ -190,6 +263,14 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 		nvmem_cell_put(cell);
 	}
 	watchdog_init_timeout(&pic_wd->wdd, le16_to_cpu(timeout), dev);
+	watchdog_set_restart_priority(&pic_wd->wdd, 255);
+
+	pic_wd->reboot_notifier.notifier_call = zii_pic_wdt_reboot_notifier;
+	ret = devm_register_reboot_notifier(dev, &pic_wd->reboot_notifier);
+	if (ret) {
+		dev_err(dev, "Failed to register reboot notifier\n");
+		return ret;
+	}
 
 	/* We don't know if watchdog is running now. To be sure, let's start
 	 * it and depend on watchdog core to ping it */

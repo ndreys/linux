@@ -32,16 +32,11 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-#include <linux/reboot.h>
 #include <linux/sched.h>
 #include <linux/serdev.h>
 #include <linux/zii-pic.h>
 
 /* #include <linux/mfd/core.h> */
-
-static void zii_pic_exec_reset(struct zii_pic *zp,
-			       const u8 *data, u8 data_size);
-static void zii_pic_prepare_for_reset(struct zii_pic *zp);
 
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
 
@@ -137,62 +132,6 @@ static void zii_pic_rdu1_read_status(struct zii_pic *zp)
 		memcpy(&zp->bl_version, reply.bl, sizeof(reply.bl));
 		zp->boot_source = (reply.gs >> 2) & 0x03;
 	}
-}
-
-static int zii_pic_reboot_notifier(struct notifier_block *nb,
-		unsigned long action, void *data)
-{
-	struct zii_pic *zp = container_of(nb, struct zii_pic, reboot_nb);
-
-	if (action == SYS_RESTART) {
-		zii_pic_prepare_for_reset(zp);
-		return NOTIFY_OK;
-	} else
-		return NOTIFY_DONE;
-
-}
-
-static int zii_pic_reset_handler(struct notifier_block *nb,
-		unsigned long action, void *data)
-{
-	struct zii_pic *zp = container_of(nb, struct zii_pic, reset_nb);
-
-	while (1) {
-		zp->variant->cmd.reset(zp);
-
-		msleep(550);	/* PIC firmware waits 500 ms before reset */
-		dev_emerg(&zp->serdev->dev, "rewset timed out, retrying\n");
-	}
-
-	return NOTIFY_OK;	/* unreachable but stops warning */
-}
-
-static void zii_pic_setup_reboot(struct zii_pic *zp)
-{
-	int ret;
-
-	zp->reboot_nb.notifier_call = zii_pic_reboot_notifier;
-	ret = register_reboot_notifier(&zp->reboot_nb);
-	if (ret) {
-		dev_warn(&zp->serdev->dev,
-				"could not register reboot notifier\n");
-		return;
-	}
-
-	zp->reset_nb.notifier_call = zii_pic_reset_handler;
-	zp->reset_nb.priority = 255;
-	ret = register_restart_handler(&zp->reset_nb);
-	if (ret) {
-		dev_warn(&zp->serdev->dev,
-				"could not register restart handler\n");
-		unregister_reboot_notifier(&zp->reboot_nb);
-	}
-}
-
-static void zii_pic_cleanup_reboot(struct zii_pic *zp)
-{
-	unregister_restart_handler(&zp->reset_nb);
-	unregister_reboot_notifier(&zp->reboot_nb);
 }
 
 static ssize_t zii_pic_show_version(char *buf, struct zii_pic_version *ver)
@@ -462,18 +401,6 @@ int zii_pic_exec(struct zii_pic *pic,
 }
 EXPORT_SYMBOL(zii_pic_exec);
 
-static void zii_pic_prepare_for_reset(struct zii_pic *zp)
-{
-	serdev_device_bus_lock(zp->serdev);
-	serdev_device_write_flush(zp->serdev);
-}
-
-static void zii_pic_exec_reset(struct zii_pic *zp,
-			const u8 *data, u8 data_size)
-{
-	zii_pic_write(zp, data, data_size);
-}
-
 static void zii_pic_receive_event(struct zii_pic *zp,
 				  const unsigned char *data, size_t length)
 {
@@ -630,17 +557,6 @@ static int zii_pic_open(struct zii_pic *zp, unsigned int speed)
 	return 0;
 }
 
-static void zii_pic_default_reset(struct zii_pic *pic)
-{
-	u8 cmd[] = { ZII_PIC_CMD_RESET, 1 };
-	zii_pic_exec_reset(pic, cmd, sizeof(cmd));
-}
-
-static void zii_pic_rdu_reset(struct zii_pic *pic)
-{
-	u8 cmd[] = { ZII_PIC_CMD_RESET, 1, 0 };
-	zii_pic_exec_reset(pic, cmd, sizeof(cmd));
-}
 
 static int zii_pic_rdu1_cmd_translate(enum zii_pic_command command)
 {
@@ -701,7 +617,6 @@ const static struct zii_pic_checksum zii_pic_checksum_ccitt = {
 const static struct zii_pic_variant zii_pic_legacy = {
 	.checksum = &zii_pic_checksum_8b2c,
 	.cmd = {
-		.reset = zii_pic_default_reset,
 		.translate = zii_pic_default_cmd_translate,
 	},
 	.read_status = zii_pic_default_read_status,
@@ -710,7 +625,6 @@ const static struct zii_pic_variant zii_pic_legacy = {
 const static struct zii_pic_variant zii_pic_rdu1 = {
 	.checksum = &zii_pic_checksum_8b2c,
 	.cmd = {
-		.reset       = zii_pic_rdu_reset,
 		.translate   = zii_pic_rdu1_cmd_translate,
 	},
 	.read_status = zii_pic_rdu1_read_status,
@@ -719,7 +633,6 @@ const static struct zii_pic_variant zii_pic_rdu1 = {
 const static struct zii_pic_variant zii_pic_rdu2 = {
 	.checksum = &zii_pic_checksum_ccitt,
 	.cmd  = {
-		.reset       = zii_pic_rdu_reset,
 		.translate   = zii_pic_rdu2_cmd_translate,
 	},
 	.read_status = zii_pic_default_read_status,
@@ -772,7 +685,6 @@ static int zii_pic_probe(struct serdev_device *serdev)
 			goto err_create_copper_attr;
 	}
 #endif
-	zii_pic_setup_reboot(zp);
 
 	return of_platform_default_populate(dev->of_node, NULL, dev);
 
@@ -789,7 +701,6 @@ static void zii_pic_remove(struct serdev_device *serdev)
 
 	of_platform_depopulate(&serdev->dev);
 
-	zii_pic_cleanup_reboot(zp);
 #if 0
 	if (zp->hw_id >= ZII_PIC_HW_ID_RDU1)
 		device_remove_file(&serdev->dev, &dev_attr_copper_rev);
