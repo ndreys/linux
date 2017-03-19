@@ -21,6 +21,25 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * UART protocol using following entities:
+ *  - message to MCU => ACK response
+ *  - event from MCU => event ACK
+ *
+ * Frame structure:
+ * <STX> <DATA> <CHECKSUM> <ETX>
+ * Where:
+ * - STX - is start of transmission character
+ * - ETX - end of transmission
+ * - DATA - payload
+ * - CHECKSUM - checksum calculated on <DATA>
+ *
+ * If <DATA> or <CHECKSUM> contain one of control characters, then it is
+ * escaped using <DLE> control code. Added <DLE> does not participate in
+ * checksum calculation.
+ */
+
+
 /* #define DEBUG */
 
 #include <linux/atomic.h>
@@ -215,48 +234,6 @@ static ssize_t zii_pic_show_copper_rev(struct device *dev,
 
 static DEVICE_ATTR(copper_rev, S_IRUSR | S_IRGRP | S_IROTH,
 		zii_pic_show_copper_rev, NULL);
-
-
-/*
- * zii-pic-serdev.c - microcontroller unit communication on top of serdev bus
- *
- * Copyright (C) 2017 Nikita Yushchenko <nikita.yoush@cogentembedded.com>
- *
- * Based on:
- *  n_mcu.c - microcontroller unit communication line discipline
- *  Copyright (C) 2015 Andrey Vostrikov <andrey.vostrikov@cogentembedded.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
-
-/*
- * UART protocol using following entities:
- *  - message to MCU => ACK response
- *  - event from MCU => event ACK
- *
- * Frame structure:
- * <STX> <DATA> <CHECKSUM> <ETX>
- * Where:
- * - STX - is start of transmission character
- * - ETX - end of transmission
- * - DATA - payload
- * - CHECKSUM - checksum calculated on <DATA>
- *
- * If <DATA> or <CHECKSUM> contain one of control characters, then it is
- * escaped using <DLE> control code. Added <DLE> does not participate in
- * checksum calculation.
- */
 
 /* #define DEBUG */
 
