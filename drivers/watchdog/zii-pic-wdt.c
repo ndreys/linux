@@ -60,11 +60,20 @@ static struct zii_pic_wdt *to_zii_pic_wdt(struct watchdog_device *wdd)
 	return container_of(wdd, struct zii_pic_wdt, wdd);
 }
 
+static int __zii_pic_wdt_exec(struct watchdog_device *wdd,
+			      void *data,  size_t data_size,
+			      void *reply, size_t reply_size)
+{
+	return zii_pic_exec(to_zii_pic_wdt(wdd)->pic,
+			    data, data_size, reply, reply_size);
+}
+
 static int zii_pic_wdt_exec(struct watchdog_device *wdd, void *data,
 			    size_t data_size)
 {
-	return zii_pic_exec(to_zii_pic_wdt(wdd)->pic, data, data_size, NULL, 0);
+	return __zii_pic_wdt_exec(wdd, data, data_size, NULL, 0);
 }
+
 
 static int zii_pic_wdt_legacy_configure(struct watchdog_device *wdd)
 {
@@ -178,6 +187,16 @@ static int zii_pic_wdt_ping(struct watchdog_device *wdd)
 	return zii_pic_wdt_exec(wdd, cmd, sizeof(cmd));
 }
 
+static void zii_pic_wdt_load_reset_reason(struct watchdog_device *wdd)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_RESET_REASON,
+		[1] = 0,
+	};
+	if (__zii_pic_wdt_exec(wdd, cmd, sizeof(cmd), &wdd->bootstatus, 1))
+		dev_warn(wdd->parent, "failed to get reset reason\n");
+}
+
 static const struct watchdog_info zii_pic_wdt_info = {
 	.options = WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING | WDIOF_MAGICCLOSE,
 	.identity = "ZII PIC Watchdog",
@@ -273,6 +292,8 @@ static int zii_pic_wdt_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to register reboot notifier\n");
 		return ret;
 	}
+
+	zii_pic_wdt_load_reset_reason(wdd);
 
 	/* We don't know if watchdog is running now. To be sure, let's start
 	 * it and depend on watchdog core to ping it */

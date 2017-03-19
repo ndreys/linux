@@ -67,17 +67,6 @@ static void zii_pic_get_bl_version(struct zii_pic *zp)
 	}
 }
 
-static void zii_pic_get_reset_reason(struct zii_pic *zp)
-{
-	u8 cmd[2] = { ZII_PIC_CMD_RESET_REASON };
-	int ret;
-
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), &zp->reset_reason, 1);
-	if (ret) {
-		dev_warn(&zp->serdev->dev, "failed to get reset reason\n");
-		zp->reset_reason = 0xFF;
-	}
-}
 
 static void zii_pic_get_boot_source(struct zii_pic *zp)
 {
@@ -164,16 +153,6 @@ static DEVICE_ATTR(part_number_firmware, S_IRUSR | S_IRGRP | S_IROTH,
 static DEVICE_ATTR(part_number_bootloader, S_IRUSR | S_IRGRP | S_IROTH,
 		zii_pic_show_bl_version, NULL);
 
-static ssize_t zii_pic_show_reset_reason(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct zii_pic *zp = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", zp->reset_reason);
-}
-
-static DEVICE_ATTR(reset_reason, S_IRUSR | S_IRGRP | S_IROTH,
-		zii_pic_show_reset_reason, NULL);
 
 static ssize_t zii_pic_show_boot_source(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -210,7 +189,6 @@ static DEVICE_ATTR(boot_source, S_IRUSR | S_IWUSR | S_IRGRP,
 static struct attribute *zii_pic_dev_attrs[] = {
 	&dev_attr_part_number_firmware.attr,
 	&dev_attr_part_number_bootloader.attr,
-	&dev_attr_reset_reason.attr,
 	&dev_attr_boot_source.attr,
 	NULL
 };
@@ -601,7 +579,6 @@ static void zii_pic_default_read_status(struct zii_pic *pic)
 {
 	zii_pic_get_fw_version(pic);
 	zii_pic_get_bl_version(pic);
-	zii_pic_get_reset_reason(pic);
 }
 
 const static struct zii_pic_checksum zii_pic_checksum_8b2c = {
