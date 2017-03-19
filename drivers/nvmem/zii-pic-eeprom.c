@@ -196,7 +196,7 @@ static const struct of_device_id zii_pic_eeprom_of_match[] = {
 static int zii_pic_eeprom_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = zii_pic_parent(dev);
+	struct zii_pic *zp = dev_get_drvdata(dev->parent);
 	struct zii_pic_eeprom *zpe;
 	const struct of_device_id *id;
 	struct nvmem_config config;

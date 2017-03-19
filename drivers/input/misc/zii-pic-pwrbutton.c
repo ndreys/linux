@@ -67,7 +67,7 @@ static const struct of_device_id zii_pic_pwrbutton_of_match[] = {
 static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = zii_pic_parent(dev);
+	struct zii_pic *zp = dev_get_drvdata(dev->parent);
 	struct zii_pic_power_button *picpb;
 	int ret;
 
@@ -101,7 +101,7 @@ static int zii_pic_pwrbutton_probe(struct platform_device *pdev)
 
 static int zii_pic_pwrbutton_remove(struct platform_device *pdev)
 {
-	struct zii_pic *zp = zii_pic_parent(&pdev->dev);
+	struct zii_pic *zp = dev_get_drvdata(pdev->dev.parent);
 	struct zii_pic_power_button *picpb = dev_get_drvdata(&pdev->dev);
 
 	return blocking_notifier_chain_unregister(&zp->event_notifier_list,

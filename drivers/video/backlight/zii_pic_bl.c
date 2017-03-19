@@ -68,7 +68,7 @@ static const struct of_device_id zii_pic_bl_of_match[] = {
 static int zii_pic_backlight_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = zii_pic_parent(dev);
+	struct zii_pic *zp = dev_get_drvdata(dev->parent);
 	struct backlight_device *bd;
 
 	if (!zp)

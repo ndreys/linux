@@ -210,7 +210,7 @@ static enum led_brightness zl_brightness_get(struct led_classdev *led_dev)
 static int zii_pic_leds_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = zii_pic_parent(dev);
+	struct zii_pic *zp = dev_get_drvdata(dev->parent);
 	struct zii_pic_leds *zleds;
 	enum zii_led_id id;
 	enum zii_led_channel ch;

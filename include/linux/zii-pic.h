@@ -102,14 +102,6 @@ struct zii_pic {
 	struct blocking_notifier_head   event_notifier_list;
 };
 
-static inline struct zii_pic *zii_pic_parent(struct device *dev)
-{
-	if (dev->parent)
-		return dev_get_drvdata(dev->parent);
-	else
-		return NULL;
-}
-
 int zii_pic_exec(struct zii_pic *zp,
 		 void *data,  size_t data_size,
 		 void *reply, size_t reply_size);
