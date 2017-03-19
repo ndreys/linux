@@ -65,9 +65,6 @@ struct zii_pic_version {
 	u8	letter_2;
 } __packed;
 
-#define ZII_PIC_EVENT_CODE_MIN		0xE0
-#define ZII_PIC_EVENT_CODE_MAX		0xEF
-
 
 #define ZII_PIC_MAX_DATA_SIZE	64
 
@@ -136,6 +133,11 @@ struct zii_pic {
 
 	struct blocking_notifier_head   event_notifier_list;
 };
+
+static bool zii_pic_id_is_event(u8 code)
+{
+	return (code & 0xF0) == ZII_PIC_EVNT_BASE;
+}
 
 static void devm_zii_pic_unregister_event_notifier(struct device *dev, void *res)
 {
@@ -418,10 +420,14 @@ static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 
 static u8 zii_pic_reply_code(u8 command)
 {
-	if (0xA0 <= command && command <= 0xBE)
+	switch (command) {
+	case 0xA0 ... 0xBE:
 		return command + 0x20;
-	else
+	case 0xE0 ... 0xEF:
+		return command | 0x01;
+	default:
 		return command + 0x40;
+	}
 }
 
 int zii_pic_exec(struct zii_pic *pic,
@@ -471,19 +477,16 @@ EXPORT_SYMBOL(zii_pic_exec);
 static void zii_pic_receive_event(struct zii_pic *zp,
 				  const unsigned char *data, size_t length)
 {
-	u8 cmd[2];
-	u8 code = data[0];
-
-	/*
-	  TODO: Is that a universal rule, that event's ack id is event id | 0x01 ?
-	 */
-	cmd[0] = code | 0x01;
-	cmd[1] = data[1];
+	u8 cmd[] = {
+		[0] = zii_pic_reply_code(data[0]),
+		[1] = data[1],
+	};
 
 	zii_pic_write(zp, cmd, sizeof(cmd));
 
 	blocking_notifier_call_chain(&zp->event_notifier_list,
-				     data[2] << 8 | code, NULL);
+				     zii_pic_action(data[0], data[2]),
+				     NULL);
 }
 
 static void zii_pic_receive_reply(struct zii_pic *zp,
@@ -541,8 +544,7 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 		return;
 	}
 
-	if (data[0] >= ZII_PIC_EVENT_CODE_MIN &&
-	    data[0] <= ZII_PIC_EVENT_CODE_MAX)
+	if (zii_pic_id_is_event(data[0]))
 		zii_pic_receive_event(zp, data, length);
 	else
 		zii_pic_receive_reply(zp, data, length);

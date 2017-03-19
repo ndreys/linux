@@ -42,15 +42,13 @@ to_zii_pic_power_button(struct notifier_block *nb)
 static int zii_pic_power_button_event(struct notifier_block *nb,
 				      unsigned long action, void *data)
 {
-	const u8 event = action & 0xff;
-
-	if (event == EVT_BUTTON_PRESS) {
-		const u8 value = (action >> 8) & 0xff;
+	if (zii_pic_action_get_event(action) == EVT_BUTTON_PRESS) {
 		struct zii_pic_power_button *picpb;
 
 		picpb = to_zii_pic_power_button(nb);
 
-		input_report_key(picpb->idev, KEY_POWER, value);
+		input_report_key(picpb->idev, KEY_POWER,
+				 zii_pic_action_get_value(action));
 		input_sync(picpb->idev);
 
 		return NOTIFY_STOP;

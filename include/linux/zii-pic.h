@@ -11,9 +11,26 @@ enum zii_pic_command {
 	ZII_PIC_CMD_PET_WDT			= 0xA2,
 	ZII_PIC_CMD_RESET			= 0xA7,
 	ZII_PIC_CMD_RESET_REASON		= 0xA8,
+
+	ZII_PIC_EVNT_BASE			= 0xE0,
 };
 
 struct zii_pic;
+
+static inline unsigned long zii_pic_action(u8 event, u8 value)
+{
+	return ((unsigned long)value << 8) | event;
+}
+
+static inline u8 zii_pic_action_get_event(unsigned long action)
+{
+	return action & 0xff;
+}
+
+static inline u8 zii_pic_action_get_value(unsigned long action)
+{
+	return (action >> 8) & 0xff;
+}
 
 extern int zii_pic_exec(struct zii_pic *, void *, size_t, void *, size_t);
 extern int devm_zii_pic_register_event_notifier(struct device *, struct notifier_block *);
