@@ -122,6 +122,7 @@ struct zii_pic {
 	struct zii_pic_deframer deframer;
 	atomic_t ackid;
 
+	struct mutex bus_lock;
 	struct mutex reply_lock;
 	struct zii_pic_reply *reply;
 
@@ -401,7 +402,7 @@ static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 	print_hex_dump(KERN_CRIT, "zii_pic tx: ", DUMP_PREFIX_NONE,
 		       16, 1, frame, length, false);
 
-	return serdev_device_write(pic->serdev, frame, length);
+	return serdev_device_write(pic->serdev, frame, length, HZ);
 }
 
 static u8 zii_pic_reply_code(u8 command)
@@ -435,7 +436,7 @@ int zii_pic_exec(struct zii_pic *pic,
 	if (command < 0)
 		return command;
 
-	serdev_device_bus_lock(pic->serdev);
+	mutex_lock(&pic->bus_lock);
 
 	mutex_lock(&pic->reply_lock);
 	pic->reply = &reply;
@@ -455,7 +456,7 @@ int zii_pic_exec(struct zii_pic *pic,
 		mutex_unlock(&pic->reply_lock);
 	}
 
-	serdev_device_bus_unlock(pic->serdev);
+	mutex_unlock(&pic->bus_lock);
 	return ret;
 }
 EXPORT_SYMBOL(zii_pic_exec);
@@ -765,7 +766,8 @@ const static struct of_device_id zii_pic_dt_ids[] = {
 static int zii_pic_probe(struct serdev_device *serdev)
 {
 	static const struct serdev_device_ops serdev_device_ops = {
-		.receive_buf = zii_pic_receive_buf,
+		.receive_buf  = zii_pic_receive_buf,
+		.write_wakeup = serdev_device_write_wakeup,
 	};
 	struct zii_pic *pic;
 	struct device *dev = &serdev->dev;
@@ -790,6 +792,7 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	if (!pic->variant)
 		return -ENODEV;
 
+	mutex_init(&pic->bus_lock);
 	mutex_init(&pic->reply_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&pic->event_notifier_list);
 
