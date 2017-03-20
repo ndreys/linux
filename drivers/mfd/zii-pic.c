@@ -90,11 +90,25 @@ struct zii_pic_checksum {
 	void (*subroutine) (const u8 *, size_t, u8 *);
 };
 
+enum zii_pic_boot_source {
+	ZII_PIC_BOOT_SOURCE_SD		= 0,
+	ZII_PIC_BOOT_SOURCE_EMMC	= 1,
+	ZII_PIC_BOOT_SOURCE_NOR		= 1,
+};
+
+enum {
+	ZII_PIC_BOOT_SOURCE_GET = 0,
+	ZII_PIC_BOOT_SOURCE_SET = 1,
+};
+
 struct zii_pic_variant {
 	const struct zii_pic_checksum *checksum;
 
 	struct {
 		int  (*translate)   (enum zii_pic_command);
+		int (*get_boot_source) (struct zii_pic *);
+		int (*set_boot_source) (struct zii_pic *,
+					enum zii_pic_boot_source);
 	} cmd;
 
 	void (*init) (struct zii_pic *);
@@ -116,7 +130,6 @@ struct zii_pic {
 	const char *copper_rev;
 
 	u8 reset_reason;
-	u8 boot_source;
 
 	const struct zii_pic_variant *variant;
 
@@ -124,6 +137,12 @@ struct zii_pic {
 
 	struct attribute_group *group;
 };
+
+struct zii_pic_rsp_status {
+	u8 bl_bytes[6];
+	u8 fw_bytes[6];
+	u8 gs_format;
+} __packed;
 
 static bool zii_pic_id_is_event(u8 code)
 {
@@ -163,63 +182,6 @@ int devm_zii_pic_register_event_notifier(struct device *dev,
 
 }
 EXPORT_SYMBOL_GPL(devm_zii_pic_register_event_notifier);
-#if 0
-static void zii_pic_get_fw_version(struct zii_pic *zp)
-{
-	u8 cmd[2] = { ZII_PIC_CMD_GET_FIRMWARE_VERSION };
-	int ret;
-
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
-			   &zp->fw_version, sizeof(zp->fw_version));
-	if (ret) {
-		dev_warn(&zp->serdev->dev, "failed to get fw version\n");
-		memset(&zp->fw_version, 0, sizeof(zp->fw_version));
-	}
-}
-
-static void zii_pic_get_bl_version(struct zii_pic *zp)
-{
-	u8 cmd[2] = { ZII_PIC_CMD_GET_BOOTLOADER_VERSION };
-	int ret;
-
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
-			   &zp->bl_version, sizeof(zp->bl_version));
-	if (ret) {
-		dev_warn(&zp->serdev->dev,
-				"failed to get bl version\n");
-		memset(&zp->bl_version, 0, sizeof(zp->bl_version));
-	}
-}
-#endif
-
-static void zii_pic_get_boot_source(struct zii_pic *zp)
-{
-	u8 cmd[] = { ZII_PIC_CMD_BOOT_SOURCE, 0, 0, 0};
-	int ret;
-
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd),
-			   &zp->boot_source, 1);
-	if (ret) {
-		dev_warn(&zp->serdev->dev, "failed to get boot source\n");
-		zp->boot_source = 0xFF;
-	}
-}
-
-static int zii_pic_set_boot_source(struct zii_pic *zp, u8 boot_src)
-{
-	u8 cmd[] = { ZII_PIC_CMD_BOOT_SOURCE, 0, 1, boot_src };
-	int ret;
-
-	ret = zii_pic_exec(zp, cmd, sizeof(cmd), NULL, 0);
-	if (ret)
-		return ret;
-
-	zii_pic_get_boot_source(zp);
-	if (boot_src != zp->boot_source)
-		return -EIO;
-
-	return 0;
-}
 
 static const char *devm_zii_pic_version(struct device *dev, const char *buf)
 {
@@ -228,40 +190,15 @@ static const char *devm_zii_pic_version(struct device *dev, const char *buf)
 			      buf[3], buf[4], buf[5]);
 }
 
-static void zii_pic_rdu1_init(struct zii_pic *pic)
+static int zii_pic_get_status(struct zii_pic *pic,
+			      struct zii_pic_rsp_status *status)
 {
-	struct device *dev = &pic->serdev->dev;
 	u8 cmd[] = {
 		[0] = ZII_PIC_CMD_STATUS,
 		[1] = 0
 	};
-	struct zii_pic_rsp_status {
-		u8 bl_bytes[6];
-		u8 fw_bytes[6];
-		u8 gs_format;
-	} __packed reply;
-	u8 revision = 0;
-	int ret;
 
-	ret = zii_pic_exec(pic, cmd, sizeof(cmd), &reply, sizeof(reply));
-	if (!ret) {
-		pic->part_number_firmware =
-			devm_zii_pic_version(dev, reply.fw_bytes);
-		pic->part_number_bootloader =
-			devm_zii_pic_version(dev, reply.bl_bytes);
-		pic->boot_source = (reply.gs_format >> 2) & 0x03;
-	} else {
-		dev_err(dev, "CMD_STATUS failed %d\n", ret);
-	}
-
-	cmd[0] = ZII_PIC_CMD_REQ_COPPER_REV;
-
-	ret = zii_pic_exec(pic, cmd, sizeof(cmd), &revision, sizeof(revision));
-	if (!ret)
-		pic->copper_rev =
-			devm_kasprintf(dev, GFP_KERNEL, "%02x", revision);
-	else
-		dev_err(dev, "CMD_REQ_COPPER_REV failed %d\n", ret);
+	return zii_pic_exec(pic, cmd, sizeof(cmd), &status, sizeof(status));
 }
 
 static ssize_t
@@ -287,38 +224,84 @@ ZII_PIC_ATTR_RO_STRING(part_number_firmware);
 ZII_PIC_ATTR_RO_STRING(part_number_bootloader);
 ZII_PIC_ATTR_RO_STRING(copper_rev);
 
+static int zii_pic_rdu1_get_boot_source(struct zii_pic *pic)
+{
+	struct zii_pic_rsp_status status;
+	const int ret = zii_pic_get_status(pic, &status);
+
+	return (ret < 0) ? ret : (status.gs_format >> 2) & 0x03;
+}
+
+static int zii_pic_rdu1_set_boot_source(struct zii_pic *pic,
+					enum zii_pic_boot_source boot_source)
+{
+	return -ENOTSUPP;
+}
+
+static int zii_pic_common_set_boot_source(struct zii_pic *pic,
+					  enum zii_pic_boot_source boot_source)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_BOOT_SOURCE,
+		[1] = 0,
+		[2] = ZII_PIC_BOOT_SOURCE_GET,
+		[3] = (u8)boot_source,
+	};
+	return zii_pic_exec(pic, cmd, sizeof(cmd), NULL, 0);
+}
+
+static int zii_pic_common_get_boot_source(struct zii_pic *pic)
+{
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_BOOT_SOURCE,
+		[1] = 0,
+		[2] = ZII_PIC_BOOT_SOURCE_SET,
+		[3] = 0,
+	};
+	u8 boot_source;
+	const int ret = zii_pic_exec(pic, cmd, sizeof(cmd),
+				     &boot_source, sizeof(boot_source));
+
+	return (ret < 0) ? ret : boot_source;
+}
 
 static ssize_t zii_pic_show_boot_source(struct device *dev,
-	struct device_attribute *attr, char *buf)
+					struct device_attribute *attr,
+					char *buf)
 {
-	struct zii_pic *zp = dev_get_drvdata(dev);
+	struct zii_pic *pic = dev_get_drvdata(dev);
+	const int ret = pic->variant->cmd.get_boot_source(pic);
 
-	return sprintf(buf, "%d\n", zp->boot_source);
+	return (ret < 0) ? ret : sprintf(buf, "%d\n", ret);
 }
 
 static ssize_t zii_pic_store_boot_source(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
 {
-	struct zii_pic *zp = dev_get_drvdata(dev);
-	u8 boot_src;
+	struct zii_pic *pic = dev_get_drvdata(dev);
+	enum zii_pic_boot_source boot_source;
 	int ret;
+	u8 input;
 
-	ret = kstrtou8(buf, 0, &boot_src);
+	ret = kstrtou8(buf, 0, &input);
 	if (ret)
 		return ret;
 
-	if (boot_src > 2)
+	boot_source = input;
+
+	if (boot_source != ZII_PIC_BOOT_SOURCE_SD &&
+	    boot_source != ZII_PIC_BOOT_SOURCE_EMMC &&
+	    boot_source != ZII_PIC_BOOT_SOURCE_NOR)
 		return -EINVAL;
 
-	ret = zii_pic_set_boot_source(zp, boot_src);
-	if (ret)
-		return ret;
+	ret = pic->variant->cmd.set_boot_source(pic, boot_source);
 
-	return count;
+	return (ret < 0) ? ret : count;
 }
 
 static DEVICE_ATTR(boot_source, S_IRUSR | S_IWUSR | S_IRGRP,
-		zii_pic_show_boot_source, zii_pic_store_boot_source);
+		   zii_pic_show_boot_source, zii_pic_store_boot_source);
 
 
 static void devm_zii_pic_sysfs_group_release(struct device *dev, void *res)
@@ -652,11 +635,59 @@ static int zii_pic_default_cmd_translate(enum zii_pic_command command)
 	}
 }
 
-static void zii_pic_default_init(struct zii_pic *pic)
+static void zii_pic_rdu1_init(struct zii_pic *pic)
 {
-	/* zii_pic_get_fw_version(pic); */
-	/* zii_pic_get_bl_version(pic); */
-	zii_pic_get_boot_source(pic);
+	struct device *dev = &pic->serdev->dev;
+	u8 cmd[] = {
+		[0] = ZII_PIC_CMD_STATUS,
+		[1] = 0
+	};
+	struct zii_pic_rsp_status status;
+	u8 revision = 0;
+	int ret;
+
+	ret = zii_pic_get_status(pic, &status);
+	if (!ret) {
+		pic->part_number_firmware =
+			devm_zii_pic_version(dev, status.fw_bytes);
+		pic->part_number_bootloader =
+			devm_zii_pic_version(dev, status.bl_bytes);
+	} else {
+		dev_err(dev, "CMD_STATUS failed %d\n", ret);
+	}
+
+	cmd[0] = ZII_PIC_CMD_REQ_COPPER_REV;
+
+	ret = zii_pic_exec(pic, cmd, sizeof(cmd), &revision, sizeof(revision));
+	if (!ret)
+		pic->copper_rev =
+			devm_kasprintf(dev, GFP_KERNEL, "%02x", revision);
+	else
+		dev_err(dev, "CMD_REQ_COPPER_REV failed %d\n", ret);
+}
+
+static void zii_pic_common_init(struct zii_pic *pic)
+{
+	struct device *dev = &pic->serdev->dev;
+	u8 version[6];
+	u8 cmd[2];
+	int ret;
+
+	cmd[0] = ZII_PIC_CMD_GET_FIRMWARE_VERSION;
+	ret = zii_pic_exec(pic, cmd, sizeof(cmd), version, sizeof(version));
+	if (!ret)
+		pic->part_number_firmware =
+			devm_zii_pic_version(dev, version);
+	else
+		dev_warn(dev, "CMD_GET_FIRMWARE_VERSION failed %d\n", ret);
+
+	cmd[0] = ZII_PIC_CMD_GET_BOOTLOADER_VERSION;
+	ret = zii_pic_exec(pic, cmd, sizeof(cmd), version, sizeof(version));
+	if (!ret)
+		pic->part_number_bootloader =
+			devm_zii_pic_version(dev, version);
+	else
+		dev_warn(dev, "CMD_GET_BOOTLOADER_VERSION failed %d\n", ret);
 }
 
 const static struct zii_pic_checksum zii_pic_checksum_8b2c = {
@@ -688,17 +719,21 @@ const static struct zii_pic_variant zii_pic_legacy = {
 	.checksum = &zii_pic_checksum_8b2c,
 	.cmd = {
 		.translate = zii_pic_default_cmd_translate,
+		.get_boot_source = zii_pic_common_get_boot_source,
+		.set_boot_source = zii_pic_common_set_boot_source,
 	},
 	.group = {
 		.attrs = zii_pic_common_attrs,
 	},
-	.init = zii_pic_default_init,
+	.init = zii_pic_common_init,
 };
 
 const static struct zii_pic_variant zii_pic_rdu1 = {
 	.checksum = &zii_pic_checksum_8b2c,
 	.cmd = {
-		.translate   = zii_pic_rdu1_cmd_translate,
+		.translate = zii_pic_rdu1_cmd_translate,
+		.get_boot_source = zii_pic_rdu1_get_boot_source,
+		.set_boot_source = zii_pic_rdu1_set_boot_source,
 	},
 	.group = {
 		.attrs = zii_pic_rdu1_attrs,
@@ -708,13 +743,15 @@ const static struct zii_pic_variant zii_pic_rdu1 = {
 
 const static struct zii_pic_variant zii_pic_rdu2 = {
 	.checksum = &zii_pic_checksum_ccitt,
-	.cmd  = {
-		.translate   = zii_pic_rdu2_cmd_translate,
+	.cmd = {
+		.translate = zii_pic_rdu2_cmd_translate,
+		.get_boot_source = zii_pic_common_get_boot_source,
+		.set_boot_source = zii_pic_common_set_boot_source,
 	},
 	.group = {
 		.attrs = zii_pic_common_attrs,
 	},
-	.init = zii_pic_default_init,
+	.init = zii_pic_common_init,
 };
 
 const static struct of_device_id zii_pic_dt_ids[] = {
