@@ -258,7 +258,8 @@ static void zii_pic_rdu1_init(struct zii_pic *pic)
 
 	ret = zii_pic_exec(pic, cmd, sizeof(cmd), &revision, sizeof(revision));
 	if (!ret)
-		pic->copper_rev = devm_kasprintf(dev, GFP_KERNEL, "%02x", revision);
+		pic->copper_rev =
+			devm_kasprintf(dev, GFP_KERNEL, "%02x", revision);
 	else
 		dev_err(dev, "CMD_REQ_COPPER_REV failed %d\n", ret);
 }
