@@ -54,8 +54,6 @@
 #include <linux/serdev.h>
 #include <linux/zii-pic.h>
 
-#define ZII_PIC_DEFAULT_BAUD_RATE	57600
-
 enum {
 	ZII_PIC_BOOT_SOURCE_GET = 0,
 	ZII_PIC_BOOT_SOURCE_SET = 1,
@@ -769,9 +767,15 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	};
 	struct zii_pic *zp;
 	struct device *dev = &serdev->dev;
-	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
 	const char *unknown = "unknown";
+	u32 baud;
 	int ret;
+
+	if (of_property_read_u32(dev->of_node, "current-speed", &baud)) {
+		dev_err(dev,
+			"'current-speed' is not specified in device node\n");
+		return -EINVAL;
+	}
 
 	zp = devm_kzalloc(dev, sizeof(*zp), GFP_KERNEL);
 	if (!zp)
@@ -783,8 +787,6 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	zp->variant = of_device_get_match_data(dev);
 	if (!zp->variant)
 		return -ENODEV;
-
-	of_property_read_u32(dev->of_node, "current-speed", &baud);
 
 	mutex_init(&zp->reply_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
