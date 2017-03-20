@@ -478,6 +478,7 @@ static void zii_pic_receive_event(struct zii_pic *pic,
 static void zii_pic_receive_reply(struct zii_pic *pic,
 				  const unsigned char *data, size_t length)
 {
+	struct device *dev = &pic->serdev->dev;
 	mutex_lock(&pic->reply_lock);
 	{
 		struct zii_pic_reply *reply = pic->reply;
@@ -491,7 +492,7 @@ static void zii_pic_receive_reply(struct zii_pic *pic,
 				complete(&reply->received);
 				pic->reply = NULL;
 			} else {
-				dev_warn(&pic->serdev->dev,
+				dev_warn(dev,
 					 "unexpected reply: need code=%02x ackid=%02x "
 					 "size>=%d, got code=%02x ackid=%02x size=%d\n",
 					 reply->code, reply->ackid,
@@ -499,8 +500,7 @@ static void zii_pic_receive_reply(struct zii_pic *pic,
 					 data[0], data[1], length - 2);
 			}
 		} else {
-			dev_warn(&pic->serdev->dev,
-				 "got reply frame when not expecting one");
+			dev_warn(dev, "got reply frame when not expecting one");
 		}
 	}
 	mutex_unlock(&pic->reply_lock);
@@ -513,20 +513,21 @@ static void zii_pic_receive_frame(struct zii_pic *pic,
 	const size_t checksum_length = pic->variant->checksum->length;
 	const size_t payload_length  = length - checksum_length;
 	const u8 *crc_reported       = &data[payload_length];
+	struct device *dev           = &pic->serdev->dev;
 	u8 crc_calculated[checksum_length];
 
 	print_hex_dump(KERN_CRIT, "zii-pic rx: ", DUMP_PREFIX_NONE,
 		       16, 1, data, length, false);
 
 	if (unlikely(length <= checksum_length)) {
-		dev_warn(&pic->serdev->dev, "dropping short frame\n");
+		dev_warn(dev, "dropping short frame\n");
 		return;
 	}
 
 	pic->variant->checksum->subroutine(data, payload_length, crc_calculated);
 
 	if (memcmp(crc_calculated, crc_reported, checksum_length)) {
-		dev_warn(&pic->serdev->dev, "dropping bad frame\n");
+		dev_warn(dev, "dropping bad frame\n");
 		return;
 	}
 
@@ -539,7 +540,8 @@ static void zii_pic_receive_frame(struct zii_pic *pic,
 static int zii_pic_receive_buf(struct serdev_device *serdev,
 			       const unsigned char *buf, size_t size)
 {
-	struct zii_pic *pic = dev_get_drvdata(&serdev->dev);
+	struct device *dev  = &serdev->dev;
+	struct zii_pic *pic = dev_get_drvdata(dev);
 	struct zii_pic_deframer *deframer = &pic->deframer;
 	const unsigned char *src = buf;
 	const unsigned char *end = buf + size;
@@ -562,7 +564,7 @@ static int zii_pic_receive_buf(struct serdev_device *serdev,
 						      deframer->length);
 			case STX: /* FALLTHROUGH */
 				if (unlikely(byte == STX))
-					dev_warn(&serdev->dev,
+					dev_warn(dev,
 						 "Frame has second STX "
 						 "before ETX. Dropping it\n");
 				goto reset_framer;
@@ -575,7 +577,7 @@ static int zii_pic_receive_buf(struct serdev_device *serdev,
 			deframer->data[deframer->length++] = byte;
 
 			if (deframer->length == sizeof(deframer->data)) {
-				dev_warn(&serdev->dev, "Frame too long. Dropping it\n");
+				dev_warn(dev, "Frame too long. Dropping it\n");
 				goto reset_framer;
 			}
 
@@ -791,12 +793,12 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	mutex_init(&pic->reply_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&pic->event_notifier_list);
 
-	serdev_device_set_client_ops(pic->serdev, &serdev_device_ops);
-	ret = serdev_device_open(pic->serdev);
+	serdev_device_set_client_ops(serdev, &serdev_device_ops);
+	ret = serdev_device_open(serdev);
 	if (ret)
 		return ret;
 
-	serdev_device_set_baudrate(pic->serdev, baud);
+	serdev_device_set_baudrate(serdev, baud);
 
 	pic->copper_rev			= unknown;
 	pic->part_number_firmware	= unknown;
