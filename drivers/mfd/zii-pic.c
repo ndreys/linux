@@ -39,7 +39,6 @@
  * checksum calculation.
  */
 
-
 /* #define DEBUG */
 
 #include <linux/atomic.h>
@@ -55,15 +54,23 @@
 #include <linux/serdev.h>
 #include <linux/zii-pic.h>
 
-#define ZII_PIC_MAX_DATA_SIZE	64
-
-/* For Tx, <STX DATA CSUM ETX> is stored, and all but STX/ETX can be escaped */
-#define ZII_PIC_TX_BUF_SIZE (1 + 2*ZII_PIC_MAX_DATA_SIZE + 2*2 + 1)
-
-/* For Rx, only frame data and csum is stored */
-#define ZII_PIC_RX_BUF_SIZE (ZII_PIC_MAX_DATA_SIZE + 2)
-
 #define ZII_PIC_DEFAULT_BAUD_RATE	57600
+
+enum {
+	ZII_PIC_BOOT_SOURCE_GET = 0,
+	ZII_PIC_BOOT_SOURCE_SET = 1,
+
+	ZII_PIC_MAX_DATA_SIZE   = 64,
+	ZII_PIC_CHECKSUM_SIZE   = 2, /* Worst case scenariou on RDU2 */
+	/* We don't store STX, ETX and unescaped bytes, so Rx is only
+	 * DATA + CSUM */
+	ZII_PIC_RX_BUFFER_SIZE  = ZII_PIC_MAX_DATA_SIZE + ZII_PIC_CHECKSUM_SIZE,
+	ZII_PIC_STX_ETX_SIZE    = 2,
+	/* For Tx we have to have space for everything, STX, EXT and
+	 * potentially stuffed DATA + CSUM data + csum */
+	ZII_PIC_TX_BUFFER_SIZE  = ZII_PIC_STX_ETX_SIZE +
+				  2 * ZII_PIC_RX_BUFFER_SIZE,
+};
 
 enum zii_pic_deframer_state {
 	ZII_PIC_EXPECT_SOF,
@@ -73,7 +80,7 @@ enum zii_pic_deframer_state {
 
 struct zii_pic_deframer {
 	enum zii_pic_deframer_state state;
-	unsigned char data[ZII_PIC_RX_BUF_SIZE];
+	unsigned char data[ZII_PIC_RX_BUFFER_SIZE];
 	size_t length;
 };
 
@@ -94,11 +101,6 @@ enum zii_pic_boot_source {
 	ZII_PIC_BOOT_SOURCE_SD		= 0,
 	ZII_PIC_BOOT_SOURCE_EMMC	= 1,
 	ZII_PIC_BOOT_SOURCE_NOR		= 1,
-};
-
-enum {
-	ZII_PIC_BOOT_SOURCE_GET = 0,
-	ZII_PIC_BOOT_SOURCE_SET = 1,
 };
 
 struct zii_pic_variant {
@@ -197,7 +199,6 @@ static int zii_pic_get_status(struct zii_pic *pic,
 		[0] = ZII_PIC_CMD_STATUS,
 		[1] = 0
 	};
-
 	return zii_pic_exec(pic, cmd, sizeof(cmd), &status, sizeof(status));
 }
 
@@ -337,9 +338,6 @@ static int devm_zii_sysfs_create_group(struct zii_pic *pic)
 	return ret;
 }
 
-
-/* #define DEBUG */
-
 #define STX			0x02
 #define ETX			0x03
 #define DLE			0x10
@@ -387,10 +385,11 @@ static int zii_pic_write(struct zii_pic *pic, const u8 *data, u8 data_size)
 	size_t length;
 	const size_t checksum_length = pic->variant->checksum->length;
 	unsigned char crc[checksum_length];
-	unsigned char frame[ZII_PIC_TX_BUF_SIZE];
+	unsigned char frame[ZII_PIC_TX_BUFFER_SIZE];
 	unsigned char *dest = frame;
 
-	BUG_ON(data_size > ZII_PIC_TX_BUF_SIZE);
+	if (WARN_ON(data_size > sizeof(frame)))
+		return -ENOMEM;
 
 	pic->variant->checksum->subroutine(data, data_size, crc);
 
