@@ -12,6 +12,8 @@ enum zii_pic_command {
 	ZII_PIC_CMD_RESET			= 0xA7,
 	ZII_PIC_CMD_RESET_REASON		= 0xA8,
 
+	ZII_PIC_CMD_REQ_COPPER_REV		= 0xB6,
+
 	ZII_PIC_EVNT_BASE			= 0xE0,
 };
 
