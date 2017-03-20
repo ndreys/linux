@@ -611,27 +611,6 @@ reset_framer:
 	return src - buf;
 }
 
-static const struct serdev_device_ops zii_pic_serdev_device_ops = {
-	.receive_buf = zii_pic_receive_buf,
-};
-
-static int zii_pic_open(struct zii_pic *zp, unsigned int speed)
-{
-	int ret;
-
-	mutex_init(&zp->reply_lock);
-	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
-
-	serdev_device_set_client_ops(zp->serdev, &zii_pic_serdev_device_ops);
-	ret = serdev_device_open(zp->serdev);
-	if (ret)
-		return ret;
-
-	serdev_device_set_baudrate(zp->serdev, speed);
-	return 0;
-}
-
-
 static int zii_pic_rdu1_cmd_translate(enum zii_pic_command command)
 {
 	if (0xA0 <= command && command <= 0xBB)
@@ -748,6 +727,9 @@ const static struct of_device_id zii_pic_dt_ids[] = {
 
 static int zii_pic_probe(struct serdev_device *serdev)
 {
+	static const struct serdev_device_ops serdev_device_ops = {
+		.receive_buf = zii_pic_receive_buf,
+	};
 	struct zii_pic *zp;
 	struct device *dev = &serdev->dev;
 	u32 baud = ZII_PIC_DEFAULT_BAUD_RATE;
@@ -766,9 +748,16 @@ static int zii_pic_probe(struct serdev_device *serdev)
 		return -ENODEV;
 
 	of_property_read_u32(dev->of_node, "current-speed", &baud);
-	ret = zii_pic_open(zp, baud);
+
+	mutex_init(&zp->reply_lock);
+	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
+
+	serdev_device_set_client_ops(zp->serdev, &serdev_device_ops);
+	ret = serdev_device_open(zp->serdev);
 	if (ret)
 		return ret;
+
+	serdev_device_set_baudrate(zp->serdev, baud);
 
 	zp->copper_rev			= unknown;
 	zp->part_number_firmware	= unknown;
