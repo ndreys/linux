@@ -460,7 +460,7 @@ int zii_pic_exec(struct zii_pic *pic,
 }
 EXPORT_SYMBOL(zii_pic_exec);
 
-static void zii_pic_receive_event(struct zii_pic *zp,
+static void zii_pic_receive_event(struct zii_pic *pic,
 				  const unsigned char *data, size_t length)
 {
 	u8 cmd[] = {
@@ -468,19 +468,19 @@ static void zii_pic_receive_event(struct zii_pic *zp,
 		[1] = data[1],
 	};
 
-	zii_pic_write(zp, cmd, sizeof(cmd));
+	zii_pic_write(pic, cmd, sizeof(cmd));
 
-	blocking_notifier_call_chain(&zp->event_notifier_list,
+	blocking_notifier_call_chain(&pic->event_notifier_list,
 				     zii_pic_action(data[0], data[2]),
 				     NULL);
 }
 
-static void zii_pic_receive_reply(struct zii_pic *zp,
+static void zii_pic_receive_reply(struct zii_pic *pic,
 				  const unsigned char *data, size_t length)
 {
-	mutex_lock(&zp->reply_lock);
+	mutex_lock(&pic->reply_lock);
 	{
-		struct zii_pic_reply *reply = zp->reply;
+		struct zii_pic_reply *reply = pic->reply;
 
 		if (reply) {
 			if (reply->code  == data[0] &&
@@ -489,9 +489,9 @@ static void zii_pic_receive_reply(struct zii_pic *zp,
 					memcpy(reply->data, &data[2],
 					       min(reply->length, length - 2));
 				complete(&reply->received);
-				zp->reply = NULL;
+				pic->reply = NULL;
 			} else {
-				dev_warn(&zp->serdev->dev,
+				dev_warn(&pic->serdev->dev,
 					 "unexpected reply: need code=%02x ackid=%02x "
 					 "size>=%d, got code=%02x ackid=%02x size=%d\n",
 					 reply->code, reply->ackid,
@@ -499,18 +499,18 @@ static void zii_pic_receive_reply(struct zii_pic *zp,
 					 data[0], data[1], length - 2);
 			}
 		} else {
-			dev_warn(&zp->serdev->dev,
+			dev_warn(&pic->serdev->dev,
 				 "got reply frame when not expecting one");
 		}
 	}
-	mutex_unlock(&zp->reply_lock);
+	mutex_unlock(&pic->reply_lock);
 }
 
-static void zii_pic_receive_frame(struct zii_pic *zp,
+static void zii_pic_receive_frame(struct zii_pic *pic,
 				  const unsigned char *data,
 				  size_t length)
 {
-	const size_t checksum_length = zp->variant->checksum->length;
+	const size_t checksum_length = pic->variant->checksum->length;
 	const size_t payload_length  = length - checksum_length;
 	const u8 *crc_reported       = &data[payload_length];
 	u8 crc_calculated[checksum_length];
@@ -519,21 +519,21 @@ static void zii_pic_receive_frame(struct zii_pic *zp,
 		       16, 1, data, length, false);
 
 	if (unlikely(length <= checksum_length)) {
-		dev_warn(&zp->serdev->dev, "dropping short frame\n");
+		dev_warn(&pic->serdev->dev, "dropping short frame\n");
 		return;
 	}
 
-	zp->variant->checksum->subroutine(data, payload_length, crc_calculated);
+	pic->variant->checksum->subroutine(data, payload_length, crc_calculated);
 
 	if (memcmp(crc_calculated, crc_reported, checksum_length)) {
-		dev_warn(&zp->serdev->dev, "dropping bad frame\n");
+		dev_warn(&pic->serdev->dev, "dropping bad frame\n");
 		return;
 	}
 
 	if (zii_pic_id_is_event(data[0]))
-		zii_pic_receive_event(zp, data, length);
+		zii_pic_receive_event(pic, data, length);
 	else
-		zii_pic_receive_reply(zp, data, length);
+		zii_pic_receive_reply(pic, data, length);
 }
 
 static int zii_pic_receive_buf(struct serdev_device *serdev,
@@ -765,7 +765,7 @@ static int zii_pic_probe(struct serdev_device *serdev)
 	static const struct serdev_device_ops serdev_device_ops = {
 		.receive_buf = zii_pic_receive_buf,
 	};
-	struct zii_pic *zp;
+	struct zii_pic *pic;
 	struct device *dev = &serdev->dev;
 	const char *unknown = "unknown";
 	u32 baud;
@@ -777,34 +777,34 @@ static int zii_pic_probe(struct serdev_device *serdev)
 		return -EINVAL;
 	}
 
-	zp = devm_kzalloc(dev, sizeof(*zp), GFP_KERNEL);
-	if (!zp)
+	pic = devm_kzalloc(dev, sizeof(*pic), GFP_KERNEL);
+	if (!pic)
 		return -ENOMEM;
 
-	zp->serdev = serdev;
-	dev_set_drvdata(dev, zp);
+	pic->serdev = serdev;
+	dev_set_drvdata(dev, pic);
 
-	zp->variant = of_device_get_match_data(dev);
-	if (!zp->variant)
+	pic->variant = of_device_get_match_data(dev);
+	if (!pic->variant)
 		return -ENODEV;
 
-	mutex_init(&zp->reply_lock);
-	BLOCKING_INIT_NOTIFIER_HEAD(&zp->event_notifier_list);
+	mutex_init(&pic->reply_lock);
+	BLOCKING_INIT_NOTIFIER_HEAD(&pic->event_notifier_list);
 
-	serdev_device_set_client_ops(zp->serdev, &serdev_device_ops);
-	ret = serdev_device_open(zp->serdev);
+	serdev_device_set_client_ops(pic->serdev, &serdev_device_ops);
+	ret = serdev_device_open(pic->serdev);
 	if (ret)
 		return ret;
 
-	serdev_device_set_baudrate(zp->serdev, baud);
+	serdev_device_set_baudrate(pic->serdev, baud);
 
-	zp->copper_rev			= unknown;
-	zp->part_number_firmware	= unknown;
-	zp->part_number_bootloader	= unknown;
+	pic->copper_rev			= unknown;
+	pic->part_number_firmware	= unknown;
+	pic->part_number_bootloader	= unknown;
 
-	zp->variant->init(zp);
+	pic->variant->init(pic);
 
-	ret = devm_zii_sysfs_create_group(zp);
+	ret = devm_zii_sysfs_create_group(pic);
 	if (ret) {
 		serdev_device_close(serdev);
 		return ret;
