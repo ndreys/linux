@@ -220,24 +220,24 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 	config.owner = THIS_MODULE;
 	config.dev = dev;
 	config.priv = zpe;
-#if 0
-	if (zp->hw_id < ZII_PIC_HW_ID_RDU1) {
-		if (id->data == (void *)DDS_EEPROM)
-			return -ENXIO;
-		zpe->cmd = CMD_OLD_EEPROM;
-		config.name = ZII_PIC_NAME_MAIN_EEPROM;
-		config.size = MAIN_EEPROM_SIZE;
-	} else if (id->data == (void *)MAIN_EEPROM) {
+
+	/* if (zp->hw_id < ZII_PIC_HW_ID_RDU1) { */
+	/* 	if (id->data == (void *)DDS_EEPROM) */
+	/* 		return -ENXIO; */
+	/* 	zpe->cmd = CMD_OLD_EEPROM; */
+	/* 	config.name = ZII_PIC_NAME_MAIN_EEPROM; */
+	/* 	config.size = MAIN_EEPROM_SIZE; */
+	/* } else */ if (id->data == (void *)MAIN_EEPROM) {
 		zpe->cmd = CMD_MAIN_EEPROM;
-		config.name = ZII_PIC_NAME_MAIN_EEPROM;
+		config.name = "pic-main-eeprom";
 		config.size = MAIN_EEPROM_SIZE;
 	} else {
 		zpe->cmd = CMD_DDS_EEPROM;
-		config.name = ZII_PIC_NAME_DDS_EEPROM;
-		config.size = zp->hw_id == ZII_PIC_HW_ID_RDU1 ?
-			DDS_EEPROM_SIZE_RDU1 : DDS_EEPROM_SIZE;
+		config.name = "pic-dds-eeprom";
+		config.size = /* zp->hw_id == ZII_PIC_HW_ID_RDU1 ? */
+			/* DDS_EEPROM_SIZE_RDU1 : */ DDS_EEPROM_SIZE;
 	}
-#endif
+
 	config.reg_read = zii_pic_eeprom_reg_read;
 	config.reg_write = zii_pic_eeprom_reg_write;
 	config.word_size = 1;
