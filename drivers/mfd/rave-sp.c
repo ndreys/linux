@@ -809,6 +809,9 @@ static int rave_sp_probe(struct serdev_device *serdev)
 
 	sp->variant->init(sp);
 
+	dev_info(dev, "Firmware version: %s\n", sp->part_number_firmware);
+	dev_info(dev, "Bootloader version: %s\n", sp->part_number_bootloader);
+
 	ret = devm_zii_sysfs_create_group(sp);
 	if (ret) {
 		serdev_device_close(serdev);
