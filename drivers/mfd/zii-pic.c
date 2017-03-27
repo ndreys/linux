@@ -357,7 +357,7 @@ static void csum_ccitt(const u8 *buf, size_t size, u8 *crc)
 
 	const u16 calculated = crc_ccitt_false(0xffff, buf, size);
 
-	*(__le16 *)crc = cpu_to_le16(calculated);
+	*(__le16 *)crc = cpu_to_be16(calculated);
 }
 
 static void *stuff(unsigned char *dest, const unsigned char *src, size_t n)
