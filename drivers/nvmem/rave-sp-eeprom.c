@@ -25,7 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/zii-pic.h>
+#include <linux/rave-sp.h>
 #include <linux/nvmem-provider.h>
 #include <linux/of_device.h>
 
@@ -47,15 +47,15 @@ enum {
 #define DDS_EEPROM_SIZE_RDU1	0x2000
 #define DDS_EEPROM_SIZE		0x4000
 
-struct zii_pic_eeprom {
-	struct zii_pic *zp;
+struct rave_sp_eeprom {
+	struct rave_sp *zp;
 	u8 cmd;
 	u8 page_nr_bytes;
 	struct nvmem_device *nvmem;
 	struct mutex mutex;
 };
 
-static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
+static int rave_sp_eeprom_read_page(struct rave_sp_eeprom *zpe,
 		unsigned int page, u8 *buf)
 {
 	u8 b[2 + EEPROM_PAGE_SIZE + 2];
@@ -69,7 +69,7 @@ static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
 	if (zpe->page_nr_bytes > 1)
 		b[p++] = page >> 8;
 
-	ret = zii_pic_exec(zpe->zp,
+	ret = rave_sp_exec(zpe->zp,
 			   b, p, 
 			   b, 2 + EEPROM_PAGE_SIZE);
 	if (ret)
@@ -83,7 +83,7 @@ static int zii_pic_eeprom_read_page(struct zii_pic_eeprom *zpe,
 	return 0;
 }
 
-static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
+static int rave_sp_eeprom_write_page(struct rave_sp_eeprom *zpe,
 		unsigned int page, u8 *buf)
 {
 	u8 b[3 + EEPROM_PAGE_SIZE + 2];
@@ -98,7 +98,7 @@ static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
 		b[p++] = page >> 8;
 	memcpy(&b[p], buf, EEPROM_PAGE_SIZE);
 
-	ret = zii_pic_exec(zpe->zp,
+	ret = rave_sp_exec(zpe->zp,
 			   b, p + EEPROM_PAGE_SIZE,
 			   b, 2);
 	if (ret)
@@ -111,7 +111,7 @@ static int zii_pic_eeprom_write_page(struct zii_pic_eeprom *zpe,
 	return 0;
 }
 
-static int zii_pic_eeprom_process(struct zii_pic_eeprom *zpe, bool write,
+static int rave_sp_eeprom_process(struct rave_sp_eeprom *zpe, bool write,
 		unsigned int offset, u8 *buf, size_t bytes)
 {
 	unsigned int page = offset >> EEPROM_PAGE_SHIFT;
@@ -121,14 +121,14 @@ static int zii_pic_eeprom_process(struct zii_pic_eeprom *zpe, bool write,
 	mutex_lock(&zpe->mutex);
 
 	if (offset != page << EEPROM_PAGE_SHIFT || bytes < EEPROM_PAGE_SIZE) {
-		ret = zii_pic_eeprom_read_page(zpe, page, tmpbuf);
+		ret = rave_sp_eeprom_read_page(zpe, page, tmpbuf);
 		if (ret)
 			goto out;
 		tmpoffs = offset & (EEPROM_PAGE_SIZE - 1);
 		tmpsz = min_t(size_t, EEPROM_PAGE_SIZE - tmpoffs, bytes);
 		if (write) {
 			memcpy(&tmpbuf[tmpoffs], buf, tmpsz);
-			ret = zii_pic_eeprom_write_page(zpe, page, tmpbuf);
+			ret = rave_sp_eeprom_write_page(zpe, page, tmpbuf);
 			if (ret)
 				goto out;
 		} else
@@ -140,9 +140,9 @@ static int zii_pic_eeprom_process(struct zii_pic_eeprom *zpe, bool write,
 
 	while (bytes >= EEPROM_PAGE_SIZE) {
 		if (write)
-			ret = zii_pic_eeprom_write_page(zpe, page, buf);
+			ret = rave_sp_eeprom_write_page(zpe, page, buf);
 		else
-			ret = zii_pic_eeprom_read_page(zpe, page, buf);
+			ret = rave_sp_eeprom_read_page(zpe, page, buf);
 		if (ret)
 			goto out;
 		buf += EEPROM_PAGE_SIZE;
@@ -151,12 +151,12 @@ static int zii_pic_eeprom_process(struct zii_pic_eeprom *zpe, bool write,
 	}
 
 	if (bytes > 0) {
-		ret = zii_pic_eeprom_read_page(zpe, page, tmpbuf);
+		ret = rave_sp_eeprom_read_page(zpe, page, tmpbuf);
 		if (ret)
 			goto out;
 		if (write) {
 			memcpy(tmpbuf, buf, bytes);
-			ret = zii_pic_eeprom_write_page(zpe, page, tmpbuf);
+			ret = rave_sp_eeprom_write_page(zpe, page, tmpbuf);
 			if (ret)
 				goto out;
 		} else
@@ -169,42 +169,42 @@ out:
 	return ret;
 }
 
-static int zii_pic_eeprom_reg_read(void *priv, unsigned int offset,
+static int rave_sp_eeprom_reg_read(void *priv, unsigned int offset,
 		void *val, size_t bytes)
 {
-	struct zii_pic_eeprom *zpe = priv;
+	struct rave_sp_eeprom *zpe = priv;
 	u8 *buf = val;
 
-	return zii_pic_eeprom_process(zpe, false, offset, buf, bytes);
+	return rave_sp_eeprom_process(zpe, false, offset, buf, bytes);
 }
 
-static int zii_pic_eeprom_reg_write(void *priv, unsigned int offset,
+static int rave_sp_eeprom_reg_write(void *priv, unsigned int offset,
 		void *val, size_t bytes)
 {
-	struct zii_pic_eeprom *zpe = priv;
+	struct rave_sp_eeprom *zpe = priv;
 	u8 *buf = val;
 
-	return zii_pic_eeprom_process(zpe, true, offset, buf, bytes);
+	return rave_sp_eeprom_process(zpe, true, offset, buf, bytes);
 }
 
-static const struct of_device_id zii_pic_eeprom_of_match[] = {
+static const struct of_device_id rave_sp_eeprom_of_match[] = {
 	{ .compatible = "zii,pic-main-eeprom", .data = (void *)MAIN_EEPROM },
 	{ .compatible = "zii,pic-dds-eeprom", .data = (void *)DDS_EEPROM },
 	{}
 };
 
-static int zii_pic_eeprom_probe(struct platform_device *pdev)
+static int rave_sp_eeprom_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = dev_get_drvdata(dev->parent);
-	struct zii_pic_eeprom *zpe;
+	struct rave_sp *zp = dev_get_drvdata(dev->parent);
+	struct rave_sp_eeprom *zpe;
 	const struct of_device_id *id;
 	struct nvmem_config config;
 
 	if (!zp)
 		return -EINVAL;
 
-	id = of_match_device(zii_pic_eeprom_of_match, dev);
+	id = of_match_device(rave_sp_eeprom_of_match, dev);
 	if (!id)
 		return -ENODEV;
 
@@ -221,11 +221,11 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 	config.dev = dev;
 	config.priv = zpe;
 
-	/* if (zp->hw_id < ZII_PIC_HW_ID_RDU1) { */
+	/* if (zp->hw_id < RAVE_SP_HW_ID_RDU1) { */
 	/* 	if (id->data == (void *)DDS_EEPROM) */
 	/* 		return -ENXIO; */
 	/* 	zpe->cmd = CMD_OLD_EEPROM; */
-	/* 	config.name = ZII_PIC_NAME_MAIN_EEPROM; */
+	/* 	config.name = RAVE_SP_NAME_MAIN_EEPROM; */
 	/* 	config.size = MAIN_EEPROM_SIZE; */
 	/* } else */ if (id->data == (void *)MAIN_EEPROM) {
 		zpe->cmd = CMD_MAIN_EEPROM;
@@ -234,12 +234,12 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 	} else {
 		zpe->cmd = CMD_DDS_EEPROM;
 		config.name = "pic-dds-eeprom";
-		config.size = /* zp->hw_id == ZII_PIC_HW_ID_RDU1 ? */
+		config.size = /* zp->hw_id == RAVE_SP_HW_ID_RDU1 ? */
 			/* DDS_EEPROM_SIZE_RDU1 : */ DDS_EEPROM_SIZE;
 	}
 
-	config.reg_read = zii_pic_eeprom_reg_read;
-	config.reg_write = zii_pic_eeprom_reg_write;
+	config.reg_read = rave_sp_eeprom_reg_read;
+	config.reg_write = rave_sp_eeprom_reg_write;
 	config.word_size = 1;
 	config.stride = 1;
 
@@ -252,24 +252,24 @@ static int zii_pic_eeprom_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int zii_pic_eeprom_remove(struct platform_device *pdev)
+static int rave_sp_eeprom_remove(struct platform_device *pdev)
 {
-	struct zii_pic_eeprom *zpe = platform_get_drvdata(pdev);
+	struct rave_sp_eeprom *zpe = platform_get_drvdata(pdev);
 
 	return nvmem_unregister(zpe->nvmem);
 }
 
-static struct platform_driver zii_pic_eeprom_driver = {
-	.probe = zii_pic_eeprom_probe,
-	.remove = zii_pic_eeprom_remove,
+static struct platform_driver rave_sp_eeprom_driver = {
+	.probe = rave_sp_eeprom_probe,
+	.remove = rave_sp_eeprom_remove,
 	.driver = {
 		.name = KBUILD_MODNAME,
-		.of_match_table = zii_pic_eeprom_of_match,
+		.of_match_table = rave_sp_eeprom_of_match,
 	},
 };
-module_platform_driver(zii_pic_eeprom_driver);
+module_platform_driver(rave_sp_eeprom_driver);
 
-MODULE_DEVICE_TABLE(of, zii_pic_eeprom_of_match);
+MODULE_DEVICE_TABLE(of, rave_sp_eeprom_of_match);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Nikita Yushchenko <nikita.yoush@cogentembedded.com>");
 MODULE_DESCRIPTION("ZII PIC EEPROM driver");

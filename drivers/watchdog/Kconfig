@@ -203,13 +203,12 @@ config ZIIRAVE_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called ziirave_wdt.
 
-config ZII_PIC_WATCHDOG
-	tristate "ZII PIC Watchdog timer"
-	depends on MFD_ZII_PIC
+config RAVE_SP_WATCHDOG
+	tristate "Rave SP Watchdog timer"
+	depends on MFD_RAVE_SP
 	select WATCHDOG_CORE
 	help
-	  Support for the watchdog on Zodiac Inflight Innovations
-	  PIC controller.
+	  Support for the watchdog on Rave SP device.
 
 # ALPHA Architecture
 

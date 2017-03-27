@@ -24,7 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/zii-pic.h>
+#include <linux/rave-spg.h>
 
 #define EVT_BUTTON_PRESS	0xE0
 

@@ -22,7 +22,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
-#include <linux/zii-pic.h>
+#include <linux/rave-sp.h>
 #include <linux/leds.h>
 
 enum zii_led_id {
@@ -70,8 +70,8 @@ static const u8 channel_masks[] = {
 	[ZII_READING_LED] = BIT(CHANNEL_G),
 };
 
-struct zii_pic_leds {
-	struct zii_pic *zp;
+struct rave_sp_leds {
+	struct rave_sp *zp;
 	struct {
 		u8 v[CHANNELS_NR];
 		struct led_classdev ld[CHANNELS_NR];
@@ -80,11 +80,11 @@ struct zii_pic_leds {
 };
 
 static void zl_decode(struct led_classdev *led_dev,
-		struct zii_pic_leds **zleds_ret,
+		struct rave_sp_leds **zleds_ret,
 		enum zii_led_id *id_ret,
 		enum zii_led_channel *ch_ret)
 {
-	struct zii_pic_leds *zleds;
+	struct rave_sp_leds *zleds;
 	enum zii_led_id id;
 	enum zii_led_channel ch;
 
@@ -103,30 +103,30 @@ static void zl_decode(struct led_classdev *led_dev,
 	BUG();
 }
 
-static inline void zl_lock_init(struct zii_pic_leds *zleds, enum zii_led_id id)
+static inline void zl_lock_init(struct rave_sp_leds *zleds, enum zii_led_id id)
 {
 	mutex_init(&zleds->l[id].mutex);
 }
 
-static inline void zl_lock(struct zii_pic_leds *zleds, enum zii_led_id id)
+static inline void zl_lock(struct rave_sp_leds *zleds, enum zii_led_id id)
 {
 	mutex_lock(&zleds->l[id].mutex);
 }
 
-static inline void zl_unlock(struct zii_pic_leds *zleds, enum zii_led_id id)
+static inline void zl_unlock(struct rave_sp_leds *zleds, enum zii_led_id id)
 {
 	mutex_unlock(&zleds->l[id].mutex);
 }
 
 #define CMD_LEDS	0x28
 
-static int zl_fetch(struct zii_pic_leds *zleds, enum zii_led_id id)
+static int zl_fetch(struct rave_sp_leds *zleds, enum zii_led_id id)
 {
 	u8 cmd[] = { CMD_LEDS, 0, 0, id, 0, 0, 0, 0, 0, 0, 0 };
 	u8 rsp[5];
 	int ret;
 
-	ret = zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
+	ret = rave_sp_exec(zleds->zp, cmd, sizeof(cmd),
 			   rsp, sizeof(rsp));
 	if (ret)
 		return ret;
@@ -146,7 +146,7 @@ static int zl_fetch(struct zii_pic_leds *zleds, enum zii_led_id id)
 	return 0;
 }
 
-static int zl_apply(struct zii_pic_leds *zleds, enum zii_led_id id)
+static int zl_apply(struct rave_sp_leds *zleds, enum zii_led_id id)
 {
 	enum zii_led_state state;
 	u8 a, r, g, b;
@@ -170,14 +170,14 @@ static int zl_apply(struct zii_pic_leds *zleds, enum zii_led_id id)
 	cmd[9] = g;
 	cmd[10] = b;
 
-	return zii_pic_exec(zleds->zp, cmd, sizeof(cmd),
+	return rave_sp_exec(zleds->zp, cmd, sizeof(cmd),
 			    NULL, 0);
 }
 
 static int zl_brightness_set(struct led_classdev *led_dev,
 		enum led_brightness value)
 {
-	struct zii_pic_leds *zleds;
+	struct rave_sp_leds *zleds;
 	enum zii_led_id id;
 	enum zii_led_channel ch;
 	int ret;
@@ -193,7 +193,7 @@ static int zl_brightness_set(struct led_classdev *led_dev,
 
 static enum led_brightness zl_brightness_get(struct led_classdev *led_dev)
 {
-	struct zii_pic_leds *zleds;
+	struct rave_sp_leds *zleds;
 	enum zii_led_id id;
 	enum zii_led_channel ch;
 	enum led_brightness ret;
@@ -207,11 +207,11 @@ static enum led_brightness zl_brightness_get(struct led_classdev *led_dev)
 	return ret;
 }
 
-static int zii_pic_leds_probe(struct platform_device *pdev)
+static int rave_sp_leds_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct zii_pic *zp = dev_get_drvdata(dev->parent);
-	struct zii_pic_leds *zleds;
+	struct rave_sp *zp = dev_get_drvdata(dev->parent);
+	struct rave_sp_leds *zleds;
 	enum zii_led_id id;
 	enum zii_led_channel ch;
 	struct led_classdev *ld;
@@ -220,7 +220,7 @@ static int zii_pic_leds_probe(struct platform_device *pdev)
 	if (!zp)
 		return -EINVAL;
 #if 0	
-	if (zp->hw_id != ZII_PIC_HW_ID_RDU2)
+	if (zp->hw_id != RAVE_SP_HW_ID_RDU2)
 		return -ENODEV;		/* currently only RDU2 is supported */
 #endif	
 
@@ -285,21 +285,21 @@ static int zii_pic_leds_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id zii_pic_leds_of_match[] = {
+static const struct of_device_id rave_sp_leds_of_match[] = {
 	{ .compatible = "zii,pic-leds" },
 	{}
 };
 
-static struct platform_driver zii_pic_leds_driver = {
-	.probe = zii_pic_leds_probe,
+static struct platform_driver rave_sp_leds_driver = {
+	.probe = rave_sp_leds_probe,
 	.driver = {
 		.name = KBUILD_MODNAME,
-		.of_match_table = zii_pic_leds_of_match,
+		.of_match_table = rave_sp_leds_of_match,
 	},
 };
-module_platform_driver(zii_pic_leds_driver);
+module_platform_driver(rave_sp_leds_driver);
 
-MODULE_DEVICE_TABLE(of, zii_pic_leds_of_match);
+MODULE_DEVICE_TABLE(of, rave_sp_leds_of_match);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Nikita Yushchenko <nikita.yoush@cogentembedded.com>");
 MODULE_DESCRIPTION("ZII PIC LEDs driver");
