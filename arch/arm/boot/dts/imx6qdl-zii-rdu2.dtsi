@@ -318,6 +318,56 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart4>;
 	status = "okay";
+
+	pic {
+		compatible = "zii,rave-sp-rdu2";
+		current-speed = <1000000>;
+		status = "okay";
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		dds-eeprom@a3 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa3 0x2000>;
+			status = "okay";
+		};
+
+		main-eeprom@a4 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa4 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+
+			boot_source: boot-source@83 {
+				reg = <0x83 1>;
+			};
+			max_failed_boots: max-failed-boots@8e {
+				reg = <0x8e 2>;
+			};
+		};		
+
+		watchdog {
+			compatible = "zii,rave-sp-watchdog";
+			status = "okay";
+		};
+
+		backlight {
+			compatible = "zii,rave-sp-backlight";
+			status = "okay";
+		};
+
+		leds {
+			compatible = "zii,pic-leds";
+			status = "okay";
+		};
+
+		pwrbutton {
+			compatible = "zii,rave-sp-pwrbutton";
+			status = "okay";
+		};
+	};
 };
 
 &ecspi1 {
