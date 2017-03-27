@@ -98,7 +98,7 @@ struct zii_pic_checksum {
 enum zii_pic_boot_source {
 	ZII_PIC_BOOT_SOURCE_SD		= 0,
 	ZII_PIC_BOOT_SOURCE_EMMC	= 1,
-	ZII_PIC_BOOT_SOURCE_NOR		= 1,
+	ZII_PIC_BOOT_SOURCE_NOR		= 2,
 };
 
 struct zii_pic_variant {
