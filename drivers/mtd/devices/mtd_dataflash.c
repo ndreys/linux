@@ -735,6 +735,9 @@ static struct flash_info dataflash_data[] = {
 
 	{ "AT45DB642x",  0x1f28000000, 8192, 1056, 11, SUP_POW2PS},
 	{ "at45db642d",  0x1f28000000, 8192, 1024, 10, SUP_POW2PS | IS_POW2PS},
+
+	{ "AT45DB641E",  0x1f28000100, 32768, 264, 9, SUP_POW2PS},
+	{ "at45db641e",  0x1f28000100, 32768, 256, 8, SUP_POW2PS | IS_POW2PS},
 };
 
 static struct flash_info *jedec_lookup(struct spi_device *spi, u64 jedec)
