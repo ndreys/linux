@@ -532,6 +532,7 @@ config SOC_IMX7D
 	bool "i.MX7 Dual support"
 	select PINCTRL_IMX7D
 	select ARM_GIC
+	select IMX_GPCV2
 	select HAVE_ARM_ARCH_TIMER
 	select HAVE_IMX_ANATOP
 	select HAVE_IMX_MMDC
