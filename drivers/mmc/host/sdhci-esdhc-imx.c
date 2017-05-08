@@ -549,9 +549,11 @@ static void esdhc_writew_le(struct sdhci_host *host, u16 val, int reg)
 			writel(val << 16 | imx_data->scratchpad,
 			       host->ioaddr + SDHCI_TRANSFER_MODE);
 		return;
+#if 0
 	case SDHCI_BLOCK_SIZE:
 		val &= ~SDHCI_MAKE_BLKSZ(0x7, 0);
 		break;
+#endif
 	}
 	esdhc_clrset_le(host, 0xffff, val, reg);
 }
