@@ -71,6 +71,8 @@ int reservation_object_reserve_shared(struct reservation_object *obj)
 	struct reservation_object_list *fobj, *old;
 	u32 max;
 
+	reservation_object_assert_held(obj);
+
 	old = reservation_object_get_list(obj);
 
 	if (old && old->shared_max) {
@@ -211,6 +213,8 @@ void reservation_object_add_shared_fence(struct reservation_object *obj,
 {
 	struct reservation_object_list *old, *fobj = obj->staged;
 
+	reservation_object_assert_held(obj);
+
 	old = reservation_object_get_list(obj);
 	obj->staged = NULL;
 
@@ -235,6 +239,8 @@ void reservation_object_add_excl_fence(struct reservation_object *obj,
 	struct dma_fence *old_fence = reservation_object_get_excl(obj);
 	struct reservation_object_list *old;
 	u32 i = 0;
+
+	reservation_object_assert_held(obj);
 
 	old = reservation_object_get_list(obj);
 	if (old)
@@ -275,6 +281,8 @@ int reservation_object_copy_fences(struct reservation_object *dst,
 	struct dma_fence *old, *new;
 	size_t size;
 	unsigned i;
+
+	reservation_object_assert_held(dst);
 
 	rcu_read_lock();
 	src_list = rcu_dereference(src->fence);
