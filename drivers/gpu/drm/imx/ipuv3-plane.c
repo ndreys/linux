@@ -393,11 +393,9 @@ static int ipu_plane_atomic_check(struct drm_plane *plane,
 	drm_rect_debug_print("src: ", &state->src, true);
 	drm_rect_debug_print("dst: ", &state->dst, false);
 
-	/* CRTC should be enabled */
-	if (!crtc_state->enable) {
-		DRM_DEBUG_KMS("CRTC should be enabled\n");
-		return -EINVAL;
-	}
+	/* nothing to check when disabling or disabled */
+	if (!crtc_state->enable)
+		return 0;
 
 	switch (plane->type) {
 	case DRM_PLANE_TYPE_PRIMARY:
