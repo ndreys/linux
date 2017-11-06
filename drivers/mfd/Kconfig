@@ -1872,6 +1872,15 @@ config MFD_STM32_TIMERS
 	  for PWM and IIO Timer. This driver allow to share the
 	  registers between the others drivers.
 
+config MFD_IMX6_ANATOP
+	tristate "i.MX6 ANATOP core driver"
+	depends on ARCH_MXC
+	select REGMAP
+	select REGMAP_MMIO
+	help
+	  Select this option to enable shared services in the i.MX6 anatop
+	  module like regulator brown-out detection.
+
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100
 
