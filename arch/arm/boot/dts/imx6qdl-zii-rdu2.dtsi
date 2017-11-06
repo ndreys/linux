@@ -263,16 +263,29 @@
 	};
 };
 
+&cpu0 {
+	fsl,soc-operating-points = <
+		/* ARM kHz  SOC-PU uV */
+		1200000 1300000
+		996000	1275000
+		852000	1275000
+		792000	1200000
+		396000	1200000
+	>;
+};
+
 &reg_arm {
 	vin-supply = <&sw1a_reg>;
 };
 
 &reg_pu {
 	vin-supply = <&sw1c_reg>;
+	anatop-bo-offset-microvolt = <75000>;
 };
 
 &reg_soc {
 	vin-supply = <&sw1c_reg>;
+	anatop-bo-offset-microvolt = <75000>;
 };
 
 &ldb {
