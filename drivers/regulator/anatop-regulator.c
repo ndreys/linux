@@ -91,14 +91,29 @@ static int anatop_regmap_set_voltage_time_sel(struct regulator_dev *reg,
 static int anatop_regmap_enable(struct regulator_dev *reg)
 {
 	struct anatop_regulator *anatop_reg = rdev_get_drvdata(reg);
-	int sel;
+	int sel, ret;
 
 	sel = anatop_reg->bypass ? LDO_FET_FULL_ON : anatop_reg->sel;
-	return regulator_set_voltage_sel_regmap(reg, sel);
+	ret = regulator_set_voltage_sel_regmap(reg, sel);
+	if (ret)
+		return ret;
+
+	if (anatop_reg->bo_offset_voltage)
+		regmap_update_bits(anatop_reg->anatop, anatop_reg->delay_reg,
+				   REGX_ENABLE_BO << anatop_reg->bo_shift,
+				   REGX_ENABLE_BO << anatop_reg->bo_shift);
+
+	return 0;
 }
 
 static int anatop_regmap_disable(struct regulator_dev *reg)
 {
+	struct anatop_regulator *anatop_reg = rdev_get_drvdata(reg);
+
+	if (anatop_reg->bo_offset_voltage)
+		regmap_update_bits(anatop_reg->anatop, anatop_reg->delay_reg,
+				   REGX_ENABLE_BO << anatop_reg->bo_shift, 0);
+
 	return regulator_set_voltage_sel_regmap(reg, LDO_POWER_GATE);
 }
 
@@ -306,6 +321,19 @@ static int anatop_regulator_probe(struct platform_device *pdev)
 			sreg->bypass = true;
 		}
 
+		if (sreg->bo_shift >= 0 && sreg->bo_offset_voltage) {
+			u32 val = sreg->sel ? REGX_ENABLE_BO : 0;
+
+			dev_info(dev, "brownout detection configured with %dmV offset\n",
+				 sreg->bo_offset_voltage / 1000);
+
+			val |= (sreg->bo_offset_voltage / 25000) &
+			       REGX_BO_OFFSET_MASK;
+			regmap_update_bits(sreg->anatop, sreg->delay_reg,
+				(REGX_ENABLE_BO | REGX_BO_OFFSET_MASK) <<
+				sreg->bo_shift,
+				val << sreg->bo_shift);
+		}
 		/*
 		 * In case vddpu was disabled by the bootloader, we need to set
 		 * a sane default until imx6-cpufreq was probed and changes the
@@ -321,20 +349,6 @@ static int anatop_regulator_probe(struct platform_device *pdev)
 		if (!sreg->bypass && !sreg->sel) {
 			dev_err(&pdev->dev, "Failed to read a valid default voltage selector.\n");
 			return -EINVAL;
-		}
-
-		if (sreg->bo_shift >= 0 && sreg->bo_offset_voltage) {
-			u32 val = REGX_ENABLE_BO;
-
-			dev_info(dev, "configuring brownout detection with %dmV offset\n",
-				 sreg->bo_offset_voltage / 1000);
-
-			val |= (sreg->bo_offset_voltage / 25000) &
-			       REGX_BO_OFFSET_MASK;
-			regmap_update_bits(sreg->anatop, sreg->delay_reg,
-				(REGX_ENABLE_BO | REGX_BO_OFFSET_MASK) <<
-				sreg->bo_shift,
-				val << sreg->bo_shift);
 		}
 	} else {
 		u32 enable_bit;
