@@ -587,6 +587,7 @@ struct i2c_adapter {
 	int nr;
 	char name[48];
 	struct completion dev_released;
+	bool auto_rpm;			/* runtime PM managed by core */
 
 	struct mutex userspace_clients_lock;
 	struct list_head userspace_clients;

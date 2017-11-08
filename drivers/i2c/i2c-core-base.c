@@ -1955,17 +1955,31 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 		}
 #endif
 
+		if (adap->auto_rpm) {
+			ret = pm_runtime_get_sync(adap->dev.parent);
+			if (ret < 0)
+				return ret;
+		}
+
 		if (in_atomic() || irqs_disabled()) {
 			ret = i2c_trylock_bus(adap, I2C_LOCK_SEGMENT);
-			if (!ret)
+			if (!ret) {
 				/* I2C activity is ongoing. */
-				return -EAGAIN;
+				ret = -EAGAIN;
+				goto out_rpm;
+			}
 		} else {
 			i2c_lock_bus(adap, I2C_LOCK_SEGMENT);
 		}
 
 		ret = __i2c_transfer(adap, msgs, num);
 		i2c_unlock_bus(adap, I2C_LOCK_SEGMENT);
+
+out_rpm:
+		if (adap->auto_rpm) {
+			pm_runtime_mark_last_busy(adap->dev.parent);
+			pm_runtime_put_autosuspend(adap->dev.parent);
+		}
 
 		return ret;
 	} else {
