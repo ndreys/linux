@@ -904,10 +904,6 @@ static int i2c_imx_xfer(struct i2c_adapter *adapter,
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
 
-	result = pm_runtime_get_sync(i2c_imx->adapter.dev.parent);
-	if (result < 0)
-		goto out;
-
 	/* Start I2C transfer */
 	result = i2c_imx_start(i2c_imx);
 	if (result) {
@@ -971,10 +967,6 @@ fail0:
 	/* Stop I2C transfer */
 	i2c_imx_stop(i2c_imx);
 
-	pm_runtime_mark_last_busy(i2c_imx->adapter.dev.parent);
-	pm_runtime_put_autosuspend(i2c_imx->adapter.dev.parent);
-
-out:
 	dev_dbg(&i2c_imx->adapter.dev, "<%s> exit with: %s: %d\n", __func__,
 		(result < 0) ? "error" : "success msg",
 			(result < 0) ? result : num);
@@ -1099,6 +1091,7 @@ static int i2c_imx_probe(struct platform_device *pdev)
 	i2c_imx->adapter.dev.parent	= &pdev->dev;
 	i2c_imx->adapter.nr		= pdev->id;
 	i2c_imx->adapter.dev.of_node	= pdev->dev.of_node;
+	i2c_imx->adapter.auto_rpm	= true;
 	i2c_imx->base			= base;
 
 	/* Get I2C clock */
