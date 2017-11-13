@@ -471,7 +471,7 @@ static int amdgpu_vm_grab_reserved_vmid_locked(struct amdgpu_vm *vm,
 		id->pd_gpu_addr = 0;
 		tmp = amdgpu_sync_peek_fence(&id->active, ring);
 		if (tmp) {
-			r = amdgpu_sync_fence(adev, sync, tmp);
+			r = amdgpu_sync_fence(adev, sync, tmp, false);
 			return r;
 		}
 	}
@@ -479,7 +479,7 @@ static int amdgpu_vm_grab_reserved_vmid_locked(struct amdgpu_vm *vm,
 	/* Good we can use this VMID. Remember this submission as
 	* user of the VMID.
 	*/
-	r = amdgpu_sync_fence(ring->adev, &id->active, fence);
+	r = amdgpu_sync_fence(ring->adev, &id->active, fence, false);
 	if (r)
 		goto out;
 
@@ -566,7 +566,7 @@ int amdgpu_vm_grab_id(struct amdgpu_vm *vm, struct amdgpu_ring *ring,
 		}
 
 
-		r = amdgpu_sync_fence(ring->adev, sync, &array->base);
+		r = amdgpu_sync_fence(ring->adev, sync, &array->base, false);
 		dma_fence_put(&array->base);
 		if (r)
 			goto error;
@@ -609,7 +609,7 @@ int amdgpu_vm_grab_id(struct amdgpu_vm *vm, struct amdgpu_ring *ring,
 		/* Good we can use this VMID. Remember this submission as
 		 * user of the VMID.
 		 */
-		r = amdgpu_sync_fence(ring->adev, &id->active, fence);
+		r = amdgpu_sync_fence(ring->adev, &id->active, fence, false);
 		if (r)
 			goto error;
 
@@ -629,7 +629,7 @@ int amdgpu_vm_grab_id(struct amdgpu_vm *vm, struct amdgpu_ring *ring,
 	id = idle;
 
 	/* Remember this submission as user of the VMID */
-	r = amdgpu_sync_fence(ring->adev, &id->active, fence);
+	r = amdgpu_sync_fence(ring->adev, &id->active, fence, false);
 	if (r)
 		goto error;
 
@@ -1639,7 +1639,7 @@ static int amdgpu_vm_bo_update_mapping(struct amdgpu_device *adev,
 		addr = 0;
 	}
 
-	r = amdgpu_sync_fence(adev, &job->sync, exclusive);
+	r = amdgpu_sync_fence(adev, &job->sync, exclusive, false);
 	if (r)
 		goto error_free;
 
