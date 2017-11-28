@@ -283,6 +283,38 @@ struct device *caam_jr_alloc(void)
 EXPORT_SYMBOL(caam_jr_alloc);
 
 /**
+ * caam_jr_alloc_jr0() - Alloc job ring 0 for someone to use as needed.
+ *
+ * returns :  pointer to the newly allocated physical
+ *	      JobR dev can be written to if successful.
+ **/
+struct device *caam_jr_alloc_jr0(void)
+{
+	struct caam_drv_private_jr *jrpriv;
+	struct device *dev = ERR_PTR(-ENODEV);
+
+	spin_lock(&driver_data.jr_alloc_lock);
+
+	if (list_empty(&driver_data.jr_list)) {
+		spin_unlock(&driver_data.jr_alloc_lock);
+		return ERR_PTR(-ENODEV);
+	}
+
+	jrpriv = list_first_entry(&driver_data.jr_list, typeof(*jrpriv), list_node);
+	if (atomic_read(&jrpriv->tfm_count) == INT_MAX) {
+		spin_unlock(&driver_data.jr_alloc_lock);
+		return ERR_PTR(-ENODEV);
+	}
+
+	atomic_inc(&jrpriv->tfm_count);
+	dev = jrpriv->dev;
+	spin_unlock(&driver_data.jr_alloc_lock);
+
+	return dev;
+}
+EXPORT_SYMBOL(caam_jr_alloc_jr0);
+
+/**
  * caam_jr_free() - Free the Job Ring
  * @rdev     - points to the dev that identifies the Job ring to
  *             be released.
