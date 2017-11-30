@@ -108,6 +108,11 @@ static int caam_blob_data_init(void)
 
 	data->ctrldev = &data->pdev->dev;
 	data->ctrlpriv = dev_get_drvdata(data->ctrldev);
+	if (!data->ctrlpriv) {
+		pr_err("caamblob: caam driver data unavailable");
+		ret = -ENODEV;
+		goto out_put_free;
+	}
 
 	data->smdev = data->ctrlpriv->smdev;
 	data->smpriv = dev_get_drvdata(data->smdev);
