@@ -111,6 +111,7 @@ struct etnaviv_gpu {
 	enum etnaviv_sec_mode sec_mode;
 	struct etnaviv_file_private *lastctx;
 	struct workqueue_struct *wq;
+	struct drm_gpu_scheduler sched;
 
 	/* 'ring'-buffer: */
 	struct etnaviv_cmdbuf buffer;
@@ -131,17 +132,14 @@ struct etnaviv_gpu {
 	u32 idle_mask;
 
 	/* Fencing support */
+	struct mutex fence_idr_lock;
 	struct idr fence_idr;
 	u32 next_fence;
 	u32 active_fence;
 	u32 completed_fence;
-	u32 retired_fence;
 	wait_queue_head_t fence_event;
 	u64 fence_context;
 	spinlock_t fence_spinlock;
-
-	/* worker for handling active-list retiring: */
-	struct work_struct retire_work;
 
 	/* worker for handling 'sync' points: */
 	struct work_struct sync_point_work;
@@ -186,11 +184,6 @@ static inline bool fence_completed(struct etnaviv_gpu *gpu, u32 fence)
 	return fence_after_eq(gpu->completed_fence, fence);
 }
 
-static inline bool fence_retired(struct etnaviv_gpu *gpu, u32 fence)
-{
-	return fence_after_eq(gpu->retired_fence, fence);
-}
-
 int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);
 
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
@@ -208,8 +201,7 @@ int etnaviv_gpu_wait_fence_interruptible(struct etnaviv_gpu *gpu,
 	u32 fence, struct timespec *timeout);
 int etnaviv_gpu_wait_obj_inactive(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_object *etnaviv_obj, struct timespec *timeout);
-int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
-	struct etnaviv_gem_submit *submit);
+struct dma_fence *etnaviv_gpu_submit(struct etnaviv_gem_submit *submit);
 int etnaviv_gpu_pm_get_sync(struct etnaviv_gpu *gpu);
 void etnaviv_gpu_pm_put(struct etnaviv_gpu *gpu);
 int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms);
