@@ -666,6 +666,7 @@ static int drm_sched_main(void *param)
 		drm_sched_job_begin(sched_job);
 
 		fence = sched->ops->run_job(sched_job);
+		trace_drm_sched_job_run(sched_job, entity);
 		drm_sched_fence_scheduled(s_fence);
 
 		if (fence) {
