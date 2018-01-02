@@ -32,6 +32,13 @@ enum rave_sp_command {
 	RAVE_SP_EVNT_BASE			= 0xE0,
 };
 
+struct rave_sp_version {
+	u8     hardware;
+	__le16 major;
+	u8     minor;
+	u8     letter[2];
+} __packed;
+
 struct rave_sp;
 
 static inline unsigned long rave_sp_action_pack(u8 event, u8 value)
