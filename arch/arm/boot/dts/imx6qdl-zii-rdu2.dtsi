@@ -367,6 +367,13 @@
 			compatible = "zii,rave-sp-pwrbutton";
 			status = "okay";
 		};
+
+		gpio {
+			compatible = "zii,rave-sp-gpio";
+			status = "okay";
+			gpio-controller;
+			#gpio-cells = <1>;
+		};
 	};
 };
 
