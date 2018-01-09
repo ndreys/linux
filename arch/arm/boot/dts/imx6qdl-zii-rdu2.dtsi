@@ -425,7 +425,14 @@
 
 		pwrbutton {
 			compatible = "zii,pic-pwrbutton";
-		};		
+		};
+
+		gpio {
+			compatible = "zii,rave-sp-gpio";
+			status = "okay";
+			gpio-controller;
+			#gpio-cells = <1>;
+		};
 	};
 };
 
