@@ -101,6 +101,10 @@ i.MX7 SabreSD Board
 Required root node properties:
     - compatible = "fsl,imx7d-sdb", "fsl,imx7d";
 
+i.MX8MQ Evaluation Kit
+Required root node properties:
+    - compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
+
 Generic i.MX boards
 -------------------
 
