@@ -201,6 +201,57 @@ struct rave_sp_status {
 	u8  periph_power_shutoff;
 } __packed;
 
+#define RAVE_SP_ATTR_RO_STRING(name)					\
+	static ssize_t							\
+	name##_show(struct device *dev,					\
+		    struct device_attribute *attr,			\
+		    char *buf)						\
+	{								\
+		struct rave_sp *sp = dev_get_drvdata(dev);		\
+		return sprintf(buf, "%s", sp->name);			\
+	}								\
+	static DEVICE_ATTR_RO(name)
+
+RAVE_SP_ATTR_RO_STRING(part_number_firmware);
+RAVE_SP_ATTR_RO_STRING(part_number_bootloader);
+
+static struct attribute *rave_sp_attrs[] = {
+	&dev_attr_part_number_firmware.attr,
+	&dev_attr_part_number_bootloader.attr,
+	NULL,
+};
+
+struct attribute_group rave_sp_group = {
+	.attrs = rave_sp_attrs,
+};
+
+static void devm_rave_sp_sysfs_group_release(struct device *dev, void *res)
+{
+	sysfs_remove_group(&dev->kobj, &rave_sp_group);
+}
+
+static int devm_rave_sysfs_create_group(struct rave_sp *sp)
+{
+	struct rave_sp **rc;
+	struct device *dev = &sp->serdev->dev;
+	int ret;
+
+	rc = devres_alloc(devm_rave_sp_sysfs_group_release, sizeof(*rc),
+			  GFP_KERNEL);
+	if (!rc)
+		return -ENOMEM;
+
+	ret = sysfs_create_group(&dev->kobj, &rave_sp_group);
+	if (!ret) {
+		*rc = sp;
+		devres_add(dev, rc);
+	} else {
+		devres_free(rc);
+	}
+
+	return ret;
+}
+
 static bool rave_sp_id_is_event(u8 code)
 {
 	return (code & 0xF0) == RAVE_SP_EVNT_BASE;
@@ -769,6 +820,12 @@ static int rave_sp_probe(struct serdev_device *serdev)
 	 */
 	dev_info(dev, "Firmware version: %s",   sp->part_number_firmware);
 	dev_info(dev, "Bootloader version: %s", sp->part_number_bootloader);
+
+	ret = devm_rave_sysfs_create_group(sp);
+	if (ret) {
+		dev_warn(dev, "Failed to create sysfs group: %d\n", ret);
+		return ret;
+	}
 
 	return devm_of_platform_populate(dev);
 }
