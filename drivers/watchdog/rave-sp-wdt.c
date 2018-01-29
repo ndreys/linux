@@ -9,6 +9,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/ihex.h>
 #include <linux/kernel.h>
 #include <linux/mfd/rave-sp.h>
 #include <linux/module.h>
@@ -55,7 +56,31 @@ struct rave_sp_wdt {
 	struct rave_sp *sp;
 	const struct rave_sp_wdt_variant *variant;
 	struct notifier_block reboot_notifier;
+
+	struct {
+		u32 start, end;
+
+		size_t size;
+		size_t progress;
+	} update;
 };
+
+struct rave_sp_booloader_query_device_response {
+	u8  command;
+	u8  device_type;
+	struct rave_sp_version bootloader;
+	u8  is_app_valid;
+	u16 app_crc;
+	u32 app_start_addr;
+	u32 config_words_start;
+	/*
+	 * The rest of payload is not used, but send over the wire
+	 * regardless so the total size of the payload is 62 byte and
+	 * the size of all the fields above is 19, hence the size of
+	 * our padding.
+	 */
+	u8  __padding[64 - 19];
+} __packed;
 
 static struct rave_sp_wdt *to_rave_sp_wdt(struct watchdog_device *wdd)
 {
@@ -250,6 +275,226 @@ static const struct of_device_id rave_sp_wdt_of_match[] = {
 	{ /* sentinel */ }
 };
 
+int rave_sp_wdt_query_device(struct rave_sp_wdt *sp_wd)
+{
+	struct rave_sp_booloader_query_device_response r;
+	struct device *dev = sp_wd->wdd.parent;
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_BOOTLOADER,
+		[1] = 0,
+		[2] = RAVE_SP_BOOTLOADER_CMD_QUERY_DEVICE,
+	};
+	int ret;
+
+	ret = rave_sp_exec(sp_wd->sp, cmd, sizeof(cmd), &r, sizeof(r));
+	if (ret) {
+		return ret;
+	}
+
+	sp_wd->update.start = r.app_start_addr;
+	sp_wd->update.end   = r.config_words_start;
+
+	dev_dbg(dev, "device type:         %02x\n", r.device_type);
+	dev_dbg(dev, "bootloader hardware: %02d\n", r.bootloader.hardware);
+	dev_dbg(dev, "bootloader major:    %02d\n", r.bootloader.major);
+	dev_dbg(dev, "bootloader minor:    %02d\n", r.bootloader.minor);
+	dev_dbg(dev, "bootloader letters:  %c%c\n", r.bootloader.letter[0],
+		r.bootloader.letter[1]);
+	dev_dbg(dev, "is app valid:        %02x\n", r.is_app_valid);
+	dev_dbg(dev, "app crc:             %04x\n", r.app_crc);
+	dev_dbg(dev, "app start addr:      %08x\n", r.app_start_addr);
+	dev_dbg(dev, "config words start:  %08x\n", r.config_words_start);
+
+	return 0;
+}
+
+#define RAVE_SP_WDT_FIRMWARE_DATA_PAYLOAD_SIZE	56
+
+struct rave_sp_wdt_firmware_data {
+	u8 command;
+	u32 address;
+	u8 size;
+	u8 payload[RAVE_SP_WDT_FIRMWARE_DATA_PAYLOAD_SIZE];
+} __packed;
+
+static int rave_sp_wdt_program_complete(struct rave_sp_wdt *sp_wd)
+{
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_BOOTLOADER,
+		[1] = 0,
+		[2] = RAVE_SP_BOOTLOADER_CMD_PROGRAM_COMPLETE,
+	};
+	int ret;
+
+	ret = rave_sp_exec(sp_wd->sp, cmd, sizeof(cmd), NULL, 0);
+	if (ret)
+		return ret;
+
+	rave_sp_set_update_fw_status(sp_wd->sp, 100);
+	return 0;
+}
+
+static int
+rave_sp_wdt_program_ihex_record(struct rave_sp_wdt *sp_wd,
+				const struct ihex_binrec *rec)
+{
+	const u32 firmware_start = sp_wd->update.start;
+	const u32 firmware_end   = sp_wd->update.end;
+
+	u8 cmd[2 + sizeof(struct rave_sp_wdt_firmware_data)] = {
+		[0] = RAVE_SP_CMD_BOOTLOADER,
+		[1] = 0,
+	};
+	struct rave_sp_wdt_firmware_data *fwdata = (void *)&cmd[2];
+	size_t residue = be16_to_cpu(rec->len);
+	u32 address    = be32_to_cpu(rec->addr);
+	const u8 *data = rec->data;
+	size_t chunk;
+	int ret;
+
+	do {
+		size_t status;
+		/*
+		 * First, program firmware data
+		 */
+		chunk = min(residue, sizeof(fwdata->payload));
+
+		fwdata->command = RAVE_SP_BOOTLOADER_CMD_PROGRAM_DEVICE;
+		/*
+		 * Not really an address, but a word index
+		 */
+		fwdata->address = address / 2;
+		fwdata->size    = chunk;
+
+		memcpy(fwdata->payload, data, chunk);
+
+		print_hex_dump_debug("programmed chunk: ", DUMP_PREFIX_NONE,
+				     16, 1, data, chunk, false);
+
+		ret = rave_sp_exec(sp_wd->sp, cmd, sizeof(cmd), NULL, 0);
+		if (ret)
+			return ret;
+
+		if (firmware_start <= address && address <= firmware_end) {
+			/*
+			 * Second, read it back and verify contents
+			 */
+			fwdata->command = RAVE_SP_BOOTLOADER_CMD_READ_APP;
+
+			ret = rave_sp_exec(sp_wd->sp, cmd,
+					   sizeof(cmd) -
+					   sizeof(fwdata->payload),
+					   fwdata,
+					   sizeof(fwdata->command) +
+					   sizeof(fwdata->size) +
+					   sizeof(fwdata->address) +
+					   chunk);
+			if (ret)
+				return ret;
+
+			print_hex_dump_debug("read chunk: ", DUMP_PREFIX_NONE,
+					     16, 1, fwdata->payload,
+					     fwdata->size, false);
+
+			if (memcmp(data, fwdata->payload, chunk)) {
+				dev_err(sp_wd->wdd.parent,
+					"Programmed data doesn't match\n");
+				return -EIO;
+			}
+		}
+
+		residue -= chunk;
+		address += chunk;
+		data    += chunk;
+
+		sp_wd->update.progress += chunk;
+		status = (sp_wd->update.progress * 100) / sp_wd->update.size;
+		/*
+		 * We only go up to 99 here and reserve 100 to
+		 * indicate completion of the last step of firmware
+		 * update process done by
+		 * rave_sp_wdt_program_complete()
+		 */
+		status = min(status, 99U);
+
+		rave_sp_set_update_fw_status(sp_wd->sp, status);
+	} while (residue);
+
+	return 0;
+}
+
+static int rave_sp_wdt_program_app(struct rave_sp_wdt *sp_wd,
+				   const struct firmware *firmware)
+{
+	const struct ihex_binrec *rec;
+
+	sp_wd->update.size = 0;
+	sp_wd->update.progress = 0;
+
+	rave_sp_set_update_fw_status(sp_wd->sp, 0);
+
+	for (rec = (void *)firmware->data; rec; rec = ihex_next_binrec(rec))
+		sp_wd->update.size += be16_to_cpu(rec->len);
+
+	for (rec = (void *)firmware->data; rec; rec = ihex_next_binrec(rec)) {
+		const int ret = rave_sp_wdt_program_ihex_record(sp_wd, rec);
+		if (ret)
+			return ret;
+	}
+
+	return rave_sp_wdt_program_complete(sp_wd);
+}
+
+static int rave_sp_wdt_erase_app(struct rave_sp_wdt *sp_wd)
+{
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_BOOTLOADER,
+		[1] = 0,
+		[2] = RAVE_SP_BOOTLOADER_CMD_ERASE_APP,
+	};
+
+	return rave_sp_exec(sp_wd->sp, cmd, sizeof(cmd), NULL, 0);
+}
+
+static int rave_sp_wdt_update_firmware(struct rave_sp_wdt *sp_wd,
+				       const struct firmware *firmware)
+{
+	struct device *dev = sp_wd->wdd.parent;
+	int ret;
+
+	dev_dbg(dev, "Starting firmware update\n");
+
+	dev_dbg(dev, "Stopping watchdog\n");
+	ret = rave_sp_wdt_stop(&sp_wd->wdd);
+	if (ret) {
+		dev_err(dev, "Failed to stop watchdog\n");
+		return ret;
+	}
+
+	ret = rave_sp_wdt_query_device(sp_wd);
+	if (ret) {
+		dev_err(dev, "Failed to query device\n");
+		return ret;
+	}
+
+	dev_dbg(dev, "Erasing device\n");
+	ret = rave_sp_wdt_erase_app(sp_wd);
+	if (ret) {
+		dev_err(dev, "Failed to erase device\n");
+		goto release_fw;
+	}
+
+	dev_dbg(dev, "Programming device\n");
+	ret = rave_sp_wdt_program_app(sp_wd, firmware);
+	if (ret)
+		dev_err(dev, "Failed to program device\n");
+
+release_fw:
+	rave_sp_release_firmware(sp_wd->sp);
+	dev_dbg(dev, "Firmware update finished\n");
+	return ret;
+}
+
 static int rave_sp_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -274,6 +519,22 @@ static int rave_sp_wdt_probe(struct platform_device *pdev)
 	wdd->max_timeout = sp_wd->variant->max_timeout;
 	wdd->status      = WATCHDOG_NOWAYOUT_INIT_STATUS;
 	wdd->timeout     = 60;
+
+	dev_set_drvdata(dev, sp_wd);
+
+	if (rave_sp_is_in_bootloader_mode(sp_wd->sp)) {
+		const struct firmware *firmware;
+
+		firmware = rave_sp_get_firmware(sp_wd->sp);
+		if (firmware) {
+			ret = rave_sp_wdt_update_firmware(sp_wd, firmware);
+			if (ret)
+				return ret;
+		} else {
+			dev_warn(dev, "Bootloader mode, but no "
+				 "firmware file is given\n");
+		}
+	}
 
 	cell = nvmem_cell_get(dev, "wdt-timeout");
 	if (!IS_ERR(cell)) {

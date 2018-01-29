@@ -12,6 +12,7 @@
 #include <linux/crc-ccitt.h>
 #include <linux/delay.h>
 #include <linux/export.h>
+#include <linux/ihex.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/kernel.h>
@@ -175,6 +176,13 @@ struct rave_sp {
 
 	const char *part_number_firmware;
 	const char *part_number_bootloader;
+
+	unsigned long flags;
+#define RAVE_SP_FLAG_BOOTLOADER_MODE	BIT(0)
+#define RAVE_SP_FLAG_FIRMWARE_UPDATE	BIT(1)
+
+	const struct firmware *firmware;
+	atomic_t status;
 };
 
 struct rave_sp_status {
@@ -215,9 +223,61 @@ struct rave_sp_status {
 RAVE_SP_ATTR_RO_STRING(part_number_firmware);
 RAVE_SP_ATTR_RO_STRING(part_number_bootloader);
 
+static int rave_sp_start_update(struct rave_sp *sp, const char *firmware_file);
+
+static ssize_t rave_sp_store_update_fw(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct rave_sp *sp = dev_get_drvdata(dev);
+	int ret, err;
+
+	if (test_and_set_bit(RAVE_SP_FLAG_FIRMWARE_UPDATE, &sp->flags))
+		return -EBUSY;
+
+	ret = request_ihex_firmware(&sp->firmware, buf, dev);
+	if (ret)
+		goto release_firmware;
+
+	devm_of_platform_depopulate(dev);
+
+	ret = rave_sp_start_update(sp, buf);
+	/*
+	 * In the event of above call to rave_sp_start_update() fails
+	 * we still want to try to populate all of the platform
+	 * devices back, so we'd not end up not having watchdog
+	 * petting driver.
+	 */
+	err = devm_of_platform_populate(dev);
+	if (ret || err) {
+		ret = ret ? ret : err;
+		goto release_firmware;
+	}
+
+	return count;
+
+release_firmware:
+	rave_sp_release_firmware(sp);
+	return ret;
+}
+
+static DEVICE_ATTR(update_fw, S_IWUSR, NULL, rave_sp_store_update_fw);
+
+static ssize_t update_fw_status_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct rave_sp *sp = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", atomic_read(&sp->status));
+}
+
+static DEVICE_ATTR_RO(update_fw_status);
+
 static struct attribute *rave_sp_attrs[] = {
 	&dev_attr_part_number_firmware.attr,
 	&dev_attr_part_number_bootloader.attr,
+	&dev_attr_update_fw.attr,
+	&dev_attr_update_fw_status.attr,
 	NULL,
 };
 
@@ -251,6 +311,15 @@ static int devm_rave_sysfs_create_group(struct rave_sp *sp)
 
 	return ret;
 }
+
+void rave_sp_set_update_fw_status(struct rave_sp *sp, int status)
+{
+	struct device *dev = &sp->serdev->dev;
+
+	atomic_set(&sp->status, status);
+	sysfs_notify(&dev->kobj, NULL, "update_fw_status");
+}
+EXPORT_SYMBOL_GPL(rave_sp_set_update_fw_status);
 
 static bool rave_sp_id_is_event(u8 code)
 {
@@ -683,6 +752,8 @@ static int rave_sp_default_cmd_translate(enum rave_sp_command command)
 		return 0x1E;
 	case RAVE_SP_CMD_RESET_REASON:
 		return 0x1F;
+	case RAVE_SP_CMD_BOOTLOADER:
+		return 0x2A;
 	default:
 		return -EINVAL;
 	}
@@ -722,6 +793,11 @@ static int rave_sp_get_status(struct rave_sp *sp)
 						    &status.firmware_version);
 	sp->part_number_bootloader = devm_rave_sp_version(dev,
 						    &status.bootloader_version);
+
+	if (!(status.general_status & RAVE_SP_STATUS_GS_FIRMWARE_MODE)) {
+		set_bit(RAVE_SP_FLAG_BOOTLOADER_MODE, &sp->flags);
+		dev_info(dev, "RAVE SP device is in bootloader mode\n");
+	}
 
 	return 0;
 }
@@ -770,6 +846,64 @@ static const struct serdev_device_ops rave_sp_serdev_device_ops = {
 	.receive_buf  = rave_sp_receive_buf,
 	.write_wakeup = serdev_device_write_wakeup,
 };
+
+bool rave_sp_is_in_bootloader_mode(struct rave_sp *sp)
+{
+	return test_bit(RAVE_SP_FLAG_BOOTLOADER_MODE, &sp->flags);
+}
+EXPORT_SYMBOL_GPL(rave_sp_is_in_bootloader_mode);
+
+const struct firmware *rave_sp_get_firmware(struct rave_sp *sp)
+{
+	return sp->firmware;
+}
+EXPORT_SYMBOL_GPL(rave_sp_get_firmware);
+
+void rave_sp_release_firmware(struct rave_sp *sp)
+{
+	if (sp->firmware) {
+		release_firmware(sp->firmware);
+		sp->firmware = NULL;
+	}
+	clear_bit(RAVE_SP_FLAG_FIRMWARE_UPDATE, &sp->flags);
+}
+EXPORT_SYMBOL_GPL(rave_sp_release_firmware);
+
+static int rave_sp_start_update(struct rave_sp *sp,
+				const char *firmware_file)
+{
+
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_JUMP_TO_BOOTLOADER,
+		/*
+		 * Even though this is a no-responce command ACK-ID is
+		 * still expected to be present in command
+		 * payload. Since it's there only for correct layout's
+		 * sake pass a 0, instead of trying to obtain a proper
+		 * ACK id from corresponding atomic counter.
+		 */
+		[1] = 0,
+	};
+	int ret;
+
+	/*
+	 * If we are already in bootloader mode, there's nothing to do
+	 * here.
+	 */
+	if (rave_sp_is_in_bootloader_mode(sp))
+		return 0;
+
+	ret = rave_sp_write(sp, cmd, sizeof(cmd));
+	if (ret)
+		return ret;
+	/*
+	 * Arbitrary sleep delay to wait for bootloader firmware to boot
+	 */
+	msleep(1000);
+	set_bit(RAVE_SP_FLAG_BOOTLOADER_MODE, &sp->flags);
+
+	return 0;
+}
 
 static int rave_sp_probe(struct serdev_device *serdev)
 {

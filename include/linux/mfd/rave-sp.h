@@ -24,12 +24,24 @@ enum rave_sp_command {
 	RAVE_SP_CMD_RESET			= 0xA7,
 	RAVE_SP_CMD_RESET_REASON		= 0xA8,
 
+	RAVE_SP_CMD_JUMP_TO_BOOTLOADER		= 0xB0,
+	RAVE_SP_CMD_BOOTLOADER			= 0xB1,
 	RAVE_SP_CMD_REQ_COPPER_REV		= 0xB6,
 	RAVE_SP_CMD_GET_I2C_DEVICE_STATUS	= 0xBA,
 	RAVE_SP_CMD_GET_SP_SILICON_REV		= 0xB9,
 	RAVE_SP_CMD_CONTROL_EVENTS		= 0xBB,
 
 	RAVE_SP_EVNT_BASE			= 0xE0,
+};
+
+enum rave_sp_bootloader_command {
+	RAVE_SP_BOOTLOADER_CMD_QUERY_DEVICE	= 0xA1,
+	RAVE_SP_BOOTLOADER_CMD_ERASE_APP	= 0xA3,
+	RAVE_SP_BOOTLOADER_CMD_PROGRAM_DEVICE	= 0xA4,
+	RAVE_SP_BOOTLOADER_CMD_PROGRAM_COMPLETE = 0xA5,
+	RAVE_SP_BOOTLOADER_CMD_READ_APP		= 0xA6,
+	RAVE_SP_BOOTLOADER_CMD_RESET_DEVICE	= 0xA7,
+	RAVE_SP_BOOTLOADER_CMD_LAUNCH_APP	= 0xA8,
 };
 
 struct rave_sp_version {
@@ -63,5 +75,10 @@ int rave_sp_exec(struct rave_sp *sp,
 struct device;
 int devm_rave_sp_register_event_notifier(struct device *dev,
 					 struct notifier_block *nb);
+
+bool rave_sp_is_in_bootloader_mode(struct rave_sp *sp);
+const struct firmware *rave_sp_get_firmware(struct rave_sp *sp);
+void rave_sp_release_firmware(struct rave_sp *sp);
+void rave_sp_set_update_fw_status(struct rave_sp *sp, int status);
 
 #endif /* _LINUX_RAVE_SP_H_ */
