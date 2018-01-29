@@ -339,9 +339,10 @@ static u8 rave_sp_reply_code(u8 command)
 	}
 }
 
-int rave_sp_exec(struct rave_sp *sp,
-		 void *__data,  size_t data_size,
-		 void *reply_data, size_t reply_data_size)
+static int __rave_sp_exec(struct rave_sp *sp,
+			  void *__data,  size_t data_size,
+			  void *reply_data, size_t reply_data_size,
+			  unsigned long timeout)
 {
 	struct rave_sp_reply reply = {
 		.data     = reply_data,
@@ -371,7 +372,7 @@ int rave_sp_exec(struct rave_sp *sp,
 
 	rave_sp_write(sp, data, data_size);
 
-	if (!wait_for_completion_timeout(&reply.received, HZ)) {
+	if (!wait_for_completion_timeout(&reply.received, timeout)) {
 		dev_err(&sp->serdev->dev, "Command timeout\n");
 		ret = -ETIMEDOUT;
 
@@ -382,6 +383,14 @@ int rave_sp_exec(struct rave_sp *sp,
 
 	mutex_unlock(&sp->bus_lock);
 	return ret;
+}
+
+int rave_sp_exec(struct rave_sp *sp,
+		 void *data,  size_t data_size,
+		 void *reply_data, size_t reply_data_size)
+{
+	return __rave_sp_exec(sp, data, data_size,
+			      reply_data, reply_data_size, HZ);
 }
 EXPORT_SYMBOL_GPL(rave_sp_exec);
 
