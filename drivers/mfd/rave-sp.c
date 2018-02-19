@@ -273,11 +273,60 @@ static ssize_t update_fw_status_show(struct device *dev,
 
 static DEVICE_ATTR_RO(update_fw_status);
 
+static ssize_t boot_source_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct rave_sp *sp = dev_get_drvdata(dev);
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_BOOT_SOURCE,
+		[1] = 0,
+		[2] = RAVE_SP_BOOT_SOURCE_GET,
+		[3] = 0,
+	};
+	u8 boot_source;
+	int ret;
+
+	ret = rave_sp_exec(sp, cmd, sizeof(cmd),
+			   &boot_source, sizeof(boot_source));
+
+	return (ret < 0) ? ret : sprintf(buf, "%d\n", boot_source);
+}
+
+static ssize_t boot_source_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct rave_sp *sp = dev_get_drvdata(dev);
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_BOOT_SOURCE,
+		[1] = 0,
+		[2] = RAVE_SP_BOOT_SOURCE_SET,
+		[3] = 0,
+	};
+	int ret;
+
+	ret = kstrtou8(buf, 0, &cmd[3]);
+	if (ret)
+		return ret;
+
+	if (cmd[3] != RAVE_SP_BOOT_SOURCE_SD &&
+	    cmd[3] != RAVE_SP_BOOT_SOURCE_EMMC &&
+	    cmd[3] != RAVE_SP_BOOT_SOURCE_NOR)
+		return -EINVAL;
+
+	ret = rave_sp_exec(sp, cmd, sizeof(cmd), NULL, 0);
+
+	return (ret < 0) ? ret : count;
+}
+static DEVICE_ATTR_RW(boot_source);
+
 static struct attribute *rave_sp_attrs[] = {
 	&dev_attr_part_number_firmware.attr,
 	&dev_attr_part_number_bootloader.attr,
 	&dev_attr_update_fw.attr,
 	&dev_attr_update_fw_status.attr,
+	&dev_attr_boot_source.attr,
 	NULL,
 };
 
