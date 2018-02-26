@@ -309,10 +309,123 @@
 	rave-sp {
 		compatible = "zii,rave-sp-rdu2";
 		current-speed = <1000000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
 
 		watchdog {
 			compatible = "zii,rave-sp-watchdog";
 		};
+
+
+		dds-eeprom {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xA3 0x4000>;
+		};
+
+		main-eeprom {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xA4 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			boot_source: boot-source@83 {
+				reg = <0x83 1>;
+			};
+			max_failed_boots: max-failed-boots@8E {
+				reg = <0x8E 2>;
+			};
+		};		
+
+		hwmon {
+			compatible = "zii,pic-hwmon";
+			sensors = "RMB_3V3_PMIC",
+			"RMB_3V3_MCU",
+			"RMB_5V_MAIN",
+			"RMB_12V_MAIN",
+			"RMB_28V_FIL",
+			"RMB_28V_HOTSWAP",
+			"DEB_1V8",
+			"DEB_3V3",
+			"DEB_28V_DEB",
+			"DEB_28V_RDU",
+			"TEMPERATURE",
+			"TEMPERATURE_2",
+			"RMB_28V_CURRENT";
+		};
+
+		backlight {
+			compatible = "zii,rave-sp-backlight";
+		};
+
+		leds-front {
+			compatible = "zii,rave-sp-leds";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			led-sources = <0>;
+
+			leds-front-brightness {
+				label = "rave-sp:brightness:front";
+				reg = <0>;
+			};
+			leds-front-red {
+				label = "rave-sp:red:front";
+				reg = <1>;
+			};
+
+			leds-front-green {
+				label = "rave-sp:green:front";
+				reg = <2>;
+			};
+
+			leds-front-blue {
+				label = "rave-sp:blue:front";
+				reg = <3>;
+			};
+		};
+
+		leds-mood {
+			compatible = "zii,rave-sp-leds";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			led-sources = <1>;
+
+			leds-mood-brightness {
+				label = "rave-sp:brightness:mood";
+				reg = <0>;
+			};
+
+			leds-mood-red {
+				label = "rave-sp:red:mood";
+				reg = <1>;
+			};
+
+			leds-mood-green {
+				label = "rave-sp:green:mood";
+				reg = <2>;
+			};
+
+			leds-mood-blue {
+				label = "rave-sp:blue:mood";
+				reg = <3>;
+			};
+		};
+
+		leds-reading {
+			compatible = "zii,rave-sp-leds";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			led-sources = <1>;
+
+			leds-reading-green {
+				label = "rave-sp:green:reading";
+				reg = <2>;
+			};
+		};
+
+		pwrbutton {
+			compatible = "zii,pic-pwrbutton";
+		};		
 	};
 };
 
