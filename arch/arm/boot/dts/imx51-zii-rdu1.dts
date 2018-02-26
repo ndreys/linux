@@ -581,6 +581,61 @@
 		watchdog {
 			compatible = "zii,rave-sp-watchdog";
 		};
+
+		backlight {
+			compatible = "zii,rave-sp-backlight";
+			status = "okay";
+		};
+
+		pwrbutton {
+			compatible = "zii,rave-sp-pwrbutton";
+			status = "okay";
+		};
+
+		hwmon {
+			compatible = "zii,pic-hwmon";
+			sensors = "RMB_3V3_PMIC",
+			"RMB_3V3_MCU",
+			"RMB_5V_MAIN",
+			"RMB_12V_MAIN",
+			"RMB_28V_FIL",
+			"RMB_28V_HOTSWAP",
+			"DEB_1V8",
+			"DEB_3V3",
+			"DEB_28V_DEB",
+			"DEB_28V_RDU",
+			"TEMPERATURE",
+			"TEMPERATURE_2",
+			"RMB_28V_CURRENT";
+			status = "okay";
+		};
+
+
+		leds {
+			compatible = "zii,pic-leds";
+			status = "okay";
+};
+
+		dds-eeprom {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xA3 0x2000>;
+			status = "okay";
+		};
+
+		main-eeprom {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xA4 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+
+			boot_source: boot-source@83 {
+				reg = <0x83 1>;
+			};
+			max_failed_boots: max-failed-boots@8E {
+				reg = <0x8E 2>;
+			};
+		};		
 	};
 };
 
