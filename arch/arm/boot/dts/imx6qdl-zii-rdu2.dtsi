@@ -688,6 +688,9 @@
 		interrupt-parent = <&gpio1>;
 		interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
 		wakeup-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+		touchscreen-inverted-x;
+		touchscreen-swapped-x-y;
+		eeti,protocol-version = <1>;
 		status = "disabled";
 	};
 
