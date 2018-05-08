@@ -1451,6 +1451,23 @@ static const struct panel_desc innolux_g121x1_l03 = {
 	},
 };
 
+static const struct panel_desc innolux_g154i1_le1 = {
+	.timings = &innolux_g121i1_l01_timing,
+	.num_timings = 1,
+	.bpc = 8,
+	.size = {
+		.width = 331,
+		.height = 207,
+	},
+	.delay = {
+		.prepare = 200,
+		.unprepare = 500,
+		.disable = 20,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
 static const struct drm_display_mode innolux_n116bge_mode = {
 	.clock = 76420,
 	.hdisplay = 1366,
@@ -2620,6 +2637,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "innolux,g121x1-l03",
 		.data = &innolux_g121x1_l03,
+	}, {
+		.compatible = "innolux,g154i1-le1",
+		.data = &innolux_g154i1_le1,
 	}, {
 		.compatible = "innolux,n116bge",
 		.data = &innolux_n116bge,
