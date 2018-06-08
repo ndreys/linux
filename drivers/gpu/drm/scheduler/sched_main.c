@@ -302,6 +302,15 @@ static void drm_sched_job_finish_cb(struct dma_fence *f,
 {
 	struct drm_sched_job *job = container_of(cb, struct drm_sched_job,
 						 finish_cb);
+	struct drm_gpu_scheduler_stats *stats = job->sched->stats;
+	ktime_t now = ktime_get();
+
+	spin_lock(&stats->lock);
+	stats->active_time_us += ktime_to_us(ktime_sub(now, stats->active_ts));
+	stats->active_ts = now;
+	stats->active = false;
+	spin_unlock(&stats->lock);
+
 	schedule_work(&job->finish_work);
 }
 
@@ -316,6 +325,10 @@ static void drm_sched_job_begin(struct drm_sched_job *s_job)
 	spin_lock_irqsave(&sched->job_list_lock, flags);
 	list_add_tail(&s_job->node, &sched->ring_mirror_list);
 	drm_sched_start_timeout(sched);
+	if (list_is_singular(&sched->ring_mirror_list)) {
+		sched->stats->active_ts = ktime_get();
+		sched->stats->active = true;
+	}
 	spin_unlock_irqrestore(&sched->job_list_lock, flags);
 }
 
