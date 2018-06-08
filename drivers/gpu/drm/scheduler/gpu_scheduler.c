@@ -582,6 +582,15 @@ static void drm_sched_job_finish_cb(struct dma_fence *f,
 {
 	struct drm_sched_job *job = container_of(cb, struct drm_sched_job,
 						 finish_cb);
+	struct drm_gpu_scheduler_stats *stats = job->sched->stats;
+	ktime_t now = ktime_get();
+
+	spin_lock(&stats->lock);
+	stats->active_time_us += ktime_to_us(ktime_sub(now, stats->active_ts));
+	stats->active_ts = now;
+	stats->active = false;
+	spin_unlock(&stats->lock);
+
 	schedule_work(&job->finish_work);
 }
 
@@ -594,10 +603,13 @@ static void drm_sched_job_begin(struct drm_sched_job *s_job)
 
 	spin_lock(&sched->job_list_lock);
 	list_add_tail(&s_job->node, &sched->ring_mirror_list);
-	if (sched->timeout != MAX_SCHEDULE_TIMEOUT &&
-	    list_first_entry_or_null(&sched->ring_mirror_list,
-				     struct drm_sched_job, node) == s_job)
-		schedule_delayed_work(&s_job->work_tdr, sched->timeout);
+	if (list_first_entry_or_null(&sched->ring_mirror_list,
+				     struct drm_sched_job, node) == s_job) {
+		if (sched->timeout != MAX_SCHEDULE_TIMEOUT)
+			schedule_delayed_work(&s_job->work_tdr, sched->timeout);
+		sched->stats->active_ts = ktime_get();
+		sched->stats->active = true;
+	}
 	spin_unlock(&sched->job_list_lock);
 }
 
