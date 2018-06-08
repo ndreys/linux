@@ -237,6 +237,16 @@ struct drm_sched_backend_ops {
 	void (*free_job)(struct drm_sched_job *sched_job);
 };
 
+struct drm_gpu_scheduler;
+
+struct drm_gpu_scheduler_stats {
+	struct kobject			kobj;
+	spinlock_t			lock;
+	uint64_t			active_time_us;
+	ktime_t				active_ts;
+	bool				active;
+};
+
 /**
  * struct drm_gpu_scheduler
  *
@@ -274,6 +284,7 @@ struct drm_gpu_scheduler {
 	struct list_head		ring_mirror_list;
 	spinlock_t			job_list_lock;
 	int				hang_limit;
+	struct drm_gpu_scheduler_stats	*stats;
 };
 
 int drm_sched_init(struct drm_gpu_scheduler *sched,
