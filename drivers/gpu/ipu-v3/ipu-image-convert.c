@@ -16,6 +16,7 @@
 
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
+#include <linux/module.h>
 #include <video/imx-ipu-image-convert.h>
 #include "ipu-prv.h"
 
@@ -77,6 +78,9 @@
 #define MIN_H     8
 #define MAX_W     4096
 #define MAX_H     4096
+
+static bool hide_seams = true;
+module_param(hide_seams, bool, 0644);
 
 enum ipu_image_convert_type {
 	IMAGE_CONVERT_IN = 0,
@@ -1342,10 +1346,10 @@ static int convert_start(struct ipu_image_convert_run *run, unsigned int tile)
 	row = tile / s_image->num_cols;
 	col = tile % s_image->num_cols;
 
-	rsc =  (ctx->downsize_coeff_v << 30) |
-	       (ctx->resize_coeffs_v[row] << 16) |
-	       (ctx->downsize_coeff_h << 14) |
-	       (ctx->resize_coeffs_h[col]);
+	rsc = hide_seams ? (ctx->downsize_coeff_v << 30) |
+			   (ctx->resize_coeffs_v[row] << 16) |
+			   (ctx->downsize_coeff_h << 14) |
+			   (ctx->resize_coeffs_h[col]) : 0;
 
 	dev_dbg(priv->ipu->dev, "%s: %ux%u -> %ux%u (rsc = 0x%x)\n",
 		__func__, s_image->tile[tile].width,
@@ -2056,7 +2060,8 @@ ipu_image_convert_prepare(struct ipu_soc *ipu, enum ipu_ic_task ic_task,
 	if (ret)
 		goto out_free;
 
-	calc_tile_resize_coefficients(ctx);
+	if (hide_seams)
+		calc_tile_resize_coefficients(ctx);
 
 	dump_format(ctx, s_image);
 	dump_format(ctx, d_image);
