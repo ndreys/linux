@@ -82,6 +82,9 @@
 static bool hide_seams = true;
 module_param(hide_seams, bool, 0644);
 
+static bool move_seams = true;
+module_param(move_seams, bool, 0644);
+
 enum ipu_image_convert_type {
 	IMAGE_CONVERT_IN = 0,
 	IMAGE_CONVERT_OUT,
@@ -715,6 +718,50 @@ static void find_seams(struct ipu_image_convert_ctx *ctx,
 		out_height_align = out_top_align;
 		out_right = out->base.rect.height;
 		out_bottom = out->base.rect.width;
+	}
+
+	if (!move_seams) {
+		unsigned int in_width = in->base.rect.width / in->num_cols;
+		unsigned int in_height = in->base.rect.height / in->num_rows;
+		unsigned int out_width = resized_width / in->num_cols;
+		unsigned int out_height = resized_height / in->num_rows;
+
+		for (col = 0; col < in->num_cols; col++) {
+			unsigned int in_left = col * in_width;
+			unsigned int out_left;
+
+			if (ctx->rot_mode & IPU_ROT_BIT_HFLIP)
+				out_left = (in->num_cols - 1 - col) * out_width;
+			else
+				out_left = col * out_width;
+
+			fill_tile_column(ctx, col, in, in_left, in_width,
+					 out, out_left, out_width);
+
+			dev_dbg(dev, "%s: col %u: %u, %u -> %u, %u\n",
+				__func__, col,
+				in_left, in_width, out_left, out_width);
+		}
+
+		for (row = 0; row < in->num_rows; row++) {
+			unsigned int in_top = row * in_height;
+			unsigned int out_top;
+
+			if ((ctx->rot_mode & IPU_ROT_BIT_VFLIP) ^
+			    ipu_rot_mode_is_irt(ctx->rot_mode))
+				out_top = (in->num_rows - 1 - row) * out_height;
+			else
+				out_top = row * out_height;
+
+			fill_tile_row(ctx, row, in, in_top, in_height,
+				      out, out_top, out_height);
+
+			dev_dbg(dev, "%s: row %u: %u, %u -> %u, %u\n",
+				__func__, row,
+				in_top, in_height, out_top, out_height);
+		}
+
+		return;
 	}
 
 	for (col = in->num_cols - 1; col > 0; col--) {
