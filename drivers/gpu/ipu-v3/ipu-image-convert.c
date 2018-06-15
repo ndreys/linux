@@ -1245,6 +1245,41 @@ static void calc_tile_resize_coefficients(struct ipu_image_convert_ctx *ctx)
 	}
 }
 
+static void dump_tiles(struct ipu_image_convert_ctx *ctx)
+{
+	struct ipu_image_convert_chan *chan = ctx->chan;
+	struct ipu_image_convert_priv *priv = chan->priv;
+	struct ipu_image_tile *in_tile, *out_tile;
+	unsigned int tile_idx;
+
+	for (tile_idx = 0; tile_idx < ctx->num_tiles; tile_idx++) {
+		in_tile = &ctx->in.tile[tile_idx];
+		out_tile = &ctx->out.tile[ctx->out_tile_map[tile_idx]];
+
+		if (ipu_rot_mode_is_irt(ctx->rot_mode))
+			dev_dbg(priv->ipu->dev,
+				"task %u: ctx %p: tile %u %ux%u@%u,%u -> %ux%u -> tile %u %ux%u@%u,%u\n",
+				chan->ic_task, ctx,
+				tile_idx,
+				in_tile->width, in_tile->height,
+				in_tile->left, in_tile->top,
+				out_tile->height, out_tile->width,
+				ctx->out_tile_map[tile_idx],
+				out_tile->width, out_tile->height,
+				out_tile->left, out_tile->top);
+		else
+			dev_dbg(priv->ipu->dev,
+				"task %u: ctx %p: tile %u %ux%u@%u,%u -> tile %u %ux%u@%u,%u\n",
+				chan->ic_task, ctx,
+				tile_idx,
+				in_tile->width, in_tile->height,
+				in_tile->left, in_tile->top,
+				ctx->out_tile_map[tile_idx],
+				out_tile->width, out_tile->height,
+				out_tile->left, out_tile->top);
+	}
+}
+
 /*
  * return the number of runs in given queue (pending_q or done_q)
  * for this context. hold irqlock when calling.
@@ -2117,6 +2152,8 @@ ipu_image_convert_prepare(struct ipu_soc *ipu, enum ipu_ic_task ic_task,
 
 	if (hide_seams)
 		calc_tile_resize_coefficients(ctx);
+
+	dump_tiles(ctx);
 
 	dump_format(ctx, s_image);
 	dump_format(ctx, d_image);
