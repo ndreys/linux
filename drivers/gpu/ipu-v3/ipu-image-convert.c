@@ -966,6 +966,8 @@ static int transform_tile_index(struct ipu_image_convert_ctx *ctx,
  */
 static void calc_out_tile_map(struct ipu_image_convert_ctx *ctx)
 {
+	struct ipu_image_convert_chan *chan = ctx->chan;
+	struct ipu_image_convert_priv *priv = chan->priv;
 	struct ipu_image_convert_image *s_image = &ctx->in;
 	unsigned int row, col, tile = 0;
 
@@ -973,6 +975,12 @@ static void calc_out_tile_map(struct ipu_image_convert_ctx *ctx)
 		for (col = 0; col < s_image->num_cols; col++) {
 			ctx->out_tile_map[tile] =
 				transform_tile_index(ctx, row, col);
+
+			dev_dbg(priv->ipu->dev,
+				"task %u: ctx %p: out_tile_map[%u] = %u\n",
+				chan->ic_task, ctx, tile,
+				ctx->out_tile_map[tile]);
+
 			tile++;
 		}
 	}
