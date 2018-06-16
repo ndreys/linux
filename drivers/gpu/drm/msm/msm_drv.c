@@ -344,6 +344,7 @@ static int msm_drm_uninit(struct device *dev)
 	return 0;
 }
 
+#define KMS_HEADLESS 1
 #define KMS_MDP4 4
 #define KMS_MDP5 5
 #define KMS_DPU  3
@@ -495,6 +496,9 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 	msm_gem_shrinker_init(ddev);
 
 	switch (get_mdp_ver(pdev)) {
+	case KMS_HEADLESS:
+		priv->kms = kms = NULL;
+		break;
 	case KMS_MDP4:
 		kms = mdp4_kms_init(ddev);
 		priv->kms = kms;
@@ -633,7 +637,7 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 	drm_mode_config_reset(ddev);
 
 #ifdef CONFIG_DRM_FBDEV_EMULATION
-	if (fbdev)
+	if (kms && fbdev)
 		priv->fbdev = msm_fbdev_init(ddev);
 #endif
 
@@ -1315,9 +1319,11 @@ static int msm_pdev_probe(struct platform_device *pdev)
 	struct component_match *match = NULL;
 	int ret;
 
-	ret = add_display_components(&pdev->dev, &match);
-	if (ret)
-		return ret;
+	if (get_mdp_ver(pdev) != KMS_HEADLESS) {
+		ret = add_display_components(&pdev->dev, &match);
+		if (ret)
+			return ret;
+	}
 
 	ret = add_gpu_components(&pdev->dev, &match);
 	if (ret)
@@ -1342,6 +1348,7 @@ static int msm_pdev_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id dt_match[] = {
+	{ .compatible = "qcom,adreno-headless", .data = (void *)KMS_HEADLESS },
 	{ .compatible = "qcom,mdp4", .data = (void *)KMS_MDP4 },
 	{ .compatible = "qcom,mdss", .data = (void *)KMS_MDP5 },
 	{ .compatible = "qcom,sdm845-mdss", .data = (void *)KMS_DPU },
