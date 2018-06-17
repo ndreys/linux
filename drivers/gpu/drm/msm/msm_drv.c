@@ -1336,7 +1336,7 @@ static int msm_pdev_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	return component_master_add_with_match(&pdev->dev, &msm_drm_ops, match);
+	return match ? component_master_add_with_match(&pdev->dev, &msm_drm_ops, match) : 0;
 }
 
 static int msm_pdev_remove(struct platform_device *pdev)
