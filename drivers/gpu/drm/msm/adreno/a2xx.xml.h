@@ -8,17 +8,10 @@ http://github.com/freedreno/envytools/
 git clone https://github.com/freedreno/envytools.git
 
 The rules-ng-ng source files this header was generated from are:
-- /home/robclark/src/envytools/rnndb/adreno.xml               (    501 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/freedreno_copyright.xml  (   1572 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a2xx.xml          (  36805 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/adreno_common.xml (  13634 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/adreno_pm4.xml    (  42393 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a3xx.xml          (  83840 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a4xx.xml          ( 112086 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a5xx.xml          ( 147240 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a6xx.xml          ( 101627 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a6xx_gmu.xml      (  10431 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/ocmem.xml         (   1773 bytes, from 2018-07-03 19:37:13)
+- rnndb/adreno/a2xx.xml          (  36923 bytes, from 2018-09-02 13:36:36)
+- rnndb/freedreno_copyright.xml  (   1572 bytes, from 2018-09-02 13:35:19)
+- rnndb/adreno/adreno_common.xml (  13634 bytes, from 2018-09-02 13:35:19)
+- rnndb/adreno/adreno_pm4.xml    (  42393 bytes, from 2018-09-02 13:35:19)
 
 Copyright (C) 2013-2018 by the following authors:
 - Rob Clark <robdclark@gmail.com> (robclark)
@@ -466,6 +459,10 @@ static inline uint32_t A2XX_MH_ARBITER_CONFIG_IN_FLIGHT_LIMIT(uint32_t val)
 #define A2XX_MH_ARBITER_CONFIG_TC_CLNT_ENABLE			0x01000000
 #define A2XX_MH_ARBITER_CONFIG_RB_CLNT_ENABLE			0x02000000
 #define A2XX_MH_ARBITER_CONFIG_PA_CLNT_ENABLE			0x04000000
+
+#define REG_A2XX_MH_CLNT_INTF_CTRL_CONFIG1			0x00000a54
+
+#define REG_A2XX_MH_CLNT_INTF_CTRL_CONFIG2			0x00000a55
 
 #define REG_A2XX_A220_VSC_BIN_SIZE				0x00000c01
 #define A2XX_A220_VSC_BIN_SIZE_WIDTH__MASK			0x0000001f

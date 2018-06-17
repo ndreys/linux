@@ -37,7 +37,7 @@ int adreno_get_param(struct msm_gpu *gpu, uint32_t param, uint64_t *value)
 		*value = adreno_gpu->gmem;
 		return 0;
 	case MSM_PARAM_GMEM_BASE:
-		*value = 0x100000;
+		*value = !adreno_is_a2xx(adreno_gpu) ? 0x100000 : 0;
 		return 0;
 	case MSM_PARAM_CHIP_ID:
 		*value = adreno_gpu->rev.patchid |
@@ -324,11 +324,25 @@ void adreno_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit,
 		OUT_RING(ring, 0x00000000);
 	}
 
-	/* BIT(31) of CACHE_FLUSH_TS triggers CACHE_FLUSH_TS IRQ from GPU */
-	OUT_PKT3(ring, CP_EVENT_WRITE, 3);
-	OUT_RING(ring, CACHE_FLUSH_TS | BIT(31));
-	OUT_RING(ring, rbmemptr(ring, fence));
-	OUT_RING(ring, submit->seqno);
+	if (!adreno_is_a2xx(adreno_gpu)) {
+		/* BIT(31) of CACHE_FLUSH_TS triggers CACHE_FLUSH_TS IRQ from GPU */
+		OUT_PKT3(ring, CP_EVENT_WRITE, 3);
+		OUT_RING(ring, CACHE_FLUSH_TS | BIT(31));
+		OUT_RING(ring, rbmemptr(ring, fence));
+		OUT_RING(ring, submit->seqno);
+	} else {
+		/* XXX gsl doesn't wfi here */
+		OUT_PKT3(ring, CP_WAIT_FOR_IDLE, 1);
+		OUT_RING(ring, 0x00000000);
+
+		/* BIT(31) means something else on a2xx */
+		OUT_PKT3(ring, CP_EVENT_WRITE, 3);
+		OUT_RING(ring, CACHE_FLUSH_TS);
+		OUT_RING(ring, rbmemptr(ring, fence));
+		OUT_RING(ring, submit->seqno);
+		OUT_PKT3(ring, CP_INTERRUPT, 1);
+		OUT_RING(ring, 0x80000000);
+	}
 
 #if 0
 	if (adreno_is_a3xx(adreno_gpu)) {
