@@ -506,6 +506,27 @@ static int mem2mem_start_streaming(struct vb2_queue *q, unsigned int count)
 	q_data = get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE);
 	ipu_image_from_q_data(&out, q_data);
 
+	{
+		struct ipu_image testin, testout;
+
+		testin = in;
+		testout = out;
+
+		ipu_image_convert_adjust(&testin, &testout, ctx->rot_mode);
+
+		if (testin.pix.width != in.pix.width ||
+		    testin.pix.height != in.pix.height ||
+		    testout.pix.width != out.pix.width ||
+		    testout.pix.height != out.pix.height) {
+			v4l2_err(ctx->priv->vdev.vfd->v4l2_dev, "%s: in: %ux%u %ux%u out: %ux%u %ux%u\n",
+				 __func__,
+				 testin.pix.width, testin.pix.height,
+				 in.pix.width, in.pix.height,
+				 testout.pix.width, testout.pix.height,
+				 out.pix.width, out.pix.height);
+		}
+	}
+
 	ctx->icc = ipu_image_convert_prepare(ipu, ic_task, &in, &out,
 					     ctx->rot_mode,
 					     mem2mem_ic_complete, ctx);
