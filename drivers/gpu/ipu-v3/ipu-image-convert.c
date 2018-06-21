@@ -1151,6 +1151,9 @@ static void calc_tile_resize_coefficients(struct ipu_image_convert_ctx *ctx)
 		else
 			resized_width = out_tile->width;
 
+		dev_dbg(priv->ipu->dev, "%s: calc_resize_coeff(col %u, %u, >>%u, %u, %u)\n",
+			__func__, col, in_tile->width, ctx->downsize_coeff_h, resized_width, closest);
+
 		resize_coeff_h = calc_resize_coeff(in_tile->width,
 						   ctx->downsize_coeff_h,
 						   resized_width, closest);
@@ -1204,6 +1207,9 @@ static void calc_tile_resize_coefficients(struct ipu_image_convert_ctx *ctx)
 			resized_height = out_tile->width;
 		else
 			resized_height = out_tile->height;
+
+		dev_dbg(priv->ipu->dev, "%s: calc_resize_coeff(row %u, %u, >>%u, %u, %u)\n",
+			__func__, row, in_tile->height, ctx->downsize_coeff_v, resized_height, closest);
 
 		resize_coeff_v = calc_resize_coeff(in_tile->height,
 						   ctx->downsize_coeff_v,
