@@ -1100,14 +1100,17 @@ static int coda_encoder_cmd(struct file *file, void *fh,
 static int coda_try_decoder_cmd(struct file *file, void *fh,
 				struct v4l2_decoder_cmd *dc)
 {
-	if (dc->cmd != V4L2_DEC_CMD_STOP)
+	if (dc->cmd == V4L2_DEC_CMD_STOP) {
+		if (dc->flags & V4L2_DEC_CMD_STOP_TO_BLACK)
+			return -EINVAL;
+		if (!(dc->flags & V4L2_DEC_CMD_STOP_IMMEDIATELY) && (dc->stop.pts != 0))
+			return -EINVAL;
+	} else if (dc->cmd == V4L2_DEC_CMD_START) {
+		if (dc->flags & V4L2_DEC_CMD_START_MUTE_AUDIO)
+			return -EINVAL;
+	} else {
 		return -EINVAL;
-
-	if (dc->flags & V4L2_DEC_CMD_STOP_TO_BLACK)
-		return -EINVAL;
-
-	if (!(dc->flags & V4L2_DEC_CMD_STOP_IMMEDIATELY) && (dc->stop.pts != 0))
-		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -1116,6 +1119,7 @@ static int coda_decoder_cmd(struct file *file, void *fh,
 			    struct v4l2_decoder_cmd *dc)
 {
 	struct coda_ctx *ctx = fh_to_ctx(fh);
+	struct vb2_queue *dst_vq;
 	int ret;
 
 	ret = coda_try_decoder_cmd(file, fh, dc);
@@ -1126,12 +1130,25 @@ static int coda_decoder_cmd(struct file *file, void *fh,
 	if (ctx->inst_type != CODA_INST_DECODER)
 		return 0;
 
-	/* Set the stream-end flag on this context */
-	coda_bit_stream_end_flag(ctx);
-	ctx->hold = false;
-	v4l2_m2m_try_schedule(ctx->fh.m2m_ctx);
+	switch (dc->cmd) {
+	case V4L2_DEC_CMD_START:
+		dst_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
+					 V4L2_BUF_TYPE_VIDEO_CAPTURE);
+		vb2_clear_last_buffer_dequeued(dst_vq);
+		ctx->bit_stream_param &= ~CODA_BIT_STREAM_END_FLAG;
+		break;
+	case V4L2_DEC_CMD_STOP:
+		/* Set the stream-end flag on this context */
+		coda_bit_stream_end_flag(ctx);
+		ctx->hold = false;
+		v4l2_m2m_try_schedule(ctx->fh.m2m_ctx);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
 
-	return 0;
+	return ret;
 }
 
 static int coda_enum_frameintervals(struct file *file, void *fh,
