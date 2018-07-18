@@ -830,11 +830,10 @@ static int coda_s_fmt(struct coda_ctx *ctx, struct v4l2_format *f,
 	else
 		ctx->use_vdoa = false;
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-		"Setting format for type %d, wxh: %dx%d, fmt: %4.4s %c\n",
-		f->type, q_data->width, q_data->height,
-		(char *)&q_data->fourcc,
-		(ctx->tiled_map_type == GDI_LINEAR_FRAME_MAP) ? 'L' : 'T');
+	coda_dbg(1, ctx, "Setting %s format, wxh: %dx%d, fmt: %4.4s %c\n",
+		 v4l2_type_names[f->type], q_data->width, q_data->height,
+		 (char *)&q_data->fourcc,
+		 (ctx->tiled_map_type == GDI_LINEAR_FRAME_MAP) ? 'L' : 'T');
 
 	return 0;
 }
@@ -1377,15 +1376,13 @@ static int coda_job_ready(void *m2m_priv)
 	 */
 	if (!src_bufs && ctx->inst_type != CODA_INST_DECODER) {
 		trace_coda_not_ready(ctx, stream_end, src_bufs, -1, -1);
-		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			 "not ready: not enough video output buffers.\n");
+		coda_dbg(1, ctx, "not ready: not enough vid-out buffers.\n");
 		return 0;
 	}
 
 	if (!v4l2_m2m_num_dst_bufs_ready(ctx->fh.m2m_ctx)) {
 		trace_coda_not_ready(ctx, stream_end, src_bufs, -2, -2);
-		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			 "not ready: not enough video capture buffers.\n");
+		coda_dbg(1, ctx, "not ready: not enough vid-cap buffers.\n");
 		return 0;
 	}
 
@@ -1398,26 +1395,25 @@ static int coda_job_ready(void *m2m_priv)
 
 		count = hweight32(ctx->frm_dis_flg);
 		if (ctx->use_vdoa && count >= (ctx->num_internal_frames - 1)) {
-			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: all internal buffers in use: %d/%d (0x%x)",
-				 ctx->idx, count, ctx->num_internal_frames,
+			coda_dbg(1, ctx,
+				 "not ready: all internal buffers in use: %d/%d (0x%x)",
+				 count, ctx->num_internal_frames,
 				 ctx->frm_dis_flg);
 			return 0;
 		}
 
 		if (ctx->hold && !src_bufs) {
 			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
-			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: on hold for more buffers.\n",
-				 ctx->idx);
+			coda_dbg(1, ctx,
+				 "not ready: on hold for more buffers.\n");
 			return 0;
 		}
 
 		if (!stream_end && (num_metas + src_bufs) < 2) {
 			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
-			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: need 2 buffers available (queue:%d + bitstream:%d)\n",
-				 ctx->idx, num_metas, src_bufs);
+			coda_dbg(1, ctx,
+				 "not ready: need 2 buffers available (queue:%d + bitstream:%d)\n",
+				 num_metas, src_bufs);
 			return 0;
 		}
 
@@ -1429,30 +1425,28 @@ static int coda_job_ready(void *m2m_priv)
 			meta_size = ctx->bitstream.size - meta->start + meta->end;
 		if (!stream_end && payload < meta_size + 512) {
 			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
-			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: need 3*256 bytes beyond first buffer in bitstream (%d %d)\n",
-				 ctx->idx, meta_size, payload);
+			coda_dbg(1, ctx,
+				 "not ready: need 3*256 bytes beyond first buffer in bitstream (%d %d)\n",
+				 meta_size, payload);
 			return 0;
 		}
 
 		if (!src_bufs && !stream_end &&
 		    (payload < 512)) {
 			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
-			v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-				 "%d: not ready: not enough bitstream data (%d).\n",
-				 ctx->idx, payload);
+			coda_dbg(1, ctx,
+				 "not ready: not enough bitstream data (%d).\n",
+				 payload);
 			return 0;
 		}
 	}
 
 	if (ctx->aborting) {
-		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			 "not ready: aborting\n");
+		coda_dbg(1, ctx, "not ready: aborting\n");
 		return 0;
 	}
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			"job ready\n");
+	coda_dbg(1, ctx, "job ready\n");
 
 	return 1;
 }
@@ -1463,8 +1457,7 @@ static void coda_job_abort(void *priv)
 
 	ctx->aborting = 1;
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-		 "Aborting task\n");
+	coda_dbg(1, ctx, "job abort\n");
 }
 
 static const struct v4l2_m2m_ops coda_m2m_ops = {
@@ -1541,8 +1534,8 @@ static int coda_queue_setup(struct vb2_queue *vq,
 	*nplanes = 1;
 	sizes[0] = size;
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-		 "get %d buffer(s) of size %d each.\n", *nbuffers, size);
+	coda_dbg(1, ctx, "get %d buffer(s) of size %d each.\n", *nbuffers,
+		 size);
 
 	return 0;
 }
@@ -1607,8 +1600,7 @@ static void coda_update_h264_profile_ctrl(struct coda_ctx *ctx)
 
 	profile_names = v4l2_ctrl_get_menu(V4L2_CID_MPEG_VIDEO_H264_PROFILE);
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev, "Parsed H264 Profile: %s\n",
-		 profile_names[profile]);
+	coda_dbg(1, ctx, "Parsed H264 Profile: %s\n", profile_names[profile]);
 }
 
 static void coda_update_h264_level_ctrl(struct coda_ctx *ctx)
@@ -1627,8 +1619,7 @@ static void coda_update_h264_level_ctrl(struct coda_ctx *ctx)
 
 	level_names = v4l2_ctrl_get_menu(V4L2_CID_MPEG_VIDEO_H264_LEVEL);
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev, "Parsed H264 Level: %s\n",
-		 level_names[level]);
+	coda_dbg(1, ctx, "Parsed H264 Level: %s\n", level_names[level]);
 }
 
 static void coda_buf_queue(struct vb2_buffer *vb)
@@ -1761,6 +1752,8 @@ static int coda_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	if (count < 1)
 		return -EINVAL;
+
+	coda_dbg(1, ctx, "start streaming %s\n", v4l2_type_names[q->type]);
 
 	INIT_LIST_HEAD(&list);
 
@@ -1896,9 +1889,9 @@ static void coda_stop_streaming(struct vb2_queue *q)
 
 	stop = ctx->streamon_out && ctx->streamon_cap;
 
+	coda_dbg(1, ctx, "stop streaming %s\n", v4l2_type_names[q->type]);
+
 	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
-		v4l2_dbg(1, coda_debug, &dev->v4l2_dev,
-			 "%s: output\n", __func__);
 		ctx->streamon_out = 0;
 
 		coda_bit_stream_end_flag(ctx);
@@ -1908,8 +1901,6 @@ static void coda_stop_streaming(struct vb2_queue *q)
 		while ((buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx)))
 			v4l2_m2m_buf_done(buf, VB2_BUF_STATE_ERROR);
 	} else {
-		v4l2_dbg(1, coda_debug, &dev->v4l2_dev,
-			 "%s: capture\n", __func__);
 		ctx->streamon_cap = 0;
 
 		ctx->osequence = 0;
@@ -1961,8 +1952,8 @@ static int coda_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct coda_ctx *ctx =
 			container_of(ctrl->handler, struct coda_ctx, ctrls);
 
-	v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-		 "s_ctrl: id = %d, val = %d\n", ctrl->id, ctrl->val);
+	coda_dbg(1, ctx, "s_ctrl: id = 0x%x, name = \"%s\", val = %d\n",
+		 ctrl->id, ctrl->name, ctrl->val);
 
 	switch (ctrl->id) {
 	case V4L2_CID_HFLIP:
@@ -2076,9 +2067,8 @@ static int coda_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->params.vbv_size = min(ctrl->val * 8192, 0x7fffffff);
 		break;
 	default:
-		v4l2_dbg(1, coda_debug, &ctx->dev->v4l2_dev,
-			"Invalid control, id=%d, val=%d\n",
-			ctrl->id, ctrl->val);
+		coda_dbg(1, ctx, "Invalid control, id=%d, val=%d\n",
+			 ctrl->id, ctrl->val);
 		return -EINVAL;
 	}
 
@@ -2386,6 +2376,9 @@ static int coda_open(struct file *file)
 	v4l2_fh_add(&ctx->fh);
 	ctx->dev = dev;
 	ctx->idx = idx;
+
+	coda_dbg(1, ctx, "open instance (%p)\n", ctx);
+
 	switch (dev->devtype->product) {
 	case CODA_960:
 		/*
@@ -2455,9 +2448,6 @@ static int coda_open(struct file *file)
 	list_add(&ctx->list, &dev->instances);
 	mutex_unlock(&dev->dev_mutex);
 
-	v4l2_dbg(1, coda_debug, &dev->v4l2_dev, "Created instance %d (%p)\n",
-		 ctx->idx, ctx);
-
 	return 0;
 
 err_ctrls_setup:
@@ -2483,8 +2473,7 @@ static int coda_release(struct file *file)
 	struct coda_dev *dev = video_drvdata(file);
 	struct coda_ctx *ctx = fh_to_ctx(file->private_data);
 
-	v4l2_dbg(1, coda_debug, &dev->v4l2_dev, "Releasing instance %p\n",
-		 ctx);
+	coda_dbg(1, ctx, "release instance (%p)\n", ctx);
 
 	if (ctx->inst_type == CODA_INST_DECODER && ctx->use_bit)
 		coda_bit_stream_end_flag(ctx);
