@@ -1326,10 +1326,8 @@ static void coda9_jpeg_finish_encode(struct coda_ctx *ctx)
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, wr_ptr - start_ptr);
 
 	err_mb = coda_read(dev, CODA9_REG_JPEG_PIC_ERRMB);
-	if (err_mb) {
-		v4l2_dbg(1, coda_debug, &dev->v4l2_dev, "ERRMB: 0x%x\n",
-			 err_mb);
-	}
+	if (err_mb)
+		coda_dbg(1, ctx, "ERRMB: 0x%x\n", err_mb);
 
 	coda_write(dev, 0, CODA9_REG_JPEG_BBC_FLUSH_CMD);
 
@@ -1343,9 +1341,8 @@ static void coda9_jpeg_finish_encode(struct coda_ctx *ctx)
 	coda_m2m_buf_done(ctx, dst_buf, err_mb ? VB2_BUF_STATE_ERROR :
 						 VB2_BUF_STATE_DONE);
 
-	v4l2_dbg(1, coda_debug, &dev->v4l2_dev,
-		"%d: job finished: encoding frame (%d)\n",
-		ctx->idx, dst_buf->sequence);
+	coda_dbg(1, ctx, "job finished: encoded frame (%u)\n",
+		 dst_buf->sequence);
 
 	/*
 	 * Reset JPEG processing unit after each encode run to work
@@ -1548,9 +1545,8 @@ static void coda9_jpeg_finish_decode(struct coda_ctx *ctx)
 	coda_m2m_buf_done(ctx, dst_buf, err_mb ? VB2_BUF_STATE_ERROR :
 						 VB2_BUF_STATE_DONE);
 
-	v4l2_dbg(1, coda_debug, &dev->v4l2_dev,
-		"%d: job finished: decoding frame (%d)\n",
-		ctx->idx, dst_buf->sequence);
+	coda_dbg(1, ctx, "job finished: decoded frame (%u)\n",
+		 dst_buf->sequence);
 
 	/*
 	 * Reset JPEG processing unit after each decode run to work
