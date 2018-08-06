@@ -589,6 +589,14 @@ config HID_MICROSOFT
 	---help---
 	Support for Microsoft devices that are not fully compliant with HID standard.
 
+config MICROSOFT_FF
+	bool "Microsoft Xbox One S controller force feedback support"
+	depends on HID_MICROSOFT
+	select INPUT_FF_MEMLESS
+	---help---
+	Say Y here if you have a Microsoft Xbox One S controller and want to enable
+	force feedback support for it.
+
 config HID_MONTEREY
 	tristate "Monterey Genius KB29E keyboard"
 	depends on HID
