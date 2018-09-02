@@ -641,5 +641,29 @@
 				clock-names = "ipg", "ahb";
 			};
 		};
+
+		gpu: gpu@30000000 {
+			compatible = "qcom,adreno-200.1", "qcom,adreno";
+			reg = <0x30000000 0x20000>;
+			reg-names = "kgsl_3d0_reg_memory";
+			interrupts = <12>;
+			interrupt-names = "kgsl_3d0_irq";
+			clocks = <&clks 162>, <&clks 164>;
+			clock-names = "core_clk", "mem_iface_clk";
+
+			qcom,gpu-pwrlevels {
+				compatible = "qcom,gpu-pwrlevels";
+				qcom,gpu-pwrlevel@0 {
+					qcom,gpu-freq = <166250000>;
+				};
+				qcom,gpu-pwrlevel@1 {
+					qcom,gpu-freq = <27000000>;
+				};
+			};
+		};
+
+		msmgpu {
+			compatible = "qcom,adreno-headless";
+		};
 	};
 };
