@@ -2,6 +2,8 @@
 // Copyright (c) 2018, The Linux Foundation. All rights reserved.
 
 #include "a2xx_gpu.h"
+#include "msm_gem.h"
+#include "msm_mmu.h"
 
 extern bool hang_debug;
 
@@ -32,7 +34,7 @@ static bool a2xx_me_init(struct msm_gpu *gpu)
 	OUT_RING(ring, 0x00000001);
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);
-	OUT_RING(ring, 0x00000000); /* XXX: MMU related */
+	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);
 
@@ -43,8 +45,11 @@ static bool a2xx_me_init(struct msm_gpu *gpu)
 static int a2xx_hw_init(struct msm_gpu *gpu)
 {
 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+	dma_addr_t pt_base, tran_error;
 	uint32_t *ptr, len;
 	int i, ret;
+
+	msm_gpummu_params(gpu->aspace->mmu, &pt_base, &tran_error);
 
 	DBG("%s", gpu->name);
 
@@ -62,10 +67,34 @@ static int a2xx_hw_init(struct msm_gpu *gpu)
 	/* XXX kgsl uses 0x0000ffff for a20x */
 	gpu_write(gpu, REG_A2XX_RBBM_CNTL, 0x00004442);
 
-	gpu_write(gpu, REG_A2XX_MH_MMU_CONFIG, 0);
-	/* XXX carveout? needs mmu enabled */
-	gpu_write(gpu, REG_A2XX_MH_MMU_MPU_BASE, 0);
+	/* MPU: physical range */
+	gpu_write(gpu, REG_A2XX_MH_MMU_MPU_BASE, 0x00000000);
 	gpu_write(gpu, REG_A2XX_MH_MMU_MPU_END, 0xfffff000);
+
+	gpu_write(gpu, REG_A2XX_MH_MMU_CONFIG, A2XX_MH_MMU_CONFIG_MMU_ENABLE |
+		A2XX_MH_MMU_CONFIG_RB_W_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_W_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_R0_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_R1_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_R2_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_R3_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_CP_R4_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_VGT_R0_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_VGT_R1_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_TC_R_CLNT_BEHAVIOR(BEH_TRAN_RNG) |
+		A2XX_MH_MMU_CONFIG_PA_W_CLNT_BEHAVIOR(BEH_TRAN_RNG));
+
+	/* same as parameters in adreno_gpu */
+	gpu_write(gpu, REG_A2XX_MH_MMU_VA_RANGE, SZ_16M |
+		A2XX_MH_MMU_VA_RANGE_NUM_64KB_REGIONS(0xfff));
+
+	gpu_write(gpu, REG_A2XX_MH_MMU_PT_BASE, pt_base);
+	gpu_write(gpu, REG_A2XX_MH_MMU_TRAN_ERROR, tran_error);
+
+	gpu_write(gpu, REG_A2XX_MH_MMU_INVALIDATE,
+		A2XX_MH_MMU_INVALIDATE_INVALIDATE_ALL |
+		A2XX_MH_MMU_INVALIDATE_INVALIDATE_TC);
+
 	gpu_write(gpu, REG_A2XX_MH_ARBITER_CONFIG,
 		A2XX_MH_ARBITER_CONFIG_SAME_PAGE_LIMIT(16) |
 		A2XX_MH_ARBITER_CONFIG_L1_ARB_ENABLE |
@@ -92,9 +121,21 @@ static int a2xx_hw_init(struct msm_gpu *gpu)
 	/* XXX gsl doesn't set this */
 	gpu_write(gpu, REG_A2XX_RBBM_DEBUG, 0x00080000);
 
-	gpu_write(gpu, REG_A2XX_RBBM_INT_CNTL, 0);
-	gpu_write(gpu, REG_AXXX_CP_INT_CNTL, 0x80000000); /* RB INT */
+	gpu_write(gpu, REG_A2XX_RBBM_INT_CNTL,
+		A2XX_RBBM_INT_CNTL_RDERR_INT_MASK);
+	gpu_write(gpu, REG_AXXX_CP_INT_CNTL,
+		AXXX_CP_INT_CNTL_T0_PACKET_IN_IB_MASK |
+		AXXX_CP_INT_CNTL_OPCODE_ERROR_MASK |
+		AXXX_CP_INT_CNTL_PROTECTED_MODE_ERROR_MASK |
+		AXXX_CP_INT_CNTL_RESERVED_BIT_ERROR_MASK |
+		AXXX_CP_INT_CNTL_IB_ERROR_MASK |
+		AXXX_CP_INT_CNTL_IB1_INT_MASK |
+		AXXX_CP_INT_CNTL_RB_INT_MASK);
 	gpu_write(gpu, REG_A2XX_SQ_INT_CNTL, 0);
+	gpu_write(gpu, REG_A2XX_MH_INTERRUPT_MASK,
+		A2XX_MH_INTERRUPT_MASK_AXI_READ_ERROR |
+		A2XX_MH_INTERRUPT_MASK_AXI_WRITE_ERROR |
+		A2XX_MH_INTERRUPT_MASK_MMU_PAGE_FAULT);
 
 	for (i = 3; i <= 5; i++)
 		if ((SZ_16K << i) == adreno_gpu->gmem)
@@ -191,14 +232,37 @@ static bool a2xx_idle(struct msm_gpu *gpu)
 
 static irqreturn_t a2xx_irq(struct msm_gpu *gpu)
 {
-	uint32_t status;
+	uint32_t mstatus, status;
 
-	status = gpu_read(gpu, REG_AXXX_CP_INT_STATUS);
-	DBG("%s: %08x", gpu->name, status);
+	mstatus = gpu_read(gpu, REG_A2XX_MASTER_INT_SIGNAL);
 
-	/* only expecting CP RB INT */
+	if (mstatus & A2XX_MASTER_INT_SIGNAL_MH_INT_STAT) {
+		status = gpu_read(gpu, REG_A2XX_MH_INTERRUPT_STATUS);
 
-	gpu_write(gpu, REG_AXXX_CP_INT_ACK, status);
+		dev_warn(gpu->dev->dev, "MH_INT: %08X\n", status);
+		dev_warn(gpu->dev->dev, "MMU_PAGE_FAULT: %08X\n",
+			gpu_read(gpu, REG_A2XX_MH_MMU_PAGE_FAULT));
+
+		gpu_write(gpu, REG_A2XX_MH_INTERRUPT_CLEAR, status);
+	}
+
+	if (mstatus & A2XX_MASTER_INT_SIGNAL_CP_INT_STAT) {
+		status = gpu_read(gpu, REG_AXXX_CP_INT_STATUS);
+
+		/* only RB_INT is expected */
+		if (status & ~AXXX_CP_INT_CNTL_RB_INT_MASK)
+			dev_warn(gpu->dev->dev, "CP_INT: %08X\n", status);
+
+		gpu_write(gpu, REG_AXXX_CP_INT_ACK, status);
+	}
+
+	if (mstatus & A2XX_MASTER_INT_SIGNAL_RBBM_INT_STAT) {
+		status = gpu_read(gpu, REG_A2XX_RBBM_INT_STATUS);
+
+		dev_warn(gpu->dev->dev, "RBBM_INT: %08X\n", status);
+
+		gpu_write(gpu, REG_A2XX_RBBM_INT_ACK, status);
+	}
 
 	msm_gpu_retire(gpu);
 
@@ -414,11 +478,6 @@ struct msm_gpu *a2xx_gpu_init(struct drm_device *dev)
 	ret = adreno_gpu_init(dev, pdev, adreno_gpu, &funcs, 1);
 	if (ret)
 		goto fail;
-
-	if (!gpu->aspace) {
-		/* MMU is not implemented...  */
-		dev_err(dev->dev, "No memory protection without MMU\n");
-	}
 
 	return gpu;
 

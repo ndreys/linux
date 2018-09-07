@@ -24,6 +24,7 @@
 #include "adreno_gpu.h"
 #include "msm_gem.h"
 #include "msm_mmu.h"
+#include "a2xx_gpu.h"
 
 int adreno_get_param(struct msm_gpu *gpu, uint32_t param, uint64_t *value)
 {
@@ -289,6 +290,13 @@ void adreno_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit,
 	struct msm_drm_private *priv = gpu->dev->dev_private;
 	struct msm_ringbuffer *ring = submit->ring;
 	unsigned i;
+
+	/* tlb flush. TODO: only do this when required */
+	if (adreno_is_a2xx(adreno_gpu)) {
+		OUT_PKT0(ring, REG_A2XX_MH_MMU_INVALIDATE, 1);
+		OUT_RING(ring, A2XX_MH_MMU_INVALIDATE_INVALIDATE_ALL |
+			A2XX_MH_MMU_INVALIDATE_INVALIDATE_TC);
+	}
 
 	for (i = 0; i < submit->nr_cmds; i++) {
 		switch (submit->cmd[i].type) {
@@ -730,6 +738,9 @@ int adreno_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 
 	adreno_gpu_config.va_start = SZ_16M;
 	adreno_gpu_config.va_end = 0xffffffff;
+	/* maximum range of a2xx mmu */
+	if (adreno_is_a2xx(adreno_gpu))
+		adreno_gpu_config.va_end = SZ_16M + 0xfff * SZ_64K;
 
 	adreno_gpu_config.nr_rings = nr_rings;
 

@@ -24,6 +24,8 @@
 
 #include "msm_gpu.h"
 
+#undef ROP_COPY
+#undef ROP_XOR
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 

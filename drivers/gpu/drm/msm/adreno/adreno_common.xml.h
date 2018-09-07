@@ -8,41 +8,9 @@ http://github.com/freedreno/envytools/
 git clone https://github.com/freedreno/envytools.git
 
 The rules-ng-ng source files this header was generated from are:
-- /home/robclark/src/envytools/rnndb/adreno.xml               (    501 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/freedreno_copyright.xml  (   1572 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a2xx.xml          (  36805 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/adreno_common.xml (  13634 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/adreno_pm4.xml    (  42393 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a3xx.xml          (  83840 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a4xx.xml          ( 112086 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/a5xx.xml          ( 147240 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a6xx.xml          ( 101627 bytes, from 2018-08-06 18:45:45)
-- /home/robclark/src/envytools/rnndb/adreno/a6xx_gmu.xml      (  10431 bytes, from 2018-07-03 19:37:13)
-- /home/robclark/src/envytools/rnndb/adreno/ocmem.xml         (   1773 bytes, from 2018-07-03 19:37:13)
+- rnndb/adreno/adreno_common.xml (  14201 bytes, from 2018-09-07 18:12:21)
 
-Copyright (C) 2013-2018 by the following authors:
-- Rob Clark <robdclark@gmail.com> (robclark)
-- Ilia Mirkin <imirkin@alum.mit.edu> (imirkin)
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice (including the
-next paragraph) shall be included in all copies or substantial
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE COPYRIGHT OWNER(S) AND/OR ITS SUPPLIERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Copyright (C) 2018
 */
 
 
@@ -138,11 +106,13 @@ enum a3xx_rop_code {
 	ROP_COPY_INVERTED = 3,
 	ROP_AND_REVERSE = 4,
 	ROP_INVERT = 5,
+	ROP_XOR = 6,
 	ROP_NAND = 7,
 	ROP_AND = 8,
 	ROP_EQUIV = 9,
 	ROP_NOOP = 10,
 	ROP_OR_INVERTED = 11,
+	ROP_COPY = 12,
 	ROP_OR_REVERSE = 13,
 	ROP_OR = 14,
 	ROP_SET = 15,
@@ -339,6 +309,15 @@ static inline uint32_t AXXX_SCRATCH_UMSK_SWAP(uint32_t val)
 #define REG_AXXX_CP_STATE_DEBUG_DATA				0x000001ed
 
 #define REG_AXXX_CP_INT_CNTL					0x000001f2
+#define AXXX_CP_INT_CNTL_SW_INT_MASK				0x00080000
+#define AXXX_CP_INT_CNTL_T0_PACKET_IN_IB_MASK			0x00800000
+#define AXXX_CP_INT_CNTL_OPCODE_ERROR_MASK			0x01000000
+#define AXXX_CP_INT_CNTL_PROTECTED_MODE_ERROR_MASK		0x02000000
+#define AXXX_CP_INT_CNTL_RESERVED_BIT_ERROR_MASK		0x04000000
+#define AXXX_CP_INT_CNTL_IB_ERROR_MASK				0x08000000
+#define AXXX_CP_INT_CNTL_IB2_INT_MASK				0x20000000
+#define AXXX_CP_INT_CNTL_IB1_INT_MASK				0x40000000
+#define AXXX_CP_INT_CNTL_RB_INT_MASK				0x80000000
 
 #define REG_AXXX_CP_INT_STATUS					0x000001f3
 
