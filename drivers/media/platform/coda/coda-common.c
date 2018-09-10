@@ -1422,10 +1422,7 @@ static int coda_job_ready(void *m2m_priv)
 
 		meta = list_first_entry(&ctx->buffer_meta_list,
 					struct coda_buffer_meta, list);
-		if (meta->end >= meta->start)
-			meta_size = meta->end - meta->start;
-		else
-			meta_size = ctx->bitstream.size - meta->start + meta->end;
+		meta_size = meta->end - meta->start;
 		if (!stream_end && payload < meta_size + 512) {
 			trace_coda_not_ready(ctx, stream_end, src_bufs, num_metas, payload);
 			coda_dbg(1, ctx,
