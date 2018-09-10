@@ -1299,6 +1299,7 @@ static int coda9_jpeg_prepare_encode(struct coda_ctx *ctx)
 	coda_write(dev, 0, CODA9_GDI_WPROT_RGN_EN);
 
 	trace_coda_jpeg_run(ctx, src_buf);
+	coda_stats_run(dev->jpeg_stats);
 
 	coda_write(dev, 1, CODA9_REG_JPEG_PIC_START);
 
@@ -1615,6 +1616,8 @@ v4l2_err(&dev->v4l2_dev, "word_ptr = %d bit_ptr = %d\n",
 		mutex_unlock(&dev->coda_mutex);
 		return IRQ_HANDLED;
 	}
+
+	coda_stats_done(dev->jpeg_stats);
 
 	complete(&ctx->completion);
 

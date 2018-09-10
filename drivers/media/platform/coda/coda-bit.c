@@ -106,6 +106,7 @@ static void coda_command_async(struct coda_ctx *ctx, int cmd)
 	coda_write(dev, ctx->params.codec_mode_aux, CODA7_REG_BIT_RUN_AUX_STD);
 
 	trace_coda_bit_run(ctx, cmd);
+	coda_stats_run(dev->bit_stats);
 
 	coda_write(dev, cmd, CODA_REG_BIT_RUN_COMMAND);
 }
@@ -118,6 +119,7 @@ static int coda_command_sync(struct coda_ctx *ctx, int cmd)
 	coda_command_async(ctx, cmd);
 	ret = coda_wait_timeout(dev);
 	trace_coda_bit_done(ctx);
+	coda_stats_done(dev->bit_stats);
 
 	return ret;
 }
@@ -2368,6 +2370,7 @@ irqreturn_t coda_irq_handler(int irq, void *data)
 	}
 
 	trace_coda_bit_done(ctx);
+	coda_stats_done(dev->bit_stats);
 
 	if (ctx->aborting) {
 		coda_dbg(1, ctx, "task has been aborted\n");

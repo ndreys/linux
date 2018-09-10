@@ -24,6 +24,8 @@
 #include <linux/videodev2.h>
 #include <linux/slab.h>
 
+#include <media/v4l2-dev.h>
+
 #include "imx-vdoa.h"
 
 #define VDOA_NAME "imx-vdoa"
@@ -87,6 +89,7 @@ struct vdoa_data {
 	struct device		*dev;
 	struct clk		*vdoa_clk;
 	void __iomem		*regs;
+	struct v4l2_stats	*stats;
 };
 
 struct vdoa_q_data {
@@ -130,6 +133,11 @@ static irqreturn_t vdoa_irq_handler(int irq, void *data)
 		dev_warn(vdoa->dev, "Spurious interrupt\n");
 	}
 	curr_ctx->completed_job++;
+
+	spin_lock(&vdoa->stats->lock);
+	__v4l2_stats_stop(vdoa->stats, ktime_get());
+	spin_unlock(&vdoa->stats->lock);
+
 	complete(&curr_ctx->completion);
 
 	return IRQ_HANDLED;
@@ -197,6 +205,10 @@ void vdoa_device_run(struct vdoa_ctx *ctx, dma_addr_t dst, dma_addr_t src)
 	writel(val, vdoa->regs + VDOAVEBA0);
 	val = round_up(src_q_data->bytesperline * src_q_data->height, 4096);
 	writel(val, vdoa->regs + VDOAVUBO);
+
+	spin_lock(&vdoa->stats->lock);
+	__v4l2_stats_start(vdoa->stats, ktime_get());
+	spin_unlock(&vdoa->stats->lock);
 
 	/* Enable interrupts and start transfer */
 	writel(VDOAIE_EITERR | VDOAIE_EIEOT, vdoa->regs + VDOAIE);
@@ -325,6 +337,10 @@ static int vdoa_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	vdoa->stats = v4l2_register_stats("vdoa");
+	if (IS_ERR(vdoa->stats))
+		return PTR_ERR(vdoa->stats);
+
 	platform_set_drvdata(pdev, vdoa);
 
 	return 0;
@@ -332,6 +348,10 @@ static int vdoa_probe(struct platform_device *pdev)
 
 static int vdoa_remove(struct platform_device *pdev)
 {
+	struct vdoa_data *vdoa = platform_get_drvdata(pdev);
+
+	v4l2_unregister_stats(vdoa->stats);
+
 	return 0;
 }
 
