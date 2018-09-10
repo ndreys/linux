@@ -19,6 +19,7 @@
 #include <linux/irqreturn.h>
 #include <linux/mutex.h>
 #include <linux/kfifo.h>
+#include <linux/timekeeping.h>
 #include <linux/videodev2.h>
 
 #include <media/v4l2-ctrls.h>
@@ -97,6 +98,10 @@ struct coda_dev {
 	struct list_head	instances;
 	unsigned long		instance_mask;
 	struct dentry		*debugfs_root;
+
+	struct v4l2_stats	bit_stats;
+	struct v4l2_stats	jpeg_stats;
+	struct v4l2_stats	vdoa_stats;
 };
 
 struct coda_codec {
@@ -337,5 +342,19 @@ extern const struct coda_context_ops coda9_jpeg_decode_ops;
 
 irqreturn_t coda_irq_handler(int irq, void *data);
 irqreturn_t coda9_jpeg_irq_handler(int irq, void *data);
+
+static inline void coda_stats_run(struct v4l2_stats *stats)
+{
+	__v4l2_stats_start(stats, ktime_get());
+}
+
+static inline void coda_stats_done(struct v4l2_stats *stats)
+{
+	ktime_t now = ktime_get();
+
+	spin_lock(&stats->lock);
+	__v4l2_stats_stop(stats, now);
+	spin_unlock(&stats->lock);
+}
 
 #endif /* __CODA_H__ */

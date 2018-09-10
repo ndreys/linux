@@ -2756,12 +2756,24 @@ static void coda_fw_callback(const struct firmware *fw, void *context)
 		}
 	}
 
+	ret = v4l2_register_stats(&dev->bit_stats, "coda-bit");
+	if (ret)
+		goto rel_vfd;
+
+	if (dev->devtype->product == CODA_960) {
+		ret = v4l2_register_stats(&dev->jpeg_stats, "coda-jpeg");
+		if (ret)
+			goto unreg_bit;
+	}
+
 	v4l2_info(&dev->v4l2_dev, "codec registered as /dev/video[%d-%d]\n",
 		  dev->vfd[0].num, dev->vfd[i - 1].num);
 
 	pm_runtime_put_sync(&pdev->dev);
 	return;
 
+unreg_bit:
+	v4l2_unregister_stats(&dev->bit_stats);
 rel_vfd:
 	while (--i >= 0)
 		video_unregister_device(&dev->vfd[i]);
