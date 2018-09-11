@@ -357,6 +357,7 @@ int ipu_prg_channel_configure(struct ipuv3_channel *ipu_chan,
 			      unsigned int axi_id,  unsigned int width,
 			      unsigned int height, unsigned int stride,
 			      u32 format, uint64_t modifier, unsigned long *eba);
+int ipu_prg_channel_configure_done(struct ipuv3_channel *ipu_chan);
 
 /*
  * IPU CMOS Sensor Interface (csi) functions
