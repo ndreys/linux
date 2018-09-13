@@ -265,7 +265,7 @@ static int marvell_set_polarity(struct phy_device *phydev, int polarity)
 			return err;
 	}
 
-	return 0;
+	return val != reg;
 }
 
 static int marvell_set_downshift(struct phy_device *phydev, bool enable,
@@ -303,7 +303,7 @@ static int marvell_config_aneg(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	if (phydev->autoneg != autoneg) {
+	if (phydev->autoneg != autoneg || err) {
 		/* A write to speed/duplex bits (that is performed by
 		 * genphy_config_aneg() call above) must be followed by
 		 * a software reset. Otherwise, the write has no effect.
@@ -375,7 +375,7 @@ static int m88e1111_config_aneg(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	if (phydev->autoneg != autoneg) {
+	if (phydev->autoneg != autoneg || err) {
 		/* A write to speed/duplex bits (that is performed by
 		 * genphy_config_aneg() call above) must be followed by
 		 * a software reset. Otherwise, the write has no effect.
@@ -498,7 +498,7 @@ static int m88e1121_config_aneg(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	if (phydev->autoneg != autoneg) {
+	if (phydev->autoneg != autoneg || err) {
 		/* A software reset is used to ensure a "commit" of the
 		 * changes is done.
 		 */
