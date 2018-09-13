@@ -481,6 +481,7 @@ static int m88e1121_config_aneg_rgmii_delays(struct phy_device *phydev)
 
 static int m88e1121_config_aneg(struct phy_device *phydev)
 {
+	bool autoneg = phydev->autoneg;
 	int err = 0;
 
 	if (phy_interface_is_rgmii(phydev)) {
@@ -489,15 +490,24 @@ static int m88e1121_config_aneg(struct phy_device *phydev)
 			return err;
 	}
 
-	err = genphy_soft_reset(phydev);
-	if (err < 0)
-		return err;
-
 	err = marvell_set_polarity(phydev, phydev->mdix_ctrl);
 	if (err < 0)
 		return err;
 
-	return genphy_config_aneg(phydev);
+	err =  genphy_config_aneg(phydev);
+	if (err < 0)
+		return err;
+
+	if (phydev->autoneg != autoneg) {
+		/* A software reset is used to ensure a "commit" of the
+		 * changes is done.
+		 */
+		err = genphy_soft_reset(phydev);
+		if (err < 0)
+			return err;
+	}
+
+	return 0;
 }
 
 static int m88e1318_config_aneg(struct phy_device *phydev)
