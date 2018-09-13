@@ -287,6 +287,7 @@ static int marvell_set_downshift(struct phy_device *phydev, bool enable,
 
 static int marvell_config_aneg(struct phy_device *phydev)
 {
+	bool autoneg = phydev->autoneg;
 	int err;
 
 	err = marvell_set_polarity(phydev, phydev->mdix_ctrl);
@@ -302,7 +303,7 @@ static int marvell_config_aneg(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	if (phydev->autoneg != AUTONEG_ENABLE) {
+	if (phydev->autoneg != autoneg) {
 		/* A write to speed/duplex bits (that is performed by
 		 * genphy_config_aneg() call above) must be followed by
 		 * a software reset. Otherwise, the write has no effect.
@@ -352,6 +353,7 @@ static int m88e1101_config_aneg(struct phy_device *phydev)
 
 static int m88e1111_config_aneg(struct phy_device *phydev)
 {
+	bool autoneg = phydev->autoneg;
 	int err;
 
 	/* The Marvell PHY has an errata which requires
@@ -373,7 +375,7 @@ static int m88e1111_config_aneg(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	if (phydev->autoneg != AUTONEG_ENABLE) {
+	if (phydev->autoneg != autoneg) {
 		/* A write to speed/duplex bits (that is performed by
 		 * genphy_config_aneg() call above) must be followed by
 		 * a software reset. Otherwise, the write has no effect.
