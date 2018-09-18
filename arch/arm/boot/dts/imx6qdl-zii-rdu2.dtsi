@@ -885,6 +885,10 @@
 	status = "okay";
 };
 
+&snvs_rtc {
+	status = "disabled";
+};
+
 &ssi1 {
 	status = "okay";
 };
