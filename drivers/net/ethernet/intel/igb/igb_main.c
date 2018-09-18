@@ -2505,6 +2505,13 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 			dev_err(&pdev->dev, "NVM Read Error\n");
 	}
 
+	hw->mac.addr[0] = 0xaa;
+	hw->mac.addr[1] = 0xbb;
+	hw->mac.addr[2] = 0xcc;
+	hw->mac.addr[3] = 0xdd;
+	hw->mac.addr[4] = 0xee;
+	hw->mac.addr[5] = 0xff;
+
 	memcpy(netdev->dev_addr, hw->mac.addr, netdev->addr_len);
 
 	if (!is_valid_ether_addr(netdev->dev_addr)) {
