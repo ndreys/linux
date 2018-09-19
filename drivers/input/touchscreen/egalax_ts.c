@@ -25,6 +25,7 @@
 #include <linux/bitops.h>
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
+#include <linux/input/touchscreen.h>
 
 /*
  * Mouse Mode: some panel may configure the controller to mouse mode,
@@ -52,13 +53,12 @@
 
 #define MAX_I2C_DATA_LEN	10
 
-#define EGALAX_MAX_X	32760
-#define EGALAX_MAX_Y	32760
 #define EGALAX_MAX_TRIES 100
 
 struct egalax_ts {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
+	struct touchscreen_properties	props;
 };
 
 static irqreturn_t egalax_ts_interrupt(int irq, void *dev_id)
@@ -105,8 +105,7 @@ static irqreturn_t egalax_ts_interrupt(int irq, void *dev_id)
 		down ? "down" : "up", id, x, y, z);
 
 	if (down) {
-		input_report_abs(input_dev, ABS_MT_POSITION_X, x);
-		input_report_abs(input_dev, ABS_MT_POSITION_Y, y);
+		touchscreen_report_pos(input_dev, &ts->props, x, y, true);
 		input_report_abs(input_dev, ABS_MT_PRESSURE, z);
 	}
 
@@ -199,10 +198,14 @@ static int egalax_ts_probe(struct i2c_client *client,
 	input_dev->name = "EETI eGalax Touch Screen";
 	input_dev->id.bustype = BUS_I2C;
 
-	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_X, 0, EGALAX_MAX_X, 0, 0);
-	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_Y, 0, EGALAX_MAX_Y, 0, 0);
+	touchscreen_parse_properties(ts->input_dev, true, &ts->props);
+	if (!ts->props.max_x && !ts->props.max_y)
+		ts->props.max_x = ts->props.max_y = 32760;
+
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
+			     0, ts->props.max_x, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
+			     0, ts->props.max_y, 0, 0);
 	input_mt_init_slots(input_dev, MAX_SUPPORT_POINTS,
 			    INPUT_MT_DIRECT | INPUT_MT_DROP_UNUSED);
 
