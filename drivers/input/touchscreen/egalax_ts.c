@@ -58,6 +58,7 @@
 struct egalax_ts {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
+	int				protocol_version;
 	struct touchscreen_properties	props;
 };
 
@@ -194,6 +195,9 @@ static int egalax_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Failed to read firmware version\n");
 		return error;
 	}
+
+	of_property_read_u32(client->dev.of_node, "eeti,protocol-version",
+			     &ts->protocol_version);
 
 	input_dev->name = "EETI eGalax Touch Screen";
 	input_dev->id.bustype = BUS_I2C;

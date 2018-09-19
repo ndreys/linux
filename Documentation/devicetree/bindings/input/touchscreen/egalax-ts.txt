@@ -7,6 +7,13 @@ Required properties:
 - wakeup-gpios: the gpio pin to be used for waking up the controller
   and also used as irq pin
 
+Optional properties:
+- eeti,protocol-version: protocol version used by the controller
+	0: This is the default protocol used when the property is absent. This
+	protocol supports up to 5 touch points with 1 points per report.
+	1: Protocol supports up to 10 touch points with a maximum of 5 points
+	per report.
+
 Example:
 
 	touchscreen@4 {
@@ -15,4 +22,5 @@ Example:
 		interrupt-parent = <&gpio1>;
 		interrupts = <9 2>;
 		wakeup-gpios = <&gpio1 9 0>;
+		eeti,protocol-version = <1>;
 	};
