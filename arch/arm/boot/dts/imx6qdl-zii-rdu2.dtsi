@@ -210,6 +210,7 @@
 
 	panel {
 		power-supply = <&reg_3p3v_display>;
+		backlight = <&sp_backlight>;
 		status = "disabled";
 
 		port {
@@ -333,7 +334,7 @@
 			compatible = "zii,rave-sp-hwmon-rdu2";
 		};
 
-		backlight {
+		sp_backlight: backlight {
 			compatible = "zii,rave-sp-backlight";
 		};
 
