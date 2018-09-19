@@ -199,17 +199,12 @@ static int egalax_ts_probe(struct i2c_client *client,
 	input_dev->name = "EETI eGalax Touch Screen";
 	input_dev->id.bustype = BUS_I2C;
 
-	__set_bit(EV_ABS, input_dev->evbit);
-	__set_bit(EV_KEY, input_dev->evbit);
-	__set_bit(BTN_TOUCH, input_dev->keybit);
-
-	input_set_abs_params(input_dev, ABS_X, 0, EGALAX_MAX_X, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, EGALAX_MAX_Y, 0, 0);
 	input_set_abs_params(input_dev,
 			     ABS_MT_POSITION_X, 0, EGALAX_MAX_X, 0, 0);
 	input_set_abs_params(input_dev,
 			     ABS_MT_POSITION_Y, 0, EGALAX_MAX_Y, 0, 0);
-	input_mt_init_slots(input_dev, MAX_SUPPORT_POINTS, 0);
+	input_mt_init_slots(input_dev, MAX_SUPPORT_POINTS,
+			    INPUT_MT_DIRECT | INPUT_MT_DROP_UNUSED);
 
 	error = devm_request_threaded_irq(&client->dev, client->irq, NULL,
 					  egalax_ts_interrupt,
