@@ -661,7 +661,7 @@ static const struct panel_desc auo_g133han01 = {
 };
 
 static const struct display_timing auo_g185han01_timings = {
-	.pixelclock = { 120000000, 144000000, 175000000 },
+	.pixelclock = { 120000000, 135000000, 175000000 },
 	.hactive = { 1920, 1920, 1920 },
 	.hfront_porch = { 18, 60, 74 },
 	.hback_porch = { 12, 44, 54 },
