@@ -197,8 +197,12 @@ static int camm_blob_encapsulation(struct kernel_caam_blob_op *kop)
 {
 	u32 keyslot = 0;
 	int st;
-	u8 __iomem *blob;
+	u8 *blob, *src, keymod[8];
 	u32 blob_size;
+
+	/* pull keymod from userspace */
+	if (copy_from_user(keymod, kop->op.keymod, 8))
+		return -EFAULT;
 
 	/* The input data must fit in one single slot */
 	if (kop->op.src_len > data->smpriv->slot_size) {
@@ -221,6 +225,19 @@ static int camm_blob_encapsulation(struct kernel_caam_blob_op *kop)
 	if (blob == NULL)
 		return -ENOMEM;
 
+	/* Allocate kernel memory for the input data */
+	src = kzalloc(kop->op.src_len, GFP_KERNEL);
+	if (src == NULL) {
+		st = -EFAULT;
+		goto freemem;
+	}
+
+	/* Copy the input data into kernel memory */
+	if (copy_from_user(src, kop->op.src, kop->op.src_len)) {
+		st = -EFAULT;
+		goto freemem;
+	}
+
 	/* Allocate slot in secure memory; padded to the next AES block size.
 	 * May fail if there are no slots available. */
 	if (sm_keystore_slot_alloc(data->smdev,
@@ -237,7 +254,7 @@ static int camm_blob_encapsulation(struct kernel_caam_blob_op *kop)
 	if (sm_keystore_slot_load(data->smdev,
 	                          DEFAULT_UNIT,
 	                          keyslot,
-	                          kop->op.src,
+	                          src,
 	                          kop->op.src_len)) {
 		pr_warning("caamblob: slot loading failed");
 		st = -EFAULT;
@@ -252,21 +269,20 @@ static int camm_blob_encapsulation(struct kernel_caam_blob_op *kop)
 	                            KEY_COVER_ECB,
 	                            blob,
 	                            kop->op.src_len,
-	                            kop->op.keymod)) {
+	                            keymod)) {
 		pr_warning("caamblob: slot export failed");
 		st = -EFAULT;
 		goto dealloc;
 	}
 
 	/* Copy the blob back to the ioctl() struct */
-	memcpy(kop->op.dst, blob, blob_size);
+	st = copy_to_user(kop->op.dst, blob, blob_size);
 	kop->op.dst_len = blob_size;
-
-	st = 0;
 
 dealloc:
 	sm_keystore_slot_dealloc(data->smdev, DEFAULT_UNIT, keyslot);
 freemem:
+	kfree(src);
 	kfree(blob);
 	return st;
 }
@@ -275,7 +291,7 @@ static int camm_blob_decapsulation(struct kernel_caam_blob_op *kop)
 {
 	u32 keyslot = 0;
 	int st;
-	u8 __iomem *blob;
+	u8 *blob, *dst, keymod[8];
 	u32 data_size;
 
 	/* The input buffer should be an encapsulated key (at least 1 byte plus blob) */
@@ -299,13 +315,27 @@ static int camm_blob_decapsulation(struct kernel_caam_blob_op *kop)
 		return -ENOSPC;
 	}
 
+	/* pull keymod from userspace */
+	if (copy_from_user(keymod, kop->op.keymod, 8))
+		return -EFAULT;
+
 	/* Allocate DMA-able memory for the input blob */
 	blob = kzalloc(kop->op.src_len, GFP_KERNEL | GFP_DMA);
 	if (blob == NULL)
 		return -ENOMEM;
 
+	/* Allocate kernel memory for the output data */
+	dst = kzalloc(data_size, GFP_KERNEL);
+	if (dst == NULL) {
+		st = -EFAULT;
+		goto freemem;
+	}
+
 	/* Copy the input blob into DMA-able memory */
-	memcpy(blob, kop->op.src, kop->op.src_len);
+	if (copy_from_user(blob, kop->op.src, kop->op.src_len)) {
+		st = -EFAULT;
+		goto freemem;
+	}
 
 	/* Allocate slot in secure memory; padded to the next AES block size */
 	if (sm_keystore_slot_alloc(data->smdev,
@@ -325,31 +355,31 @@ static int camm_blob_decapsulation(struct kernel_caam_blob_op *kop)
 	                            KEY_COVER_ECB,
 	                            blob,
 	                            data_size,
-	                            kop->op.keymod)) {
+	                            keymod)) {
 		pr_warning("caamblob: slot import failed");
 		st = -EFAULT;
 		goto dealloc;
 	}
 
-	/* Read the key directly into the output struct */
+	/* Read the key into kernel memory */
 	if (sm_keystore_slot_read(data->smdev,
 	                          DEFAULT_UNIT,
 	                          keyslot,
 	                          data_size,
-	                          kop->op.dst)) {
+	                          dst)) {
 		pr_warning("caamblob: slot reading failed");
 		st = -EFAULT;
 		goto dealloc;
 	}
 
 	/* Set the output size */
+	st = copy_to_user(kop->op.dst, dst, data_size);
 	kop->op.dst_len = data_size;
-
-	st = 0;
 
 dealloc:
 	sm_keystore_slot_dealloc(data->smdev, DEFAULT_UNIT, keyslot);
 freemem:
+	kfree(dst);
 	kfree(blob);
 	return st;
 }
