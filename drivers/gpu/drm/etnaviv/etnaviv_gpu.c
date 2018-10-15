@@ -685,8 +685,8 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 	prefetch = etnaviv_buffer_init(gpu);
 
 	gpu_write(gpu, VIVS_HI_INTR_ENBL, ~0U);
-	etnaviv_gpu_start_fe(gpu, etnaviv_cmdbuf_get_va(&gpu->buffer),
-			     prefetch);
+	etnaviv_gpu_start_fe(gpu, etnaviv_cmdbuf_get_va(&gpu->buffer,
+			     &gpu->cmdbuf_mapping), prefetch);
 }
 
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
@@ -762,7 +762,15 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	if (IS_ERR(gpu->cmdbuf_suballoc)) {
 		dev_err(gpu->dev, "Failed to create cmdbuf suballocator\n");
 		ret = PTR_ERR(gpu->cmdbuf_suballoc);
-		goto fail;
+		goto destroy_iommu;
+	}
+
+	ret = etnaviv_cmdbuf_suballoc_map(gpu->cmdbuf_suballoc, gpu->mmu,
+					  &gpu->cmdbuf_mapping,
+					  gpu->memory_base);
+	if (ret) {
+		dev_err(gpu->dev, "failed to map cmdbuf suballoc\n");
+		goto destroy_suballoc;
 	}
 
 	/* Create buffer: */
@@ -770,11 +778,11 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 				  PAGE_SIZE);
 	if (ret) {
 		dev_err(gpu->dev, "could not create command buffer\n");
-		goto destroy_iommu;
+		goto unmap_suballoc;
 	}
 
 	if (gpu->mmu->version == ETNAVIV_IOMMU_V1 &&
-	    etnaviv_cmdbuf_get_va(&gpu->buffer) > 0x80000000) {
+	    etnaviv_cmdbuf_get_va(&gpu->buffer, &gpu->cmdbuf_mapping) > 0x80000000) {
 		ret = -EINVAL;
 		dev_err(gpu->dev,
 			"command buffer outside valid memory window\n");
@@ -802,6 +810,11 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 free_buffer:
 	etnaviv_cmdbuf_free(&gpu->buffer);
 	gpu->buffer.suballoc = NULL;
+unmap_suballoc:
+	etnaviv_cmdbuf_suballoc_unmap(gpu->mmu, &gpu->cmdbuf_mapping);
+destroy_suballoc:
+	etnaviv_cmdbuf_suballoc_destroy(gpu->cmdbuf_suballoc);
+	gpu->cmdbuf_suballoc = NULL;
 destroy_iommu:
 	etnaviv_iommu_destroy(gpu->mmu);
 	gpu->mmu = NULL;
@@ -1678,6 +1691,9 @@ static void etnaviv_gpu_unbind(struct device *dev, struct device *master,
 
 	if (gpu->buffer.suballoc)
 		etnaviv_cmdbuf_free(&gpu->buffer);
+
+	if (gpu->cmdbuf_mapping.use == 1)
+		etnaviv_cmdbuf_suballoc_unmap(gpu->mmu, &gpu->cmdbuf_mapping);
 
 	if (gpu->cmdbuf_suballoc) {
 		etnaviv_cmdbuf_suballoc_destroy(gpu->cmdbuf_suballoc);

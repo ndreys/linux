@@ -6,9 +6,9 @@
 #include <drm/drm_mm.h>
 
 #include "etnaviv_cmdbuf.h"
+#include "etnaviv_gem.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
-#include "etnaviv_perfmon.h"
 
 #define SUBALLOC_SIZE		SZ_256K
 #define SUBALLOC_GRANULE	SZ_4K
@@ -19,10 +19,6 @@ struct etnaviv_cmdbuf_suballoc {
 	struct etnaviv_gpu *gpu;
 	void *vaddr;
 	dma_addr_t paddr;
-
-	/* GPU mapping */
-	u32 iova;
-	struct drm_mm_node vram_node; /* only used on MMUv2 */
 
 	/* allocation management */
 	struct mutex lock;
@@ -47,29 +43,36 @@ etnaviv_cmdbuf_suballoc_new(struct etnaviv_gpu * gpu)
 
 	suballoc->vaddr = dma_alloc_wc(gpu->dev, SUBALLOC_SIZE,
 				       &suballoc->paddr, GFP_KERNEL);
-	if (!suballoc->vaddr)
+	if (!suballoc->vaddr) {
+		ret = -ENOMEM;
 		goto free_suballoc;
-
-	ret = etnaviv_iommu_get_suballoc_va(gpu, suballoc->paddr,
-					    &suballoc->vram_node, SUBALLOC_SIZE,
-					    &suballoc->iova);
-	if (ret)
-		goto free_dma;
+	}
 
 	return suballoc;
 
-free_dma:
-	dma_free_wc(gpu->dev, SUBALLOC_SIZE, suballoc->vaddr, suballoc->paddr);
 free_suballoc:
 	kfree(suballoc);
 
-	return NULL;
+	return ERR_PTR(ret);
+}
+
+int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,
+				struct etnaviv_iommu *mmu,
+				struct etnaviv_vram_mapping *mapping,
+				u32 memory_base)
+{
+	return etnaviv_iommu_get_suballoc_va(mmu, mapping, memory_base,
+					     suballoc->paddr, SUBALLOC_SIZE);
+}
+
+void etnaviv_cmdbuf_suballoc_unmap(struct etnaviv_iommu *mmu,
+				   struct etnaviv_vram_mapping *mapping)
+{
+	etnaviv_iommu_put_suballoc_va(mmu, mapping);
 }
 
 void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc)
 {
-	etnaviv_iommu_put_suballoc_va(suballoc->gpu, &suballoc->vram_node,
-				      SUBALLOC_SIZE, suballoc->iova);
 	dma_free_wc(suballoc->gpu->dev, SUBALLOC_SIZE, suballoc->vaddr,
 		    suballoc->paddr);
 	kfree(suballoc);
@@ -123,9 +126,10 @@ void etnaviv_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
 	wake_up_all(&suballoc->free_event);
 }
 
-u32 etnaviv_cmdbuf_get_va(struct etnaviv_cmdbuf *buf)
+u32 etnaviv_cmdbuf_get_va(struct etnaviv_cmdbuf *buf,
+			  struct etnaviv_vram_mapping *mapping)
 {
-	return buf->suballoc->iova + buf->suballoc_offset;
+	return mapping->iova + buf->suballoc_offset;
 }
 
 dma_addr_t etnaviv_cmdbuf_get_pa(struct etnaviv_cmdbuf *buf)
