@@ -30,7 +30,7 @@ static void load_gpu(struct drm_device *dev)
 		if (g) {
 			int ret;
 
-			ret = etnaviv_gpu_init(g);
+			ret = etnaviv_gpu_init(priv, g);
 			if (ret)
 				priv->gpu[i] = NULL;
 		}
@@ -519,6 +519,13 @@ static int etnaviv_bind(struct device *dev)
 	INIT_LIST_HEAD(&priv->gem_list);
 	priv->num_gpus = 0;
 
+	priv->cmdbuf_suballoc = etnaviv_cmdbuf_suballoc_new(drm->dev);
+	if (IS_ERR(priv->cmdbuf_suballoc)) {
+		dev_err(drm->dev, "Failed to create cmdbuf suballocator\n");
+		ret = PTR_ERR(priv->cmdbuf_suballoc);
+		goto out_put;
+	}
+
 	dev_set_drvdata(dev, drm);
 
 	ret = component_bind_all(dev, drm);
@@ -551,6 +558,8 @@ static void etnaviv_unbind(struct device *dev)
 	drm_dev_unregister(drm);
 
 	component_unbind_all(dev, drm);
+
+	etnaviv_cmdbuf_suballoc_destroy(priv->cmdbuf_suballoc);
 
 	drm->dev_private = NULL;
 	kfree(priv);

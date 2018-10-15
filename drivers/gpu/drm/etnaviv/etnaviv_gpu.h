@@ -136,7 +136,6 @@ struct etnaviv_gpu {
 	int irq;
 
 	struct etnaviv_iommu *mmu;
-	struct etnaviv_cmdbuf_suballoc *cmdbuf_suballoc;
 
 	/* Power Control: */
 	struct clk *clk_bus;
@@ -161,7 +160,7 @@ static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
 
 int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);
 
-int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
+int etnaviv_gpu_init(struct etnaviv_drm_private *priv, struct etnaviv_gpu *gpu);
 bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu);
 
 #ifdef CONFIG_DEBUG_FS
