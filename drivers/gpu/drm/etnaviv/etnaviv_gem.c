@@ -238,12 +238,12 @@ int etnaviv_gem_mmap_offset(struct drm_gem_object *obj, u64 *offset)
 
 static struct etnaviv_vram_mapping *
 etnaviv_gem_get_vram_mapping(struct etnaviv_gem_object *obj,
-			     struct etnaviv_iommu *mmu)
+			     struct etnaviv_iommu_context *context)
 {
 	struct etnaviv_vram_mapping *mapping;
 
 	list_for_each_entry(mapping, &obj->vram_list, obj_node) {
-		if (mapping->mmu == mmu)
+		if (mapping->context == context)
 			return mapping;
 	}
 
@@ -293,7 +293,7 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		 */
 		if (mapping->use == 0) {
 			mutex_lock(&gpu->mmu->lock);
-			if (mapping->mmu == gpu->mmu)
+			if (mapping->context == gpu->mmu)
 				mapping->use += 1;
 			else
 				mapping = NULL;
@@ -330,7 +330,7 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		list_del(&mapping->obj_node);
 	}
 
-	mapping->mmu = gpu->mmu;
+	mapping->context = gpu->mmu;
 	mapping->use = 1;
 
 	ret = etnaviv_iommu_map_gem(gpu->mmu, etnaviv_obj, gpu->memory_base,
@@ -552,12 +552,12 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 
 	list_for_each_entry_safe(mapping, tmp, &etnaviv_obj->vram_list,
 				 obj_node) {
-		struct etnaviv_iommu *mmu = mapping->mmu;
+		struct etnaviv_iommu_context *context = mapping->context;
 
 		WARN_ON(mapping->use);
 
-		if (mmu)
-			etnaviv_iommu_unmap_gem(mmu, mapping);
+		if (context)
+			etnaviv_iommu_unmap_gem(context, mapping);
 
 		list_del(&mapping->obj_node);
 		kfree(mapping);

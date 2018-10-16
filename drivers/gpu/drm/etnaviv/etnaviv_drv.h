@@ -32,6 +32,7 @@ struct etnaviv_gpu;
 struct etnaviv_mmu;
 struct etnaviv_gem_object;
 struct etnaviv_gem_submit;
+struct etnaviv_iommu_global;
 
 struct etnaviv_file_private {
 	/*
@@ -46,6 +47,7 @@ struct etnaviv_drm_private {
 	struct etnaviv_gpu *gpu[ETNA_MAX_PIPES];
 
 	struct etnaviv_cmdbuf_suballoc *cmdbuf_suballoc;
+	struct etnaviv_iommu_global *mmu_global;
 
 	/* list of GEM objects: */
 	struct mutex gem_lock;
@@ -79,7 +81,7 @@ int etnaviv_gem_new_userptr(struct drm_device *dev, struct drm_file *file,
 	uintptr_t ptr, u32 size, u32 flags, u32 *handle);
 u16 etnaviv_buffer_init(struct etnaviv_gpu *gpu);
 u16 etnaviv_buffer_config_mmuv2(struct etnaviv_gpu *gpu, u32 mtlb_addr, u32 safe_addr);
-u16 etnaviv_buffer_config_pta(struct etnaviv_gpu *gpu);
+u16 etnaviv_buffer_config_pta(struct etnaviv_gpu *gpu, unsigned short id);
 void etnaviv_buffer_end(struct etnaviv_gpu *gpu);
 void etnaviv_sync_point_queue(struct etnaviv_gpu *gpu, unsigned int event);
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
