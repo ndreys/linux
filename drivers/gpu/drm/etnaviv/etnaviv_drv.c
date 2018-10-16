@@ -559,6 +559,7 @@ static void etnaviv_unbind(struct device *dev)
 
 	component_unbind_all(dev, drm);
 
+	etnaviv_iommu_global_fini(priv->mmu_global);
 	etnaviv_cmdbuf_suballoc_destroy(priv->cmdbuf_suballoc);
 
 	drm->dev_private = NULL;

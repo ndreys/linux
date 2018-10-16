@@ -679,7 +679,7 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 	etnaviv_gpu_setup_pulse_eater(gpu);
 
 	/* setup the MMU */
-	etnaviv_iommu_restore(gpu);
+	etnaviv_iommu_restore(gpu, gpu->mmu);
 
 	/* Start command processor */
 	prefetch = etnaviv_buffer_init(gpu);
@@ -691,6 +691,7 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 
 int etnaviv_gpu_init(struct etnaviv_drm_private *priv, struct etnaviv_gpu *gpu)
 {
+	enum etnaviv_iommu_version mmu_version = ETNAVIV_IOMMU_V1;
 	int ret, i;
 
 	ret = pm_runtime_get_sync(gpu->dev);
@@ -751,7 +752,20 @@ int etnaviv_gpu_init(struct etnaviv_drm_private *priv, struct etnaviv_gpu *gpu)
 		goto fail;
 	}
 
-	gpu->mmu = etnaviv_iommu_new(gpu);
+	if (gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)
+		mmu_version = ETNAVIV_IOMMU_V2;
+
+	if (!priv->mmu_global)
+		priv->mmu_global = etnaviv_iommu_global_init(gpu->drm->dev,
+							     mmu_version);
+
+	if (!priv->mmu_global || priv->mmu_global->version != mmu_version) {
+		ret = -ENXIO;
+		dev_err(gpu->dev, "failed to init IOMMU global state\n");
+		goto fail;
+	}
+
+	gpu->mmu = etnaviv_iommu_context_init(priv->mmu_global);
 	if (IS_ERR(gpu->mmu)) {
 		dev_err(gpu->dev, "Failed to instantiate GPU IOMMU\n");
 		ret = PTR_ERR(gpu->mmu);
@@ -774,7 +788,7 @@ int etnaviv_gpu_init(struct etnaviv_drm_private *priv, struct etnaviv_gpu *gpu)
 		goto unmap_suballoc;
 	}
 
-	if (gpu->mmu->version == ETNAVIV_IOMMU_V1 &&
+	if (mmu_version == ETNAVIV_IOMMU_V1 &&
 	    etnaviv_cmdbuf_get_va(&gpu->buffer, &gpu->cmdbuf_mapping) > 0x80000000) {
 		ret = -EINVAL;
 		dev_err(gpu->dev,
@@ -806,7 +820,7 @@ free_buffer:
 unmap_suballoc:
 	etnaviv_cmdbuf_suballoc_unmap(gpu->mmu, &gpu->cmdbuf_mapping);
 destroy_iommu:
-	etnaviv_iommu_destroy(gpu->mmu);
+	etnaviv_iommu_context_put(gpu->mmu);
 	gpu->mmu = NULL;
 fail:
 	pm_runtime_mark_last_busy(gpu->dev);
@@ -1686,7 +1700,7 @@ static void etnaviv_gpu_unbind(struct device *dev, struct device *master,
 		etnaviv_cmdbuf_suballoc_unmap(gpu->mmu, &gpu->cmdbuf_mapping);
 
 	if (gpu->mmu) {
-		etnaviv_iommu_destroy(gpu->mmu);
+		etnaviv_iommu_context_put(gpu->mmu);
 		gpu->mmu = NULL;
 	}
 

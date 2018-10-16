@@ -8,6 +8,7 @@
 
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_gem.h"
+#include "etnaviv_mmu.h"
 #include "etnaviv_drv.h"
 
 struct etnaviv_gem_submit;
@@ -135,7 +136,7 @@ struct etnaviv_gpu {
 	void __iomem *mmio;
 	int irq;
 
-	struct etnaviv_iommu *mmu;
+	struct etnaviv_iommu_context *mmu;
 	unsigned int flush_seq;
 
 	/* Power Control: */
