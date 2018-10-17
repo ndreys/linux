@@ -482,7 +482,7 @@ static u8 rave_sp_reply_code(u8 command)
 		 * older devices all seem to obey the following rule
 		 */
 		return command + 0x20;
-	case 0xE0 ... 0xEF:
+	case 0xE0 ... 0xEE:
 		/*
 		 * Events emitted by all versions of the firmare use
 		 * least significant bit to get an ACK code
