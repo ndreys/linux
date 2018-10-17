@@ -141,15 +141,6 @@
 		regulator-always-on;
 	};
 
-	reg_3p3v_display: regulator-3p3v-display {
-		compatible = "regulator-fixed";
-		vin-supply = <&reg_12p0v>;
-		regulator-name = "3V3_DISPLAY";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-	};
-
 	reg_3p3v_ssd: regulator-3p3v-ssd {
 		compatible = "regulator-fixed";
 		vin-supply = <&reg_12p0v>;
@@ -211,12 +202,20 @@
 
 	panel {
 		power-supply = <&reg_3p3v_display>;
+		compatible = "linux,simple-panel";
 		backlight = <&sp_backlight>;
-		status = "disabled";
+		enable-gpios = <&rave_sp_gpio0 3 GPIO_ACTIVE_HIGH>;
 
 		port {
 			panel_in: endpoint {
+#if 1
+				/*
+				 * This needs to be dynamicaly filled by bootloader
+				 */
+				remote-endpoint = <&bridge_out>;
+#else
 				remote-endpoint = <&lvds0_out>;
+#endif
 			};
 		};
 	};
@@ -399,6 +398,7 @@
 
 		sp_backlight: backlight {
 			compatible = "zii,rave-sp-backlight";
+			power-supply = <&reg_12v_backlight>;
 		};
 
 		hwmon {
@@ -498,6 +498,34 @@
 						  "mood-lde-blue",
 						  "lcd-bklt-ctrl";
 			};
+		};
+
+		reg_3p3v_display: regulator-3p3v-display {
+			compatible = "regulator-fixed";
+			regulator-name = "3V3_DISPLAY";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&rave_sp_gpio0 4 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+		};
+
+		reg_1v2_edp: regulator-1p2v-edp {
+			compatible = "regulator-fixed";
+			regulator-name = "1V2_EDP";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			gpio = <&rave_sp_gpio2 8 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+			vin-supply = <&reg_3p3v_display>;
+		};
+
+		reg_12v_backlight: regulator-12p0v-backlight {
+			compatible = "regulator-fixed";
+			regulator-name = "12V_BACKLIGHT";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			gpio = <&rave_sp_gpio1 15 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
 		};
 
 		leds-front {
@@ -627,8 +655,10 @@
 		pinctrl-0 = <&pinctrl_tc358767>;
 		reg = <0x68>;
 		shutdown-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&rave_sp_gpio2 2 GPIO_ACTIVE_HIGH> ;
 		clock-names = "ref";
 		clocks = <&edp_refclk>;
+		vdcc-supply = <&reg_1v2_edp>;
 		status = "disabled";
 
 		ports {
@@ -640,6 +670,14 @@
 
 				tc358767_in: endpoint {
 					remote-endpoint = <&disp0_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+
+				bridge_out: endpoint {
+					remote-endpoint = <&panel_in>;
 				};
 			};
 		};
