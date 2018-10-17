@@ -596,6 +596,9 @@ static int rave_sp_rdu1_cmd_translate(enum rave_sp_command command)
 	    command <= RAVE_SP_CMD_CONTROL_EVENTS)
 		return command;
 
+	if (command == RAVE_SP_CMD_GET_GPIO_CTRL)
+		return command;
+
 	return -EINVAL;
 }
 
