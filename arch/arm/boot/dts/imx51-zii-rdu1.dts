@@ -643,6 +643,71 @@
 			 */
 			status = "disabled";
 		};
+
+		gpio {
+			compatible = "zii,rave-sp-gpio";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rave_sp_gpio0: gpio-bank@0 {
+				reg = <0>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <16>;
+				gpio-line-names = "dip-sw0",
+						  "dip-sw1",
+						  "dip-sw2",
+						  "dip-sw3",
+						  "dip-sw4",
+						  "dip-sw5",
+						  "dip-sw6",
+						  "dip-sw7",
+						  "3v3-pg",
+						  "5v-pg",
+						  "12v-pg",
+						  "osense-pc",
+						  "osense-lc",
+						  "osense-sign",
+						  "dtmf-div",
+						  "eth-link";
+			};
+
+			rave_sp_gpio1: gpio-bank@1 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				reg = <1>;
+				ngpios = <16>;
+				gpio-line-names = "pwrsw-state-b",
+						  "dds-p-p",
+						  "b-wifi-link",
+						  "stowage-detect",
+						  "b-7180-pdwn",
+		  				  "lvds-vdd-en",
+						  "b-wifi-disable",
+						  "host-interrupt-b",
+						  "uusb-en-b",
+						  "rju-en",
+						  "dc-en-3v3",
+						  "dv-en-5v",
+						  "dc-en-12v",
+						  "lvds-bklt-ctrl",
+						  "lvds-bklt-en",
+						  "pwr-led1-b";
+			};
+
+			rave_sp_gpio2: gpio-bank@2 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				reg = <2>;
+				ngpios = <6>;
+				gpio-line-names = "pwr-led2-b",
+						  "bt-src-0",
+						  "spi-boot",
+						  "connector-led-b",
+						  "hp-amp-shutdown-b",
+						  "mx51-reset-b";
+			};
+		};
 	};
 };
 
