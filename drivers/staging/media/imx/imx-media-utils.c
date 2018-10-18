@@ -94,6 +94,26 @@ static const struct imx_media_pixfmt rgb_formats[] = {
 		.bpp    = 32,
 		.ipufmt = true,
 	},
+	/***
+	 * non-mbus RGB formats start here. NOTE! when adding non-mbus
+	 * formats, NUM_NON_MBUS_RGB_FORMATS must be updated below.
+	 ***/
+	{
+		.fourcc	= V4L2_PIX_FMT_BGR24,
+		.cs     = IPUV3_COLORSPACE_RGB,
+		.bpp    = 24,
+	}, {
+		.fourcc	= V4L2_PIX_FMT_BGR32,
+		.cs     = IPUV3_COLORSPACE_RGB,
+		.bpp    = 32,
+	},
+};
+
+#define NUM_NON_MBUS_RGB_FORMATS 2
+#define NUM_RGB_FORMATS ARRAY_SIZE(rgb_formats)
+#define NUM_MBUS_RGB_FORMATS (NUM_RGB_FORMATS - NUM_NON_MBUS_RGB_FORMATS)
+
+static const struct imx_media_pixfmt bayer_formats[] = {
 	/*** raw bayer and grayscale formats start here ***/
 	{
 		.fourcc = V4L2_PIX_FMT_SBGGR8,
@@ -179,24 +199,9 @@ static const struct imx_media_pixfmt rgb_formats[] = {
 		.bpp    = 16,
 		.bayer  = true,
 	},
-	/***
-	 * non-mbus RGB formats start here. NOTE! when adding non-mbus
-	 * formats, NUM_NON_MBUS_RGB_FORMATS must be updated below.
-	 ***/
-	{
-		.fourcc	= V4L2_PIX_FMT_BGR24,
-		.cs     = IPUV3_COLORSPACE_RGB,
-		.bpp    = 24,
-	}, {
-		.fourcc	= V4L2_PIX_FMT_BGR32,
-		.cs     = IPUV3_COLORSPACE_RGB,
-		.bpp    = 32,
-	},
 };
 
-#define NUM_NON_MBUS_RGB_FORMATS 2
-#define NUM_RGB_FORMATS ARRAY_SIZE(rgb_formats)
-#define NUM_MBUS_RGB_FORMATS (NUM_RGB_FORMATS - NUM_NON_MBUS_RGB_FORMATS)
+#define NUM_BAYER_FORMATS ARRAY_SIZE(bayer_formats)
 
 static const struct imx_media_pixfmt ipu_yuv_formats[] = {
 	{
@@ -300,48 +305,39 @@ static int enum_format(u32 *fourcc, u32 *code, u32 index,
 		       bool allow_bayer)
 {
 	const struct imx_media_pixfmt *fmt;
-	u32 mbus_yuv_sz = NUM_MBUS_YUV_FORMATS;
-	u32 mbus_rgb_sz = NUM_MBUS_RGB_FORMATS;
-	u32 yuv_sz = NUM_YUV_FORMATS;
-	u32 rgb_sz = NUM_RGB_FORMATS;
+	u32 yuv_sz = allow_non_mbus ? NUM_YUV_FORMATS : NUM_MBUS_YUV_FORMATS;
+	u32 rgb_sz = allow_non_mbus ? NUM_RGB_FORMATS : NUM_MBUS_RGB_FORMATS;
+	u32 bayer_sz = NUM_BAYER_FORMATS;
 
 	switch (cs_sel) {
 	case CS_SEL_YUV:
-		if (index >= yuv_sz ||
-		    (!allow_non_mbus && index >= mbus_yuv_sz))
+		if (index >= yuv_sz)
 			return -EINVAL;
 		fmt = &yuv_formats[index];
 		break;
 	case CS_SEL_RGB:
-		if (index >= rgb_sz ||
-		    (!allow_non_mbus && index >= mbus_rgb_sz))
-			return -EINVAL;
-		fmt = &rgb_formats[index];
-		if (!allow_bayer && fmt->bayer)
-			return -EINVAL;
+		if (index >= rgb_sz) {
+			index -= rgb_sz;
+			if (!allow_bayer || index >= bayer_sz)
+				return -EINVAL;
+			fmt = &bayer_formats[index];
+		} else {
+			fmt = &rgb_formats[index];
+		}
 		break;
 	case CS_SEL_ANY:
-		if (!allow_non_mbus) {
-			if (index >= mbus_yuv_sz) {
-				index -= mbus_yuv_sz;
-				if (index >= mbus_rgb_sz)
+		if (index >= yuv_sz) {
+			index -= yuv_sz;
+			if (index >= rgb_sz) {
+				index -= rgb_sz;
+				if (!allow_bayer || index >= bayer_sz)
 					return -EINVAL;
-				fmt = &rgb_formats[index];
-				if (!allow_bayer && fmt->bayer)
-					return -EINVAL;
+				fmt = &bayer_formats[index];
 			} else {
-				fmt = &yuv_formats[index];
+				fmt = &rgb_formats[index];
 			}
 		} else {
-			if (index >= yuv_sz + rgb_sz)
-				return -EINVAL;
-			if (index >= yuv_sz) {
-				fmt = &rgb_formats[index - yuv_sz];
-				if (!allow_bayer && fmt->bayer)
-					return -EINVAL;
-			} else {
-				fmt = &yuv_formats[index];
-			}
+			fmt = &yuv_formats[index];
 		}
 		break;
 	default:
