@@ -15,12 +15,16 @@
 
 #define	RAVE_SP_BACKLIGHT_LCD_EN	BIT(7)
 
+struct rave_sp_backlight {
+	struct rave_sp *sp;
+};
+
 static int rave_sp_backlight_update_status(struct backlight_device *bd)
 {
 	const struct backlight_properties *p = &bd->props;
 	const u8 intensity =
 		(p->power == FB_BLANK_UNBLANK) ? p->brightness : 0;
-	struct rave_sp *sp = dev_get_drvdata(&bd->dev);
+	struct rave_sp_backlight *spb = dev_get_drvdata(&bd->dev);
 	u8 cmd[] = {
 		[0] = RAVE_SP_CMD_SET_BACKLIGHT,
 		[1] = 0,
@@ -29,7 +33,7 @@ static int rave_sp_backlight_update_status(struct backlight_device *bd)
 		[4] = 0,
 	};
 
-	return rave_sp_exec(sp, cmd, sizeof(cmd), NULL, 0);
+	return rave_sp_exec(spb->sp, cmd, sizeof(cmd), NULL, 0);
 }
 
 static const struct backlight_ops rave_sp_backlight_ops = {
@@ -47,9 +51,15 @@ static int rave_sp_backlight_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct backlight_device *bd;
+	struct rave_sp_backlight *spb;
 
-	bd = devm_backlight_device_register(dev, pdev->name, dev,
-					    dev_get_drvdata(dev->parent),
+	spb = devm_kzalloc(dev, sizeof(*spb), GFP_KERNEL);
+	if (!spb)
+		return -ENOMEM;
+
+	spb->sp = dev_get_drvdata(dev->parent);
+
+	bd = devm_backlight_device_register(dev, pdev->name, dev, spb,
 					    &rave_sp_backlight_ops,
 					    &rave_sp_backlight_props);
 	if (IS_ERR(bd))
