@@ -106,10 +106,14 @@ static const struct imx_media_pixfmt rgb_formats[] = {
 		.fourcc	= V4L2_PIX_FMT_BGR32,
 		.cs     = IPUV3_COLORSPACE_RGB,
 		.bpp    = 32,
+	}, {
+		.fourcc	= V4L2_PIX_FMT_RGBX32,
+		.cs     = IPUV3_COLORSPACE_RGB,
+		.bpp    = 32,
 	},
 };
 
-#define NUM_NON_MBUS_RGB_FORMATS 2
+#define NUM_NON_MBUS_RGB_FORMATS 3
 #define NUM_RGB_FORMATS ARRAY_SIZE(rgb_formats)
 #define NUM_MBUS_RGB_FORMATS (NUM_RGB_FORMATS - NUM_NON_MBUS_RGB_FORMATS)
 
