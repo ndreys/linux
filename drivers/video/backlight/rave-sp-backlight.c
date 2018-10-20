@@ -12,11 +12,13 @@
 #include <linux/module.h>
 #include <linux/mfd/rave-sp.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 
 #define	RAVE_SP_BACKLIGHT_LCD_EN	BIT(7)
 
 struct rave_sp_backlight {
 	struct rave_sp *sp;
+	struct regulator *power_supply;
 };
 
 static int rave_sp_backlight_update_status(struct backlight_device *bd)
@@ -32,6 +34,19 @@ static int rave_sp_backlight_update_status(struct backlight_device *bd)
 		[3] = 0,
 		[4] = 0,
 	};
+
+	if (spb->power_supply) {
+		int err;
+
+		if (intensity)
+			err = regulator_enable(spb->power_supply);
+		else
+			err = regulator_disable(spb->power_supply);
+
+		if (err < 0)
+			dev_err(&bd->dev, "failed to %s power supply\n",
+				intensity ? "enable" : "disable");
+	}
 
 	return rave_sp_exec(spb->sp, cmd, sizeof(cmd), NULL, 0);
 }
@@ -56,6 +71,10 @@ static int rave_sp_backlight_probe(struct platform_device *pdev)
 	spb = devm_kzalloc(dev, sizeof(*spb), GFP_KERNEL);
 	if (!spb)
 		return -ENOMEM;
+
+	spb->power_supply = devm_regulator_get(&pdev->dev, "power");
+	if (IS_ERR(spb->power_supply))
+		return PTR_ERR(spb->power_supply);
 
 	spb->sp = dev_get_drvdata(dev->parent);
 
