@@ -31,6 +31,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 
 #include <drm/drm_atomic_helper.h>
@@ -211,6 +212,8 @@ struct tc_data {
 	struct gpio_desc	*sd_gpio;
 	struct gpio_desc	*reset_gpio;
 	struct clk		*refclk;
+
+	struct regulator	*vdcc;
 };
 
 static inline struct tc_data *aux_to_tc(struct drm_dp_aux *a)
@@ -1293,6 +1296,27 @@ static int tc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return ret;
 	}
 
+	tc->vdcc = devm_regulator_get_optional(dev, "vdcc");
+	ret = PTR_ERR_OR_ZERO(tc->vdcc);
+	if (ret) {
+		if (ret == -EPROBE_DEFER)
+			return ret;
+
+		tc->vdcc = NULL;
+		dev_dbg(dev, "no vdcc regulator found: %d\n", ret);
+	} else {
+		ret = regulator_enable(tc->vdcc);
+		if (ret)
+			return ret;
+
+		/*
+		 * FIXME: Change this dealy to conform to the
+		 * datasheet. 500ms is probably way longer than
+		 * necessary.
+		 */
+		msleep(500);
+	}
+
 	tc->regmap = devm_regmap_init_i2c(client, &tc_regmap_config);
 	if (IS_ERR(tc->regmap)) {
 		ret = PTR_ERR(tc->regmap);
@@ -1351,6 +1375,9 @@ static int tc_remove(struct i2c_client *client)
 	drm_dp_aux_unregister(&tc->aux);
 
 	tc_pxl_pll_dis(tc);
+
+	if (tc->vdcc)
+		regulator_disable(tc->vdcc);
 
 	return 0;
 }
