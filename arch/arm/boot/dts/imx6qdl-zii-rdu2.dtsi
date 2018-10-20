@@ -427,9 +427,77 @@
 
 		gpio {
 			compatible = "zii,rave-sp-gpio";
-			status = "okay";
-			gpio-controller;
-			#gpio-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rave_sp_gpio0: gpio-bank@0 {
+				reg = <0>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				ngpios = <16>;
+				gpio-line-names = "stowage-detect",
+						  "rmb-led-red",
+						  "rmb-led-green",
+						  "lcd-bklt-en",
+						  "3v3-display-en",
+						  "28v-alert-n",
+						  "rmb-led-blue",
+						  "3v3-display-pgood",
+						  "por-b",
+						  "sw-test1",
+						  "sw-test2",
+						  "debug-232-en",
+						  "jtag-oe-n",
+						  "12v-main-pgood",
+						  "rju-12v-oc-n",
+						  "3v3-ssd-pgood";
+			};
+
+			rave_sp_gpio1: gpio-bank@1 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				reg = <1>;
+				ngpios = <16>;
+				gpio-line-names = "rju-12v-pgood",
+		  				  "gen-3v3-pgood",
+						  "tmp-sns-2-flt-n",
+						  "ext-reset-in-n",
+						  "rju-12v-en",
+						  "tp83",
+						  "tp63",
+						  "tp62",
+						  "hw-reset-switch-n",
+						  "connector-led-n",
+						  "pwr-led1-n",
+						  "pwr-led2-n",
+						  "28v-shutdown-n",
+						  "dc-en-pmic-3v3",
+						  "dc-en-3v3-ssd",
+						  "12v-bcklight-en";
+			};
+
+			rave_sp_gpio2: gpio-bank@2 {
+				#gpio-cells = <2>;
+				gpio-controller;
+				reg = <2>;
+				ngpios = <16>;
+				gpio-line-names = "dc-en-5v",
+						  "pmic-pwron",
+						  "pic-rst-edp-n",
+						  "mx6-to-pic-int-n",
+						  "test-mode-pic-n",
+						  "reading-light-dim",
+						  "pic-ssd-dev-slp",
+						  "pic-power-loss-int-n",
+						  "edp-1v2-en",
+						  "12v-backlight-pgood",
+						  "12v-backlight-oc-n",
+						  "reading-light-en",
+						  "mood-led-green",
+						  "mood-lde-red",
+						  "mood-lde-blue",
+						  "lcd-bklt-ctrl";
+			};
 		};
 
 		leds-front {
