@@ -21,14 +21,16 @@
 #include <linux/reset-controller.h>
 #include <linux/regmap.h>
 #include <dt-bindings/reset/imx7-reset.h>
+#include <dt-bindings/reset/imx8m-reset.h>
 
 struct imx7_src {
 	struct reset_controller_dev rcdev;
 	struct regmap *regmap;
 };
 
-enum imx7_src_registers {
+enum imx_src_registers {
 	SRC_A7RCR0		= 0x0004,
+	SRC_A53RCR0		= 0x0004,
 	SRC_M4RCR		= 0x000c,
 	SRC_ERCR		= 0x0014,
 	SRC_HSICPHY_RCR		= 0x001c,
@@ -36,7 +38,9 @@ enum imx7_src_registers {
 	SRC_USBOPHY2_RCR	= 0x0024,
 	SRC_MIPIPHY_RCR		= 0x0028,
 	SRC_PCIEPHY_RCR		= 0x002c,
+	SRC_PCIE2PHY_RCR	= 0x0048,
 	SRC_DDRC_RCR		= 0x1000,
+
 };
 
 struct imx7_src_signal {
@@ -67,10 +71,66 @@ static const struct imx7_src_signal imx7_src_signals[IMX7_RESET_NUM] = {
 	[IMX7_RESET_PCIEPHY]		= { SRC_PCIEPHY_RCR, BIT(2) | BIT(1) },
 	[IMX7_RESET_PCIEPHY_PERST]	= { SRC_PCIEPHY_RCR, BIT(3) },
 	[IMX7_RESET_PCIE_CTRL_APPS_EN]	= { SRC_PCIEPHY_RCR, BIT(6) },
+	[IMX7_RESET_PCIE_CTRL_APPS_CLK_REQ] = { SRC_PCIEPHY_RCR, BIT(4) },
 	[IMX7_RESET_PCIE_CTRL_APPS_TURNOFF] = { SRC_PCIEPHY_RCR, BIT(11) },
 	[IMX7_RESET_DDRC_PRST]		= { SRC_DDRC_RCR, BIT(0) },
 	[IMX7_RESET_DDRC_CORE_RST]	= { SRC_DDRC_RCR, BIT(1) },
+
+	[IMX8M_RESET_A53_CORE_POR_RESET2] = { SRC_A53RCR0, BIT(2) },
+	[IMX8M_RESET_A53_CORE_POR_RESET3] = { SRC_A53RCR0, BIT(3) },
+	[IMX8M_RESET_A53_CORE_RESET2]     = { SRC_A53RCR0, BIT(6) },
+	[IMX8M_RESET_A53_CORE_RESET3]     = { SRC_A53RCR0, BIT(7) },
+	[IMX8M_RESET_A53_ETM_RESET2]      = { SRC_A53RCR0, BIT(14) },
+	[IMX8M_RESET_A53_ETM_RESET3]      = { SRC_A53RCR0, BIT(15) },
+	[IMX8M_RESET_PCIE2PHY]		= { SRC_PCIEPHY_RCR, BIT(2) | BIT(1) },
+	[IMX8M_RESET_PCIE2PHY_PERST]      = { SRC_PCIE2PHY_RCR, BIT(3) },
+	[IMX8M_RESET_PCIE2_CTRL_APPS_EN]  = { SRC_PCIE2PHY_RCR, BIT(6) },
+	[IMX8M_RESET_PCIE2_CTRL_APPS_CLK_REQ] = { SRC_PCIE2PHY_RCR, BIT(4) },
+	[IMX8M_RESET_PCIE2_CTRL_APPS_TURNOFF] = { SRC_PCIE2PHY_RCR, BIT(11) },
 };
+
+static inline void imx7_src_check_definitions(void)
+{
+	BUILD_BUG_ON(IMX8M_RESET_A53_CORE_POR_RESET0 !=
+		     IMX7_RESET_A7_CORE_POR_RESET0);
+	BUILD_BUG_ON(IMX8M_RESET_A53_CORE_POR_RESET1 !=
+		     IMX7_RESET_A7_CORE_POR_RESET1);
+	BUILD_BUG_ON(IMX8M_RESET_A53_CORE_RESET0 !=
+		     IMX7_RESET_A7_CORE_RESET0);
+	BUILD_BUG_ON(IMX8M_RESET_A53_CORE_RESET1 !=
+		     IMX7_RESET_A7_CORE_RESET1);
+	BUILD_BUG_ON(IMX8M_RESET_A53_DBG_RESET0 !=
+		     IMX7_RESET_A7_DBG_RESET0);
+	BUILD_BUG_ON(IMX8M_RESET_A53_DBG_RESET1 !=
+		     IMX7_RESET_A7_DBG_RESET1);
+	BUILD_BUG_ON(IMX8M_RESET_A53_ETM_RESET0 !=
+		     IMX7_RESET_A7_ETM_RESET0);
+	BUILD_BUG_ON(IMX8M_RESET_A53_ETM_RESET1 !=
+		     IMX7_RESET_A7_ETM_RESET1);
+	BUILD_BUG_ON(IMX8M_RESET_A53_SOC_DBG_RESET !=
+		     IMX7_RESET_A7_SOC_DBG_RESET);
+	BUILD_BUG_ON(IMX8M_RESET_A53_L2RESET != IMX7_RESET_A7_L2RESET);
+	BUILD_BUG_ON(IMX8M_RESET_SW_M4C_RST != IMX7_RESET_SW_M4C_RST);
+	BUILD_BUG_ON(IMX8M_RESET_SW_M4P_RST != IMX7_RESET_SW_M4P_RST);
+	BUILD_BUG_ON(IMX8M_RESET_EIM_RST != IMX7_RESET_EIM_RST);
+	BUILD_BUG_ON(IMX8M_RESET_HSICPHY_PORT_RST !=
+		     IMX7_RESET_HSICPHY_PORT_RST);
+	BUILD_BUG_ON(IMX8M_RESET_USBPHY1_POR != IMX7_RESET_USBPHY1_POR);
+	BUILD_BUG_ON(IMX8M_RESET_USBPHY1_PORT_RST !=
+		     IMX7_RESET_USBPHY1_PORT_RST);
+	BUILD_BUG_ON(IMX8M_RESET_USBPHY2_POR != IMX7_RESET_USBPHY2_POR);
+	BUILD_BUG_ON(IMX8M_RESET_USBPHY2_PORT_RST !=
+		     IMX7_RESET_USBPHY2_PORT_RST);
+	BUILD_BUG_ON(IMX8M_RESET_MIPI_PHY_MRST != IMX7_RESET_MIPI_PHY_MRST);
+	BUILD_BUG_ON(IMX8M_RESET_MIPI_PHY_SRST != IMX7_RESET_MIPI_PHY_SRST);
+	BUILD_BUG_ON(IMX8M_RESET_PCIEPHY != IMX7_RESET_PCIEPHY);
+	BUILD_BUG_ON(IMX8M_RESET_PCIE_CTRL_APPS_EN !=
+		     IMX7_RESET_PCIE_CTRL_APPS_EN);
+	BUILD_BUG_ON(IMX8M_RESET_PCIE_CTRL_APPS_TURNOFF !=
+		     IMX7_RESET_PCIE_CTRL_APPS_TURNOFF);
+	BUILD_BUG_ON(IMX8M_RESET_DDRC_PRST != IMX7_RESET_DDRC_PRST);
+	BUILD_BUG_ON(IMX8M_RESET_DDRC_CORE_RST != IMX7_RESET_DDRC_CORE_RST);
+}
 
 static struct imx7_src *to_imx7_src(struct reset_controller_dev *rcdev)
 {
@@ -85,6 +145,7 @@ static int imx7_reset_set(struct reset_controller_dev *rcdev,
 	unsigned int value = assert ? signal->bit : 0;
 
 	switch (id) {
+	case IMX8M_RESET_PCIE2PHY: /* FALLTHROUGH */
 	case IMX7_RESET_PCIEPHY:
 		/*
 		 * wait for more than 10us to release phy g_rst and
@@ -94,6 +155,7 @@ static int imx7_reset_set(struct reset_controller_dev *rcdev,
 			udelay(10);
 		break;
 
+	case IMX8M_RESET_PCIE2_CTRL_APPS_EN: /* FALLTHROUGH */
 	case IMX7_RESET_PCIE_CTRL_APPS_EN:
 		value = (assert) ? 0 : signal->bit;
 		break;
@@ -125,6 +187,8 @@ static int imx7_reset_probe(struct platform_device *pdev)
 	struct imx7_src *imx7src;
 	struct device *dev = &pdev->dev;
 	struct regmap_config config = { .name = "src" };
+
+	imx7_src_check_definitions();
 
 	imx7src = devm_kzalloc(dev, sizeof(*imx7src), GFP_KERNEL);
 	if (!imx7src)
