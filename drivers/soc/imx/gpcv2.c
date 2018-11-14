@@ -15,9 +15,28 @@
 #include <linux/regulator/consumer.h>
 #include <dt-bindings/power/imx7-power.h>
 
+#define IMX8M_POWER_DOMAIN_MIPI_DSI_PHY		0
+#define IMX8M_POWER_DOMAIN_PCIE1_PHY		1
+#define IMX8M_POWER_DOMAIN_USB_OTG1		2
+#define IMX8M_POWER_DOMAIN_USB_OTG2		3
+#define IMX8M_POWER_DOMAIN_GPU			4
+#define IMX8M_POWER_DOMAIN_VPU			5
+#define IMX8M_POWER_DOMAIN_HDMI			6
+#define IMX8M_POWER_DOMAIN_DISP			7
+#define IMX8M_POWER_DOMAIN_MIPI_CSI1_PHY	8
+#define IMX8M_POWER_DOMAIN_MIPI_CSI2_PHY	9
+#define IMX8M_POWER_DOMAIN_PCIE2_PHY		10
+
 #define GPC_LPCR_A_CORE_BSC			0x000
 
 #define GPC_PGC_CPU_MAPPING		0x0ec
+#define PCIE2_A_CORE_DOMAIN		BIT(15)
+#define MIPI_CSI2_A_CORE_DOMAIN		BIT(14)
+#define MIPI_CSI1_A_CORE_DOMAIN		BIT(13)
+#define DISP_A_CORE_DOMAIN		BIT(12)
+#define HDMI_A_CORE_DOMAIN		BIT(11)
+#define VPU_A_CORE_DOMAIN		BIT(10)
+#define GPU_A_CORE_DOMAIN		BIT(9)
 #define USB_HSIC_PHY_A_CORE_DOMAIN		BIT(6)
 #define USB_OTG2_PHY_A_CORE_DOMAIN		BIT(5)
 #define USB_OTG1_PHY_A_CORE_DOMAIN		BIT(4)
@@ -26,6 +45,13 @@
 
 #define GPC_PU_PGC_SW_PUP_REQ		0x0f8
 #define GPC_PU_PGC_SW_PDN_REQ		0x104
+#define PCIE2_SW_Pxx_REQ		BIT(13)
+#define MIPI_CSI2_SW_Pxx_REQ		BIT(12)
+#define MIPI_CSI1_SW_Pxx_REQ		BIT(11)
+#define DISP_SW_Pxx_REQ			BIT(10)
+#define HDMI_SW_Pxx_REQ			BIT(9)
+#define VPU_SW_Pxx_REQ			BIT(8)
+#define GPU_SW_Pxx_REQ			BIT(7)
 #define USB_HSIC_PHY_SW_Pxx_REQ		BIT(4)
 #define USB_OTG2_PHY_SW_Pxx_REQ		BIT(3)
 #define USB_OTG1_PHY_SW_Pxx_REQ		BIT(2)
@@ -42,7 +68,16 @@
  */
 #define PGC_MIPI			16
 #define PGC_PCIE			17
+#define PGC_USB_OTG1			18
+#define PGC_USB_OTG2			19
 #define PGC_USB_HSIC			20
+#define PGC_GPU				23
+#define PGC_VPU				24
+#define PGC_HDMI			25
+#define PGC_DISP			26
+#define PGC_MIPI_CSI1			27
+#define PGC_MIPI_CSI2			28
+#define PGC_PCIE2			29
 #define GPC_PGC_CTRL(n)			(0x800 + (n) * 0x40)
 #define GPC_PGC_SR(n)			(GPC_PGC_CTRL(n) + 0xc)
 
@@ -214,8 +249,167 @@ static const struct imx_pgc_domain_data imx7_pgc_domain_data = {
 	.domains = imx7_pgc_domains,
 	.domains_num = ARRAY_SIZE(imx7_pgc_domains),
 	.access_table = {
-		.yes_ranges	= yes_ranges,
-		.n_yes_ranges	= ARRAY_SIZE(yes_ranges),
+		.yes_ranges	= imx7_yes_ranges,
+		.n_yes_ranges	= ARRAY_SIZE(imx7_yes_ranges),
+	},
+};
+
+static const struct imx_pgc_domain imx8m_pgc_domains[] = {
+	[IMX8M_POWER_DOMAIN_MIPI_DSI_PHY] = {
+		.genpd = {
+			.name      = "mipi-phy",
+		},
+		.bits  = {
+			.pxx = MIPI_PHY_SW_Pxx_REQ,
+			.map = MIPI_PHY_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_MIPI,
+	},
+
+	[IMX8M_POWER_DOMAIN_PCIE1_PHY] = {
+		.genpd = {
+			.name      = "pcie1-phy",
+		},
+		.bits  = {
+			.pxx = PCIE_PHY_SW_Pxx_REQ,
+			.map = PCIE_PHY_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_PCIE,
+	},
+
+	[IMX8M_POWER_DOMAIN_USB_OTG1] = {
+		.genpd = {
+			.name      = "usb-otg1",
+		},
+		.bits  = {
+			.pxx = USB_OTG1_PHY_SW_Pxx_REQ,
+			.map = USB_OTG1_PHY_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_USB_OTG1,
+	},
+
+	[IMX8M_POWER_DOMAIN_USB_OTG2] = {
+		.genpd = {
+			.name      = "usb-otg2",
+		},
+		.bits  = {
+			.pxx = USB_OTG2_PHY_SW_Pxx_REQ,
+			.map = USB_OTG2_PHY_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_USB_OTG2,
+	},
+
+	[IMX8M_POWER_DOMAIN_GPU] = {
+		.genpd = {
+			.name      = "gpu",
+		},
+		.bits  = {
+			.pxx = GPU_SW_Pxx_REQ,
+			.map = GPU_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_GPU,
+	},
+
+	[IMX8M_POWER_DOMAIN_VPU] = {
+		.genpd = {
+			.name      = "vpu",
+		},
+		.bits  = {
+			.pxx = VPU_SW_Pxx_REQ,
+			.map = VPU_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_VPU,
+	},
+
+	[IMX8M_POWER_DOMAIN_HDMI] = {
+		.genpd = {
+			.name      = "hdmi",
+		},
+		.bits  = {
+			.pxx = HDMI_SW_Pxx_REQ,
+			.map = HDMI_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_HDMI,
+	},
+
+	[IMX8M_POWER_DOMAIN_DISP] = {
+		.genpd = {
+			.name      = "disp",
+		},
+		.bits  = {
+			.pxx = DISP_SW_Pxx_REQ,
+			.map = DISP_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_DISP,
+	},
+
+	[IMX8M_POWER_DOMAIN_MIPI_CSI1_PHY] = {
+		.genpd = {
+			.name      = "mipi-csi1-phy",
+		},
+		.bits  = {
+			.pxx = MIPI_CSI1_SW_Pxx_REQ,
+			.map = MIPI_CSI1_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_MIPI_CSI1,
+	},
+
+	[IMX8M_POWER_DOMAIN_MIPI_CSI2_PHY] = {
+		.genpd = {
+			.name      = "mipi-csi2-phy",
+		},
+		.bits  = {
+			.pxx = MIPI_CSI2_SW_Pxx_REQ,
+			.map = MIPI_CSI2_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_MIPI_CSI2,
+	},
+
+	[IMX8M_POWER_DOMAIN_PCIE2_PHY] = {
+		.genpd = {
+			.name      = "pcie2-phy",
+		},
+		.bits  = {
+			.pxx = PCIE2_SW_Pxx_REQ,
+			.map = PCIE2_A_CORE_DOMAIN,
+		},
+		.pgc	   = PGC_PCIE2,
+	},
+};
+
+static const struct regmap_range imx8m_pgc_yes_ranges[] = {
+	regmap_reg_range(GPC_LPCR_A_CORE_BSC,
+			 GPC_M4_PU_PDN_FLG),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_MIPI),
+			 GPC_PGC_SR(PGC_MIPI)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_PCIE),
+			 GPC_PGC_SR(PGC_PCIE)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_USB_OTG1),
+			 GPC_PGC_SR(PGC_USB_OTG1)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_USB_OTG2),
+			 GPC_PGC_SR(PGC_USB_OTG2)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_GPU),
+			 GPC_PGC_SR(PGC_GPU)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_VPU),
+			 GPC_PGC_SR(PGC_VPU)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_HDMI),
+			 GPC_PGC_SR(PGC_HDMI)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_DISP),
+			 GPC_PGC_SR(PGC_DISP)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_MIPI_CSI1),
+			 GPC_PGC_SR(PGC_MIPI_CSI1)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_MIPI_CSI2),
+			 GPC_PGC_SR(PGC_MIPI_CSI2)),
+	regmap_reg_range(GPC_PGC_CTRL(PGC_PCIE2),
+			 GPC_PGC_SR(PGC_PCIE2)),
+};
+
+static const struct imx_pgc_domain_data imx8m_pgc_domain_data = {
+	.domains = imx8m_pgc_domains,
+	.domains_num = ARRAY_SIZE(imx8m_pgc_domains),
+	.access_table = {
+		.yes_ranges	= imx8m_pgc_yes_ranges,
+		.n_yes_ranges	= ARRAY_SIZE(imx8m_pgc_yes_ranges),
 	},
 };
 
@@ -373,6 +567,7 @@ static int imx_gpcv2_probe(struct platform_device *pdev)
 
 static const struct of_device_id imx_gpcv2_dt_ids[] = {
 	{ .compatible = "fsl,imx7d-gpc", .data = &imx7_pgc_domain_data, },
+	{ .compatible = "fsl,imx8m-gpc", .data = &imx8m_pgc_domain_data, },
 	{ }
 };
 

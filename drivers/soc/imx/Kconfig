@@ -2,9 +2,9 @@ menu "i.MX SoC drivers"
 
 config IMX7_PM_DOMAINS
 	bool "i.MX7 PM domains"
-	depends on SOC_IMX7D || (COMPILE_TEST && OF)
+	depends on SOC_IMX8MQ || SOC_IMX7D || (COMPILE_TEST && OF)
 	depends on PM
 	select PM_GENERIC_DOMAINS
-	default y if SOC_IMX7D
+	default y if SOC_IMX7D || SOC_IMX8MQ
 
 endmenu
