@@ -237,6 +237,17 @@
 				#reset-cells = <1>;
 			};
 
+			gpc@303a0000 {
+				compatible = "fsl,imx8m-gpc";
+				reg = <0x303a0000 0x10000>;
+				#power-domain-cells = <1>;
+
+				pgc {
+					#address-cells = <1>;
+					#size-cells = <0>;
+				};
+			};
+
 			wdog1: watchdog@30280000 {
 				compatible = "fsl,imx8mq-wdt", "fsl,imx21-wdt";
 				reg = <0x30280000 0x10000>;
