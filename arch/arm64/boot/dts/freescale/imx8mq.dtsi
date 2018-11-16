@@ -245,6 +245,36 @@
 				pgc {
 					#address-cells = <1>;
 					#size-cells = <0>;
+
+
+					/*
+					 * As per comment in ATF source code:
+					 *
+					 * PCIE1 and PCIE2 share the
+					 * same reset signal, if we power
+					 * down PCIE2, PCIE1 will be held
+					 * in reset too.
+					 *
+					 * So instead of creating two
+                                         * separate power domains for
+                                         * PCIE1 and PCIE2. We create
+                                         * a link between 1 and 10 and
+                                         * use what was supposed to be
+                                         * domain 1 as a shared PCIE
+                                         * power domain powering both
+                                         * PCIE1 and PCIE2 at the same
+                                         * time
+					 */
+					pgc_pcie_phy: gpc_power_domain@1 {
+						#power-domain-cells = <0>;
+						reg = <1>;
+						power-domains = <&pgc_pcie2_phy>;
+					};
+
+					pgc_pcie2_phy: gpc_power_domain@10 {
+						#power-domain-cells = <0>;
+						reg = <10>;
+					};
 				};
 			};
 
