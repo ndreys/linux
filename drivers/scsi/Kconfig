@@ -50,6 +50,31 @@ config SCSI_NETLINK
 	default	n
 	depends on NET
 
+config SCSI_MQ_DEFAULT
+	bool "SCSI: use blk-mq I/O path by default"
+	default y
+	depends on SCSI
+	---help---
+	  This option enables the blk-mq based I/O path for SCSI devices by
+	  default.  With this option the scsi_mod.use_blk_mq module/boot
+	  option defaults to Y, without it to N, but it can still be
+	  overridden either way.
+
+	  If unsure say Y.
+
+config SCSI_HWMON
+	bool "S.M.A.R.T. HWMON support"
+	depends on (SCSI=m && HWMON) || HWMON=y
+	help
+	  This options compiles in code to support temperature reading
+	  from a SCSI device using the S.M.A.R.T. (Self-Monitoring,
+	  Analysis and Reporting Technology) support for temperature
+	  sensors found in some hard drives. The drive will be probed
+	  to figure out if it has a temperature sensor, and if it does
+	  the kernel hardware monitor framework will be utilized to
+	  interact with the sensor. This work orthogonal to any userspace
+	  S.M.A.R.T. access tools.
+
 config SCSI_PROC_FS
 	bool "legacy /proc/scsi/ support"
 	depends on SCSI && PROC_FS

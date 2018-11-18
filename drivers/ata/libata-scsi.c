@@ -1346,6 +1346,8 @@ int ata_scsi_slave_config(struct scsi_device *sdev)
 	int rc = 0;
 
 	ata_scsi_sdev_config(sdev);
+	/* ATA slaves have specific SMART access methods */
+	sdev->smart = SCSI_SMART_ATA;
 
 	if (dev)
 		rc = ata_scsi_dev_config(sdev, dev);

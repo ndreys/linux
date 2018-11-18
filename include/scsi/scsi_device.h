@@ -61,6 +61,11 @@ enum scsi_scan_mode {
 	SCSI_SCAN_MANUAL,
 };
 
+enum scsi_smart_type {
+	SCSI_SMART_NONE = 0,
+	SCSI_SMART_ATA,		/* Used to read temperatures */
+};
+
 enum scsi_device_event {
 	SDEV_EVT_MEDIA_CHANGE	= 1,	/* media has changed */
 	SDEV_EVT_INQUIRY_CHANGE_REPORTED,		/* 3F 03  UA reported */
@@ -226,6 +231,7 @@ struct scsi_device {
 	unsigned char		access_state;
 	struct mutex		state_mutex;
 	enum scsi_device_state sdev_state;
+	enum scsi_smart_type	smart;
 	struct task_struct	*quiesced_by;
 	unsigned long		sdev_data[0];
 } __attribute__((aligned(sizeof(unsigned long))));

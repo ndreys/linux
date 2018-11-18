@@ -292,6 +292,9 @@ static int slave_configure(struct scsi_device *sdev)
 			/* assume sync is needed */
 			sdev->wce_default_on = 1;
 		}
+
+		/* Assume ATA SMART type */
+		sdev->smart = SCSI_SMART_ATA;
 	} else {
 
 		/*
