@@ -229,7 +229,7 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 		struct etnaviv_vram_mapping *mapping;
 
 		mapping = etnaviv_gem_mapping_get(&etnaviv_obj->base,
-						  submit->gpu);
+						  submit->gpu, submit->gpu->mmu);
 		if (IS_ERR(mapping)) {
 			ret = PTR_ERR(mapping);
 			break;

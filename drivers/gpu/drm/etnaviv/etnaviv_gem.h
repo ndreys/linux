@@ -123,7 +123,8 @@ struct page **etnaviv_gem_get_pages(struct etnaviv_gem_object *obj);
 void etnaviv_gem_put_pages(struct etnaviv_gem_object *obj);
 
 struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
-	struct drm_gem_object *obj, struct etnaviv_gpu *gpu);
+	struct drm_gem_object *obj, struct etnaviv_gpu *gpu,
+	struct etnaviv_iommu_context *mmu);
 void etnaviv_gem_mapping_reference(struct etnaviv_vram_mapping *mapping);
 void etnaviv_gem_mapping_unreference(struct etnaviv_vram_mapping *mapping);
 
