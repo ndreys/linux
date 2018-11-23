@@ -97,6 +97,7 @@ struct etnaviv_gem_submit {
 	struct kref refcount;
 	struct etnaviv_file_private *ctx;
 	struct etnaviv_gpu *gpu;
+	struct etnaviv_iommu_context *mmu;
 	struct dma_fence *out_fence, *in_fence;
 	int out_fence_id;
 	struct list_head node; /* GPU active submit list */
@@ -123,8 +124,7 @@ struct page **etnaviv_gem_get_pages(struct etnaviv_gem_object *obj);
 void etnaviv_gem_put_pages(struct etnaviv_gem_object *obj);
 
 struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
-	struct drm_gem_object *obj, struct etnaviv_gpu *gpu,
-	struct etnaviv_iommu_context *mmu);
+	struct drm_gem_object *obj, struct etnaviv_iommu_context *mmu);
 void etnaviv_gem_mapping_reference(struct etnaviv_vram_mapping *mapping);
 void etnaviv_gem_mapping_unreference(struct etnaviv_vram_mapping *mapping);
 

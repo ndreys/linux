@@ -41,11 +41,18 @@ static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 {
 	struct etnaviv_drm_private *priv = dev->dev_private;
 	struct etnaviv_file_private *ctx;
-	int i;
+	int ret, i;
 
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
+
+	ctx->mmu = etnaviv_iommu_context_init(priv->mmu_global,
+					      priv->cmdbuf_suballoc);
+	if (!ctx->mmu) {
+		ret = -ENOMEM;
+		goto out_free;
+	}
 
 	for (i = 0; i < ETNA_MAX_PIPES; i++) {
 		struct etnaviv_gpu *gpu = priv->gpu[i];
@@ -61,6 +68,10 @@ static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 	file->driver_priv = ctx;
 
 	return 0;
+
+out_free:
+	kfree(ctx);
+	return ret;
 }
 
 static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
@@ -75,6 +86,8 @@ static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
 		if (gpu)
 			drm_sched_entity_destroy(&ctx->sched_entity[i]);
 	}
+
+	etnaviv_iommu_context_put(ctx->mmu);
 
 	kfree(ctx);
 }
@@ -107,12 +120,29 @@ static int etnaviv_mm_show(struct drm_device *dev, struct seq_file *m)
 static int etnaviv_mmu_show(struct etnaviv_gpu *gpu, struct seq_file *m)
 {
 	struct drm_printer p = drm_seq_file_printer(m);
+	struct etnaviv_iommu_context *mmu;
 
 	seq_printf(m, "Active Objects (%s):\n", dev_name(gpu->dev));
 
-	mutex_lock(&gpu->mmu->lock);
-	drm_mm_print(&gpu->mmu->mm, &p);
-	mutex_unlock(&gpu->mmu->lock);
+	/*
+	 * Lock the GPU to avoid a MMU context switch just now and elevate
+	 * the refcount of the current context to avoid it disappearing from
+	 * under our feet.
+	 */
+	mutex_lock(&gpu->lock);
+	mmu = gpu->mmu;
+	if (mmu)
+		etnaviv_iommu_context_get(mmu);
+	mutex_unlock(&gpu->lock);
+
+	if (!mmu)
+		return 0;
+
+	mutex_lock(&mmu->lock);
+	drm_mm_print(&mmu->mm, &p);
+	mutex_unlock(&mmu->lock);
+
+	etnaviv_iommu_context_put(mmu);
 
 	return 0;
 }
