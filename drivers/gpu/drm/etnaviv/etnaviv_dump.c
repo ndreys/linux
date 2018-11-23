@@ -182,7 +182,7 @@ void etnaviv_core_dump(struct etnaviv_gpu *gpu)
 	etnaviv_core_dump_mem(&iter, ETDUMP_BUF_RING, gpu->buffer.vaddr,
 			      gpu->buffer.size,
 			      etnaviv_cmdbuf_get_va(&gpu->buffer,
-						    &gpu->cmdbuf_mapping));
+						    &gpu->mmu->cmdbuf_mapping));
 
 	spin_lock_irqsave(&gpu->sched.job_list_lock, flags);
 	list_for_each_entry(s_job, &gpu->sched.ring_mirror_list, node) {
@@ -190,7 +190,7 @@ void etnaviv_core_dump(struct etnaviv_gpu *gpu)
 		etnaviv_core_dump_mem(&iter, ETDUMP_BUF_CMD,
 				      submit->cmdbuf.vaddr, submit->cmdbuf.size,
 				      etnaviv_cmdbuf_get_va(&submit->cmdbuf,
-				      &gpu->cmdbuf_mapping));
+				      &gpu->mmu->cmdbuf_mapping));
 	}
 	spin_unlock_irqrestore(&gpu->sched.job_list_lock, flags);
 

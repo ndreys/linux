@@ -287,6 +287,8 @@ static void etnaviv_iommu_context_free(struct kref *kref)
 	struct etnaviv_iommu_context *context =
 		container_of(kref, struct etnaviv_iommu_context, refcount);
 
+	etnaviv_cmdbuf_suballoc_unmap(context, &context->cmdbuf_mapping);
+
 	context->global->ops->free(context);
 }
 void etnaviv_iommu_context_put(struct etnaviv_iommu_context *context)
@@ -295,12 +297,28 @@ void etnaviv_iommu_context_put(struct etnaviv_iommu_context *context)
 }
 
 struct etnaviv_iommu_context *
-etnaviv_iommu_context_init(struct etnaviv_iommu_global *global)
+etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
+			   struct etnaviv_cmdbuf_suballoc *suballoc)
 {
+	struct etnaviv_iommu_context *ctx;
+	int ret;
+
 	if (global->version == ETNAVIV_IOMMU_V1)
-		return etnaviv_iommuv1_context_alloc(global);
+		ctx = etnaviv_iommuv1_context_alloc(global);
 	else
-		return etnaviv_iommuv2_context_alloc(global);
+		ctx = etnaviv_iommuv2_context_alloc(global);
+
+	if (!ctx)
+		return NULL;
+
+	ret = etnaviv_cmdbuf_suballoc_map(suballoc, ctx, &ctx->cmdbuf_mapping,
+					  global->memory_base);
+	if (ret) {
+		etnaviv_iommu_context_put(ctx);
+		return NULL;
+	}
+
+	return ctx;
 }
 
 void etnaviv_iommu_restore(struct etnaviv_gpu *gpu,
@@ -317,16 +335,23 @@ int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
 	struct drm_mm_node *node;
 	int ret;
 
+	mutex_lock(&context->lock);
+
+	if (mapping->use > 0) {
+		mapping->use++;
+		mutex_unlock(&context->lock);
+		return 0;
+	}
+
 	if (context->global->version == ETNAVIV_IOMMU_V1) {
 		mapping->iova = paddr - memory_base;
 		mapping->use = 1;
 		list_add_tail(&mapping->mmu_node, &context->mappings);
+		mutex_unlock(&context->lock);
 		return 0;
 	}
 
 	node = &mapping->vram_node;
-
-	mutex_lock(&context->lock);
 
 	ret = etnaviv_iommu_find_iova(context, node, size);
 	if (ret < 0)
@@ -341,6 +366,7 @@ int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
 		goto unlock;
 	}
 
+	mapping->use = 1;
 	list_add_tail(&mapping->mmu_node, &context->mappings);
 	context->flush_seq++;
 unlock:
@@ -354,12 +380,14 @@ void etnaviv_iommu_put_suballoc_va(struct etnaviv_iommu_context *context,
 {
 	struct drm_mm_node *node = &mapping->vram_node;
 
-	mapping->use = 0;
-
-	if (context->global->version == ETNAVIV_IOMMU_V1)
-		return;
-
 	mutex_lock(&context->lock);
+	mapping->use--;
+
+	if (mapping->use > 0 || context->global->version == ETNAVIV_IOMMU_V1) {
+		mutex_unlock(&context->lock);
+		return;
+	}
+
 	etnaviv_context_unmap(context, node->start, node->size);
 	drm_mm_remove_node(node);
 	mutex_unlock(&context->lock);

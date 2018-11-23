@@ -229,7 +229,7 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 		struct etnaviv_vram_mapping *mapping;
 
 		mapping = etnaviv_gem_mapping_get(&etnaviv_obj->base,
-						  submit->gpu, submit->gpu->mmu);
+						  submit->mmu);
 		if (IS_ERR(mapping)) {
 			ret = PTR_ERR(mapping);
 			break;
@@ -411,6 +411,9 @@ static void submit_cleanup(struct kref *kref)
 	if (submit->cmdbuf.suballoc)
 		etnaviv_cmdbuf_free(&submit->cmdbuf);
 
+	if (submit->mmu)
+		etnaviv_iommu_context_put(submit->mmu);
+
 	for (i = 0; i < submit->nr_bos; i++) {
 		struct etnaviv_gem_object *etnaviv_obj = submit->bos[i].obj;
 
@@ -561,6 +564,8 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		goto err_submit_objects;
 
 	submit->ctx = file->driver_priv;
+	etnaviv_iommu_context_get(submit->ctx->mmu);
+	submit->mmu = submit->ctx->mmu;
 	submit->exec_state = args->exec_state;
 	submit->flags = args->flags;
 
