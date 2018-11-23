@@ -275,7 +275,8 @@ void etnaviv_gem_mapping_unreference(struct etnaviv_vram_mapping *mapping)
 }
 
 struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
-	struct drm_gem_object *obj, struct etnaviv_gpu *gpu)
+	struct drm_gem_object *obj, struct etnaviv_gpu *gpu,
+	struct etnaviv_iommu_context *mmu)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 	struct etnaviv_vram_mapping *mapping;
@@ -283,7 +284,7 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 	int ret = 0;
 
 	mutex_lock(&etnaviv_obj->lock);
-	mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj, gpu->mmu);
+	mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj, mmu);
 	if (mapping) {
 		/*
 		 * Holding the object lock prevents the use count changing
@@ -292,12 +293,12 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		 * the MMU owns this mapping to close this race.
 		 */
 		if (mapping->use == 0) {
-			mutex_lock(&gpu->mmu->lock);
-			if (mapping->context == gpu->mmu)
+			mutex_lock(&mmu->lock);
+			if (mapping->context == mmu)
 				mapping->use += 1;
 			else
 				mapping = NULL;
-			mutex_unlock(&gpu->mmu->lock);
+			mutex_unlock(&mmu->lock);
 			if (mapping)
 				goto out;
 		} else {
@@ -330,10 +331,11 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		list_del(&mapping->obj_node);
 	}
 
-	mapping->context = gpu->mmu;
+	etnaviv_iommu_context_get(mmu);
+	mapping->context = mmu;
 	mapping->use = 1;
 
-	ret = etnaviv_iommu_map_gem(gpu->mmu, etnaviv_obj, gpu->memory_base,
+	ret = etnaviv_iommu_map_gem(mmu, etnaviv_obj, gpu->memory_base,
 				    mapping);
 	if (ret < 0)
 		kfree(mapping);
@@ -556,8 +558,10 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 
 		WARN_ON(mapping->use);
 
-		if (context)
+		if (context) {
 			etnaviv_iommu_unmap_gem(context, mapping);
+			etnaviv_iommu_context_put(context);
+		}
 
 		list_del(&mapping->obj_node);
 		kfree(mapping);
