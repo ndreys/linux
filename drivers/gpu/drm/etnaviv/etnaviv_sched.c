@@ -113,7 +113,7 @@ static void etnaviv_sched_timedout_job(struct drm_sched_job *sched_job)
 	drm_sched_hw_job_reset(&gpu->sched, sched_job);
 
 	/* get the GPU back into the init state */
-	etnaviv_core_dump(gpu);
+	etnaviv_core_dump(submit);
 	etnaviv_gpu_recover_hang(gpu);
 
 	/* restart scheduler after GPU is usable again */

@@ -91,9 +91,9 @@ static void etnaviv_core_dump_registers(struct core_dump_iterator *iter,
 }
 
 static void etnaviv_core_dump_mmu(struct core_dump_iterator *iter,
-	struct etnaviv_gpu *gpu, size_t mmu_size)
+	struct etnaviv_iommu_context *mmu, size_t mmu_size)
 {
-	etnaviv_iommu_dump(gpu->mmu, iter->data);
+	etnaviv_iommu_dump(mmu, iter->data);
 
 	etnaviv_core_dump_header(iter, ETDUMP_BUF_MMU, iter->data + mmu_size);
 }
@@ -108,47 +108,33 @@ static void etnaviv_core_dump_mem(struct core_dump_iterator *iter, u32 type,
 	etnaviv_core_dump_header(iter, type, iter->data + size);
 }
 
-void etnaviv_core_dump(struct etnaviv_gpu *gpu)
+void etnaviv_core_dump(struct etnaviv_gem_submit *submit)
 {
+	struct etnaviv_gpu *gpu = submit->gpu;
 	struct core_dump_iterator iter;
-	struct etnaviv_vram_mapping *vram;
 	struct etnaviv_gem_object *obj;
-	struct etnaviv_gem_submit *submit;
-	struct drm_sched_job *s_job;
 	unsigned int n_obj, n_bomap_pages;
 	size_t file_size, mmu_size;
 	__le64 *bomap, *bomap_start;
-	unsigned long flags;
+	int i;
 
 	/* Only catch the first event, or when manually re-armed */
 	if (!etnaviv_dump_core)
 		return;
 	etnaviv_dump_core = false;
 
-	mmu_size = etnaviv_iommu_dump_size(gpu->mmu);
+	mmu_size = etnaviv_iommu_dump_size(submit->mmu);
 
-	/* We always dump registers, mmu, ring and end marker */
-	n_obj = 4;
+	/* We always dump registers, mmu, ring hanging cmdbuf and end marker */
+	n_obj = 5;
 	n_bomap_pages = 0;
 	file_size = ARRAY_SIZE(etnaviv_dump_registers) *
 			sizeof(struct etnaviv_dump_registers) +
-		    mmu_size + gpu->buffer.size;
-
-	/* Add in the active command buffers */
-	spin_lock_irqsave(&gpu->sched.job_list_lock, flags);
-	list_for_each_entry(s_job, &gpu->sched.ring_mirror_list, node) {
-		submit = to_etnaviv_submit(s_job);
-		file_size += submit->cmdbuf.size;
-		n_obj++;
-	}
-	spin_unlock_irqrestore(&gpu->sched.job_list_lock, flags);
+		    mmu_size + gpu->buffer.size + submit->cmdbuf.size;
 
 	/* Add in the active buffer objects */
-	list_for_each_entry(vram, &gpu->mmu->mappings, mmu_node) {
-		if (!vram->use)
-			continue;
-
-		obj = vram->object;
+	for (i = 0; i < submit->nr_bos; i++) {
+		obj = submit->bos[i].obj;
 		file_size += obj->base.size;
 		n_bomap_pages += obj->base.size >> PAGE_SHIFT;
 		n_obj++;
@@ -178,21 +164,16 @@ void etnaviv_core_dump(struct etnaviv_gpu *gpu)
 	memset(iter.hdr, 0, iter.data - iter.start);
 
 	etnaviv_core_dump_registers(&iter, gpu);
-	etnaviv_core_dump_mmu(&iter, gpu, mmu_size);
+	etnaviv_core_dump_mmu(&iter, submit->mmu, mmu_size);
 	etnaviv_core_dump_mem(&iter, ETDUMP_BUF_RING, gpu->buffer.vaddr,
 			      gpu->buffer.size,
 			      etnaviv_cmdbuf_get_va(&gpu->buffer,
-						    &gpu->mmu->cmdbuf_mapping));
+						    &submit->mmu->cmdbuf_mapping));
 
-	spin_lock_irqsave(&gpu->sched.job_list_lock, flags);
-	list_for_each_entry(s_job, &gpu->sched.ring_mirror_list, node) {
-		submit = to_etnaviv_submit(s_job);
-		etnaviv_core_dump_mem(&iter, ETDUMP_BUF_CMD,
-				      submit->cmdbuf.vaddr, submit->cmdbuf.size,
-				      etnaviv_cmdbuf_get_va(&submit->cmdbuf,
-				      &gpu->mmu->cmdbuf_mapping));
-	}
-	spin_unlock_irqrestore(&gpu->sched.job_list_lock, flags);
+	etnaviv_core_dump_mem(&iter, ETDUMP_BUF_CMD,
+			      submit->cmdbuf.vaddr, submit->cmdbuf.size,
+			      etnaviv_cmdbuf_get_va(&submit->cmdbuf,
+			      &submit->mmu->cmdbuf_mapping));
 
 	/* Reserve space for the bomap */
 	if (n_bomap_pages) {
@@ -205,14 +186,13 @@ void etnaviv_core_dump(struct etnaviv_gpu *gpu)
 		bomap_start = bomap = NULL;
 	}
 
-	list_for_each_entry(vram, &gpu->mmu->mappings, mmu_node) {
+	for (i = 0; i < submit->nr_bos; i++) {
+		struct etnaviv_vram_mapping *vram;
 		struct page **pages;
 		void *vaddr;
 
-		if (vram->use == 0)
-			continue;
-
-		obj = vram->object;
+		obj = submit->bos[i].obj;
+		vram = submit->bos[i].mapping;
 
 		mutex_lock(&obj->lock);
 		pages = etnaviv_gem_get_pages(obj);
