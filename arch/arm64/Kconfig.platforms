@@ -152,7 +152,8 @@ config SOC_IMX8MQ
 	bool "i.MX8MQ support"
 	depends on ARCH_MXC
 	select ARM64_ERRATUM_843419
-	select ARM64_ERRATUM_845719
+	select ARM64_ERRATUM_845719 if COMPAT
+	select IMX_GPCV2
 	help
 	  This enables support for the i.MX8MQ SoC.
 
