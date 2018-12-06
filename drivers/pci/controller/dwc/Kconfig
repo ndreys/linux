@@ -92,6 +92,7 @@ config PCI_IMX6
 	bool "Freescale i.MX6 PCIe controller"
 	depends on SOC_IMX8MQ || SOC_IMX6Q || (ARM && COMPILE_TEST)
 	depends on PCI_MSI_IRQ_DOMAIN
+	depends on PCIEPORTBUS
 	select PCIE_DW_HOST
 
 config PCIE_SPEAR13XX
