@@ -1,0 +1,104 @@
+/*
+ * Copyright 2018 Zii
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "zii-imx8mq-ultra.dtsi"
+
+/ {
+	model = "Zii Ultra RMB3 - i.MX8MQ";
+#if 0
+	sound2 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "Back";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&sound2_codec>;
+		simple-audio-card,frame-master = <&sound2_codec>;
+		simple-audio-card,widgets =
+			"Headphone", "Headphone Jack";
+		simple-audio-card,routing =
+			"Headphone Jack", "HPLEFT",
+			"Headphone Jack", "HPRIGHT",
+			"LEFTIN", "HPL",
+			"RIGHTIN", "HPR";
+		simple-audio-card,aux-devs = <&hpa2>;
+
+		simple-audio-card,cpu {
+			sound-dai = <&sai3>;
+		};
+
+		sound2_codec: simple-audio-card,codec {
+			sound-dai = <&codec2>;
+			clocks = <&cs2000_ref>;
+		};
+	};
+#endif	
+};
+
+&i2c1 {
+	codec2: codec@18 {
+		compatible = "ti,tlv320dac3100";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_codec2>;
+		reg = <0x18>;
+		#sound-dai-cells = <0>;
+		HPVDD-supply = <&reg_3p3v>;
+		SPRVDD-supply = <&reg_3p3v>;
+		SPLVDD-supply = <&reg_3p3v>;
+		AVDD-supply = <&reg_3p3v>;
+		IOVDD-supply = <&reg_3p3v>;
+		DVDD-supply = <&vgen4_reg>;
+		gpio-reset = <&gpio3 4 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&i2c3 {
+	usb_hub: usb2513b@2c {
+		port-swap=<0x01>;
+	};
+};
+#if 0
+&sai3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai3>;
+	/* assigned-clocks = <&clk IMX8MQ_CLK_SAI3_SRC>, */
+	/* 		<&clk IMX8MQ_CLK_SAI3_DIV>; */
+	/* assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>; */
+	/* assigned-clock-rates = <0>, <24576000>; */
+	status = "okay";
+
+	#sound-dai-cells = <0>;
+};
+#endif
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>;
+
+	zii-imx8mq-rmb3 {
+		pinctrl_sai3: sai3grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_SAI3_TXFS_SAI3_TX_SYNC	0xd6
+				MX8MQ_IOMUXC_SAI3_TXC_SAI3_TX_BCLK	0xd6
+				MX8MQ_IOMUXC_SAI3_TXD_SAI3_TX_DATA0	0xd6
+			>;
+		};
+
+		pinctrl_codec2: dac2grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_NAND_CE3_B_GPIO3_IO4 0x41
+			>;
+		};
+	};
+};
