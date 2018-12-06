@@ -11,8 +11,7 @@
 #include "imx8mq-pinfunc.h"
 
 / {
-	/* This should really be the GPC, but we need a driver for this first */
-	interrupt-parent = <&gic>;
+	interrupt-parent = <&gpc>;
 
 	#address-cells = <2>;
 	#size-cells = <2>;
@@ -237,10 +236,15 @@
 				#reset-cells = <1>;
 			};
 
-			gpc@303a0000 {
-				compatible = "fsl,imx8m-gpc";
+			gpc: gpc@303a0000 {
+				compatible = "fsl,imx8mq-gpc", "fsl,imx7d-gpc";
 				reg = <0x303a0000 0x10000>;
 				#power-domain-cells = <1>;
+
+				interrupt-controller;
+				interrupts = <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
+				#interrupt-cells = <3>;
+				interrupt-parent = <&gic>;
 
 				pgc {
 					#address-cells = <1>;
