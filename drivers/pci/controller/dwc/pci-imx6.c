@@ -117,12 +117,10 @@ struct imx6_pcie {
 /* PHY registers (not memory-mapped) */
 #define PCIE_PHY_ATEOVRD			0x10
 #define  PCIE_PHY_ATEOVRD_EN			BIT(2)
-#define  PCIE_PHY_ATEOVRD_REF_CLKDIV_SHIFT	0
-#define  PCIE_PHY_ATEOVRD_REF_CLKDIV_MASK	0x1
+#define  PCIE_PHY_ATEOVRD_REF_CLKDIV		BIT(0)
 
 #define PCIE_PHY_MPLL_OVRD_IN_LO		0x11
-#define  PCIE_PHY_MPLL_MULTIPLIER_SHIFT		2
-#define  PCIE_PHY_MPLL_MULTIPLIER_MASK		0x7f
+#define  PCIE_PHY_MPLL_MULTIPLIER		GENMASK(8, 2)
 #define  PCIE_PHY_MPLL_MULTIPLIER_OVRD		BIT(9)
 
 /* iMX7 PCIe PHY registers */
@@ -688,16 +686,14 @@ static int imx6_setup_phy_mpll(struct imx6_pcie *imx6_pcie)
 	}
 
 	pcie_phy_read(imx6_pcie, PCIE_PHY_MPLL_OVRD_IN_LO, &val);
-	val &= ~(PCIE_PHY_MPLL_MULTIPLIER_MASK <<
-		 PCIE_PHY_MPLL_MULTIPLIER_SHIFT);
-	val |= mult << PCIE_PHY_MPLL_MULTIPLIER_SHIFT;
+	val &= ~PCIE_PHY_MPLL_MULTIPLIER;
+	val |= FIELD_PREP(PCIE_PHY_MPLL_MULTIPLIER, mult);
 	val |= PCIE_PHY_MPLL_MULTIPLIER_OVRD;
 	pcie_phy_write(imx6_pcie, PCIE_PHY_MPLL_OVRD_IN_LO, val);
 
 	pcie_phy_read(imx6_pcie, PCIE_PHY_ATEOVRD, &val);
-	val &= ~(PCIE_PHY_ATEOVRD_REF_CLKDIV_MASK <<
-		 PCIE_PHY_ATEOVRD_REF_CLKDIV_SHIFT);
-	val |= div << PCIE_PHY_ATEOVRD_REF_CLKDIV_SHIFT;
+	val &= ~PCIE_PHY_ATEOVRD_REF_CLKDIV;
+	val |= FIELD_PREP(PCIE_PHY_ATEOVRD_REF_CLKDIV, div);
 	val |= PCIE_PHY_ATEOVRD_EN;
 	pcie_phy_write(imx6_pcie, PCIE_PHY_ATEOVRD, val);
 
