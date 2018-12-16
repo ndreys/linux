@@ -100,6 +100,7 @@ struct imx6_pcie {
 #define PCIE_RC_LCR_MAX_LINK_SPEEDS_MASK	0xf
 
 #define PCIE_RC_LCSR				0x80
+#define PCIE_RC_LCSR_LINK_SPEED			GENMASK(19, 16)
 
 /* PCIe Port Logic registers (memory-mapped) */
 #define PL_OFFSET 0x700
@@ -813,8 +814,9 @@ static int imx6_pcie_establish_link(struct imx6_pcie *imx6_pcie)
 		dev_info(dev, "Link: Gen2 disabled\n");
 	}
 
-	tmp = dw_pcie_readl_dbi(pci, PCIE_RC_LCSR);
-	dev_info(dev, "Link up, Gen%i\n", (tmp >> 16) & 0xf);
+	tmp = FIELD_GET(PCIE_RC_LCSR_LINK_SPEED,
+			dw_pcie_readl_dbi(pci, PCIE_RC_LCSR));
+	dev_info(dev, "Link up, Gen%i\n", tmp);
 	return 0;
 
 err_reset_phy:
