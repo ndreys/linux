@@ -268,21 +268,21 @@ static int pcie_phy_write(struct imx6_pcie *imx6_pcie, int addr, u16 data)
 
 static void imx6_pcie_reset_phy(struct imx6_pcie *imx6_pcie)
 {
+	const u16 mask = PHY_RX_OVRD_IN_LO_RX_DATA_EN |
+			 PHY_RX_OVRD_IN_LO_RX_PLL_EN;
 	u16 tmp;
 
 	if (!(imx6_pcie->drvdata->flags & IMX6_PCIE_FLAG_IMX6_PHY))
 		return;
 
 	pcie_phy_read(imx6_pcie, PHY_RX_OVRD_IN_LO, &tmp);
-	tmp |= (PHY_RX_OVRD_IN_LO_RX_DATA_EN |
-		PHY_RX_OVRD_IN_LO_RX_PLL_EN);
+	tmp |= mask;
 	pcie_phy_write(imx6_pcie, PHY_RX_OVRD_IN_LO, tmp);
 
 	usleep_range(2000, 3000);
 
 	pcie_phy_read(imx6_pcie, PHY_RX_OVRD_IN_LO, &tmp);
-	tmp &= ~(PHY_RX_OVRD_IN_LO_RX_DATA_EN |
-		  PHY_RX_OVRD_IN_LO_RX_PLL_EN);
+	tmp &= ~mask;
 	pcie_phy_write(imx6_pcie, PHY_RX_OVRD_IN_LO, tmp);
 }
 
