@@ -127,9 +127,6 @@ struct imx6_pcie {
 #define  PCIE_PHY_MPLL_MULTIPLIER_MASK		0x7f
 #define  PCIE_PHY_MPLL_MULTIPLIER_OVRD		(0x1 << 9)
 
-#define PCIE_PHY_RX_ASIC_OUT 0x100D
-#define PCIE_PHY_RX_ASIC_OUT_VALID	(1 << 0)
-
 /* iMX7 PCIe PHY registers */
 #define PCIE_PHY_CMN_REG4		0x14
 /* These are probably the bits that *aren't* DCC_FB_EN */
