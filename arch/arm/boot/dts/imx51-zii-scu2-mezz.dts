@@ -288,6 +288,25 @@
 	};
 };
 
+&gpio1 {
+	gpio-line-names = "", "", "", "", "", "", "", "",
+			  "", "", "",
+			  "discrete_in_z_1",
+			  "discrete_in_z_2",
+			  "discrete_in_z_3",
+			  "discrete_in_z_4",
+			  "discrete_in_z_5",
+			  "discrete_in_z_6",
+			  "scu_disable_b",
+			  "scu_active_out",
+			  "", "", "", "", "", "",
+			  "primary_scu_b",
+			  "discrete_out_z_1",
+			  "discrete_out_z_2",
+			  "discrete_out_z_3",
+			  "", "", "";
+};
+
 &i2c2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
