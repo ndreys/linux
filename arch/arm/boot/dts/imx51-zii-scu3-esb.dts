@@ -281,6 +281,25 @@
 	};
 };
 
+&gpio1 {
+	gpio-line-names = "", "", "", "", "", "", "", "",
+			  "", "", "", "",
+			  "discrete_out_s_4",
+			  "discrete_out_s_5",
+			  "",
+			  "discrete_in_s_1",
+			  "discrete_in_s_2",
+			  "", "", "", "",
+			  "scu_disable_b",
+			  "scu_active_out",
+			  "", "",
+			  "primary_scu_b",
+			  "discrete_out_s_1",
+			  "discrete_out_s_2",
+			  "discrete_out_s_3",
+			  "", "", "";
+};
+
 &ipu {
 	status = "disabled";
 };
