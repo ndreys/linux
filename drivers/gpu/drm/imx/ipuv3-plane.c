@@ -774,6 +774,10 @@ static void ipu_plane_atomic_update(struct drm_plane *plane,
 	ipu_idmac_lock_enable(ipu_plane->ipu_ch, num_bursts);
 	ipu_plane_enable(ipu_plane);
 	ipu_plane->next_buf = -1;
+
+	ipu_dump(ipu_plane->ipu);
+	ipu_cpmem_dump(ipu_plane->ipu_ch);
+	ipu_dmfc_dump(ipu_plane->dmfc);
 }
 
 static const struct drm_plane_helper_funcs ipu_plane_helper_funcs = {
