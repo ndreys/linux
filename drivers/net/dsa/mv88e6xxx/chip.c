@@ -1316,6 +1316,22 @@ static int mv88e6xxx_rsvd2cpu_setup(struct mv88e6xxx_chip *chip)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_NET_DSA_MV88E6XXX_ZII)
+static int mv88e6xxx_atu_add_local_mac(struct mv88e6xxx_chip *chip, int fid)
+{
+	u8 *addr = chip->ds->dst->cpu_dp->master->dev_addr;
+	int port = chip->ds->dst->cpu_dp->index;
+	struct mv88e6xxx_atu_entry entry = {
+		.state = MV88E6XXX_G1_ATU_DATA_STATE_UC_STATIC,
+		.portvec = BIT(port),
+	};
+
+	ether_addr_copy(entry.mac, addr);
+
+	return mv88e6xxx_g1_atu_loadpurge(chip, fid, &entry);
+}
+#endif
+
 static int mv88e6xxx_atu_setup(struct mv88e6xxx_chip *chip)
 {
 	int err;
@@ -1323,6 +1339,12 @@ static int mv88e6xxx_atu_setup(struct mv88e6xxx_chip *chip)
 	err = mv88e6xxx_g1_atu_flush(chip, 0, true);
 	if (err)
 		return err;
+
+#if IS_ENABLED(CONFIG_NET_DSA_MV88E6XXX_ZII)
+	err = mv88e6xxx_atu_add_local_mac(chip, 0);
+	if (err)
+		return err;
+#endif
 
 	err = mv88e6xxx_g1_atu_set_learn2all(chip, true);
 	if (err)
@@ -1482,7 +1504,17 @@ static int mv88e6xxx_atu_new(struct mv88e6xxx_chip *chip, u16 *fid)
 		return -ENOSPC;
 
 	/* Clear the database */
-	return mv88e6xxx_g1_atu_flush(chip, *fid, true);
+	err = mv88e6xxx_g1_atu_flush(chip, *fid, true);
+	if (err)
+		return err;
+
+#if IS_ENABLED(CONFIG_NET_DSA_MV88E6XXX_ZII)
+	err = mv88e6xxx_atu_add_local_mac(chip, *fid);
+	if (err)
+		return err;
+#endif
+
+	return 0;
 }
 
 static int mv88e6xxx_vtu_get(struct mv88e6xxx_chip *chip, u16 vid,
