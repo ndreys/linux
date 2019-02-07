@@ -40,7 +40,7 @@ Optional properties:
   host.
 
 Additional required properties for imx6sx-pcie:
-- clock names: Must include the following additional entries:
+- clock-names: Must include the following additional entries:
 	- "pcie_inbound_axi"
 - power-domains: Must be set to phandles pointing to the DISPLAY and
   PCIE_PHY power domains
