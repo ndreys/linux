@@ -3,6 +3,13 @@
  * Copyright (C) 2019 Zodiac Inflight Innovations
  */
 
+/*
+ * HACK: Hide the DRAM above the 4GB address mark until we figure out how to
+ * deal with this from all drivers. Especially GPU drivers want to avoid
+ * going through SWIOTLB translation at all means.
+ */
+/memreserve/ 0x100000000 0x40000000;
+
 #include "imx8mq.dtsi"
 
 / {
