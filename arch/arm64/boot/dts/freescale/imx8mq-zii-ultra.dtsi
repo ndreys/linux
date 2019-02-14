@@ -69,6 +69,10 @@
 	};
 };
 
+&dcss {
+	status ="okay";
+};
+
 &fec1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec1>;
@@ -196,6 +200,15 @@
 		output-high;
 		line-name = "usb-mode2";
 	};
+};
+
+&hdmi {
+	status = "okay";
+	compatible = "fsl,imx8mq-dp";
+	fsl,edp;
+	dp-lane-mapping = <0xe4>;
+	dp-link-rate = <0x14>;
+	dp-num-lanes = <0x4>;
 };
 
 &i2c1 {
