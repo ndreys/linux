@@ -12,6 +12,7 @@
 #include <linux/thermal.h>
 
 #include "thermal_core.h"
+#include "thermal_hwmon.h"
 
 #define SITES_MAX	16
 
@@ -103,7 +104,10 @@ static int qoriq_tmu_register_tmu_zone(struct device *dev,
 		case -ENODEV:
 			continue;
 		case 0:
-			break;
+			ret = devm_thermal_add_hwmon_sysfs(tzd);
+			if (!ret)
+				break;
+			/* fallthrough */
 		default:
 			regmap_write(qdata->regmap, REGS_TMR, TMR_DISABLE);
 			return ret;
