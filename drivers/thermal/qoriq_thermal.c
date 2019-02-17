@@ -37,6 +37,7 @@
 #define REGS_TRITSR(n)	(0x100 + 16 * (n)) /* Immediate Temperature
 					    * Site Register
 					    */
+#define TRITSR_V	BIT(31)
 #define REGS_TTRnCR(n)	(0xf10 + 4 * (n)) /* Temperature Range n
 					   * Control Register
 					   */
@@ -62,10 +63,18 @@ static int tmu_get_temp(void *p, int *temp)
 	struct qoriq_sensor *qsensor = p;
 	struct qoriq_tmu_data *qdata = qoriq_sensor_to_data(qsensor);
 	u32 val;
+	int ret;
 
-	regmap_read(qdata->regmap, REGS_TRITSR(qsensor->id), &val);
+	ret = regmap_read_poll_timeout(qdata->regmap,
+				       REGS_TRITSR(qsensor->id),
+				       val,
+				       val & TRITSR_V,
+				       USEC_PER_MSEC,
+				       10 * USEC_PER_MSEC);
+	if (ret)
+		return ret;
+
 	*temp = (val & 0xff) * 1000;
-
 	return 0;
 }
 
