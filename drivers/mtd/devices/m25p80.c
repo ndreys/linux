@@ -103,7 +103,6 @@ static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 	ret = spi_mem_adjust_op_size(flash->spimem, &op);
 	if (ret)
 		return ret;
-	op.data.nbytes = len < op.data.nbytes ? len : op.data.nbytes;
 
 	ret = spi_mem_exec_op(flash->spimem, &op);
 	if (ret)
