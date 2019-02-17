@@ -81,34 +81,41 @@ static int m25p80_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 	return ret;
 }
 
+static ssize_t m25p80_read_write(struct spi_nor *nor, struct spi_mem_op *op,
+				 enum spi_nor_protocol proto)
+{
+	struct m25p *flash = nor->priv;
+	int ret;
+
+	/* get transfer protocols. */
+	op->cmd.buswidth = spi_nor_get_protocol_inst_nbits(proto);
+	op->addr.buswidth = spi_nor_get_protocol_addr_nbits(proto);
+	op->data.buswidth = spi_nor_get_protocol_data_nbits(proto);
+
+	ret = spi_mem_adjust_op_size(flash->spimem, op);
+	if (ret)
+		return ret;
+
+	ret = spi_mem_exec_op(flash->spimem, op);
+	if (ret)
+		return ret;
+
+	return op->data.nbytes;
+}
+
 static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 			    const u_char *buf)
 {
-	struct m25p *flash = nor->priv;
 	struct spi_mem_op op =
 			SPI_MEM_OP(SPI_MEM_OP_CMD(nor->program_opcode, 1),
 				   SPI_MEM_OP_ADDR(nor->addr_width, to, 1),
 				   SPI_MEM_OP_NO_DUMMY,
 				   SPI_MEM_OP_DATA_OUT(len, buf, 1));
-	int ret;
-
-	/* get transfer protocols. */
-	op.cmd.buswidth = spi_nor_get_protocol_inst_nbits(nor->write_proto);
-	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(nor->write_proto);
-	op.data.buswidth = spi_nor_get_protocol_data_nbits(nor->write_proto);
 
 	if (nor->program_opcode == SPINOR_OP_AAI_WP && nor->sst_write_second)
 		op.addr.nbytes = 0;
 
-	ret = spi_mem_adjust_op_size(flash->spimem, &op);
-	if (ret)
-		return ret;
-
-	ret = spi_mem_exec_op(flash->spimem, &op);
-	if (ret)
-		return ret;
-
-	return op.data.nbytes;
+	return m25p80_read_write(nor, &op, nor->write_proto);
 }
 
 /*
@@ -118,32 +125,17 @@ static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 static ssize_t m25p80_read(struct spi_nor *nor, loff_t from, size_t len,
 			   u_char *buf)
 {
-	struct m25p *flash = nor->priv;
 	struct spi_mem_op op =
 			SPI_MEM_OP(SPI_MEM_OP_CMD(nor->read_opcode, 1),
 				   SPI_MEM_OP_ADDR(nor->addr_width, from, 1),
 				   SPI_MEM_OP_DUMMY(nor->read_dummy, 1),
 				   SPI_MEM_OP_DATA_IN(len, buf, 1));
-	int ret;
 
-	/* get transfer protocols. */
-	op.cmd.buswidth = spi_nor_get_protocol_inst_nbits(nor->read_proto);
-	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(nor->read_proto);
-	op.dummy.buswidth = op.addr.buswidth;
-	op.data.buswidth = spi_nor_get_protocol_data_nbits(nor->read_proto);
-
+	op.dummy.buswidth = spi_nor_get_protocol_addr_nbits(nor->read_proto);
 	/* convert the dummy cycles to the number of bytes */
 	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
 
-	ret = spi_mem_adjust_op_size(flash->spimem, &op);
-	if (ret)
-		return ret;
-
-	ret = spi_mem_exec_op(flash->spimem, &op);
-	if (ret)
-		return ret;
-
-	return op.data.nbytes;
+	return m25p80_read_write(nor, &op, nor->read_proto);
 }
 
 /*
