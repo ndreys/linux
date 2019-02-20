@@ -214,6 +214,17 @@ static int mem2mem_try_fmt(struct file *file, void *priv,
 		test_out.pix : test_in.pix;
 
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		/*
+		 * HACK: round up to 32x8 etnaviv RS alignment to allow direct
+		 * import on i.MX6.
+		 */
+		if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+			f->fmt.pix.bytesperline =
+				round_up(f->fmt.pix.bytesperline, 32);
+			f->fmt.pix.sizeimage = f->fmt.pix.bytesperline *
+				round_up(f->fmt.pix.height, 8);
+		}
+
 		f->fmt.pix.colorspace = q_data->cur_fmt.colorspace;
 		f->fmt.pix.ycbcr_enc = q_data->cur_fmt.ycbcr_enc;
 		f->fmt.pix.xfer_func = q_data->cur_fmt.xfer_func;
