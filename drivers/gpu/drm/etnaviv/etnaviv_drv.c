@@ -545,6 +545,9 @@ static int etnaviv_bind(struct device *dev)
 	}
 	drm->dev_private = priv;
 
+	dev->dma_parms = &priv->dma_parms;
+	dma_set_max_seg_size(dev, SZ_2G);
+
 	mutex_init(&priv->gem_lock);
 	INIT_LIST_HEAD(&priv->gem_list);
 	priv->num_gpus = 0;
@@ -591,6 +594,8 @@ static void etnaviv_unbind(struct device *dev)
 
 	etnaviv_iommu_global_fini(priv->mmu_global);
 	etnaviv_cmdbuf_suballoc_destroy(priv->cmdbuf_suballoc);
+
+	dev->dma_parms = NULL;
 
 	drm->dev_private = NULL;
 	kfree(priv);
