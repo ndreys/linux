@@ -195,23 +195,23 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 }
 EXPORT_SYMBOL(drm_sched_entity_flush);
 
-/**
- * drm_sched_entity_kill_jobs - helper for drm_sched_entity_kill_jobs
- *
- * @f: signaled fence
- * @cb: our callback structure
- *
- * Signal the scheduler finished fence when the entity in question is killed.
- */
+static void drm_sched_entity_kill_work(struct work_struct *work)
+{
+	struct drm_sched_job *job = container_of(work, struct drm_sched_job,
+						 finish_work);
+
+	drm_sched_fence_finished(job->s_fence);
+	WARN_ON(job->s_fence->parent);
+	job->sched->ops->free_job(job);
+}
+
 static void drm_sched_entity_kill_jobs_cb(struct dma_fence *f,
 					  struct dma_fence_cb *cb)
 {
 	struct drm_sched_job *job = container_of(cb, struct drm_sched_job,
 						 finish_cb);
 
-	drm_sched_fence_finished(job->s_fence);
-	WARN_ON(job->s_fence->parent);
-	job->sched->ops->free_job(job);
+	schedule_work(&job->finish_work);
 }
 
 /**
@@ -232,6 +232,12 @@ static void drm_sched_entity_kill_jobs(struct drm_sched_entity *entity)
 
 		drm_sched_fence_scheduled(s_fence);
 		dma_fence_set_error(&s_fence->finished, -ESRCH);
+
+		/*
+		 * Replace regular finish work function with one that just
+		 * kills the job.
+		 */
+		job->finish_work.func = drm_sched_entity_kill_work;
 
 		/*
 		 * When pipe is hanged by older entity, new entity might
