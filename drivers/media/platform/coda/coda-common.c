@@ -1715,7 +1715,7 @@ static void coda_buf_queue(struct vb2_buffer *vb)
 			coda_fill_bitstream(ctx, NULL);
 		mutex_unlock(&ctx->bitstream_mutex);
 	} else {
-		if (ctx->inst_type == CODA_INST_ENCODER &&
+		if ((ctx->inst_type == CODA_INST_ENCODER || !ctx->use_bit) &&
 		    vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT)
 			vbuf->sequence = ctx->qsequence++;
 		v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vbuf);
