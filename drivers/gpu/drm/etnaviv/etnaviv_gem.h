@@ -97,7 +97,7 @@ struct etnaviv_gem_submit {
 	struct kref refcount;
 	struct etnaviv_file_private *ctx;
 	struct etnaviv_gpu *gpu;
-	struct etnaviv_iommu_context *mmu;
+	struct etnaviv_iommu_context *mmu, *prev_mmu;
 	struct dma_fence *out_fence, *in_fence;
 	int out_fence_id;
 	struct list_head node; /* GPU active submit list */

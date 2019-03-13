@@ -414,6 +414,9 @@ static void submit_cleanup(struct kref *kref)
 	if (submit->mmu)
 		etnaviv_iommu_context_put(submit->mmu);
 
+	if (submit->prev_mmu)
+		etnaviv_iommu_context_put(submit->prev_mmu);
+
 	for (i = 0; i < submit->nr_bos; i++) {
 		struct etnaviv_gem_object *etnaviv_obj = submit->bos[i].obj;
 
