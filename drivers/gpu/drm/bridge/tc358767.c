@@ -1094,6 +1094,12 @@ static void tc_bridge_enable(struct drm_bridge *bridge)
 	struct tc_data *tc = bridge_to_tc(bridge);
 	int ret;
 
+	ret = tc_get_display_props(tc);
+	if (ret < 0) {
+		dev_err(tc->dev, "failed to read display props: %d\n", ret);
+		return;
+	}
+
 	ret = tc_main_link_enable(tc);
 	if (ret < 0) {
 		dev_err(tc->dev, "main link enable error: %d\n", ret);
@@ -1239,19 +1245,35 @@ static int tc_connector_get_modes(struct drm_connector *connector)
 	return count;
 }
 
-static void tc_connector_set_polling(struct tc_data *tc,
-				     struct drm_connector *connector)
-{
-	/* TODO: add support for HPD */
-	connector->polled = DRM_CONNECTOR_POLL_CONNECT |
-			    DRM_CONNECTOR_POLL_DISCONNECT;
-}
-
 static const struct drm_connector_helper_funcs tc_connector_helper_funcs = {
 	.get_modes = tc_connector_get_modes,
 };
 
+static enum drm_connector_status tc_connector_detect(struct drm_connector *connector, bool force)
+{
+	struct tc_data *tc = connector_to_tc(connector);
+	u32 val;
+	int ret;
+	bool conn;
+
+	tc_read(GPIOI, &val);
+
+	conn = val & BIT(0);
+
+	if (force && conn)
+		tc_get_display_props(tc);
+
+	if (conn)
+		return connector_status_connected;
+	else
+		return connector_status_disconnected;
+
+err:
+	return connector_status_unknown;
+}
+
 static const struct drm_connector_funcs tc_connector_funcs = {
+	.detect = tc_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = drm_connector_cleanup,
 	.reset = drm_atomic_helper_connector_reset,
@@ -1266,13 +1288,20 @@ static int tc_bridge_attach(struct drm_bridge *bridge)
 	struct drm_device *drm = bridge->dev;
 	int ret;
 
-	/* Create eDP connector */
+	/* Create DP/eDP connector */
 	drm_connector_helper_add(&tc->connector, &tc_connector_helper_funcs);
 	ret = drm_connector_init(drm, &tc->connector, &tc_connector_funcs,
 				 tc->panel ? DRM_MODE_CONNECTOR_eDP :
 				 DRM_MODE_CONNECTOR_DisplayPort);
 	if (ret)
 		return ret;
+
+	/* Don't poll if we have eDP panel */
+	if (!tc->panel) {
+		/* TODO: add support for HPD */
+		tc->connector.polled = DRM_CONNECTOR_POLL_CONNECT |
+				       DRM_CONNECTOR_POLL_DISCONNECT;
+	}
 
 	if (tc->panel)
 		drm_panel_attach(tc->panel, &tc->connector);
@@ -1416,12 +1445,6 @@ static int tc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (ret)
 		return ret;
 
-	ret = tc_get_display_props(tc);
-	if (ret)
-		goto err_unregister_aux;
-
-	tc_connector_set_polling(tc, &tc->connector);
-
 	tc->bridge.funcs = &tc_bridge_funcs;
 	tc->bridge.of_node = dev->of_node;
 	drm_bridge_add(&tc->bridge);
@@ -1429,9 +1452,6 @@ static int tc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	i2c_set_clientdata(client, tc);
 
 	return 0;
-err_unregister_aux:
-	drm_dp_aux_unregister(&tc->aux);
-	return ret;
 }
 
 static int tc_remove(struct i2c_client *client)
