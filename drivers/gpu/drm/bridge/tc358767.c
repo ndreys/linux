@@ -1311,7 +1311,7 @@ static enum drm_connector_status tc_connector_detect(struct drm_connector *conne
 	if (ret)
 		return connector_status_unknown;
 
-	conn = val & BIT(0);
+	conn = !tc->connector.polled || (val & BIT(0));
 
 	if (force && conn)
 		tc_get_display_props(tc);
