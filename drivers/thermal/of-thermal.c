@@ -81,6 +81,8 @@ struct __thermal_zone {
 
 	/* sensor interface */
 	void *sensor_data;
+	int sensor_id;
+
 	const struct thermal_zone_of_device_ops *ops;
 };
 
@@ -91,10 +93,14 @@ static int of_thermal_get_temp(struct thermal_zone_device *tz,
 {
 	struct __thermal_zone *data = tz->devdata;
 
-	if (!data->ops->get_temp)
-		return -EINVAL;
+	if (data->ops->get_temp)
+		return data->ops->get_temp(data->sensor_data, temp);
 
-	return data->ops->get_temp(data->sensor_data, temp);
+	if (data->ops->get_temp_id)
+		return data->ops->get_temp_id(data->sensor_id,
+					      data->sensor_data, temp);
+
+	return -EINVAL;
 }
 
 static int of_thermal_set_trips(struct thermal_zone_device *tz,
@@ -410,8 +416,8 @@ static struct thermal_zone_device_ops of_thermal_ops = {
 /***   sensor API   ***/
 
 static struct thermal_zone_device *
-thermal_zone_of_add_sensor(struct device_node *zone,
-			   struct device_node *sensor, void *data,
+thermal_zone_of_add_sensor(struct device_node *zone, struct device_node *sensor,
+			   int sensor_id, void *data,
 			   const struct thermal_zone_of_device_ops *ops)
 {
 	struct thermal_zone_device *tzd;
@@ -429,6 +435,7 @@ thermal_zone_of_add_sensor(struct device_node *zone,
 	mutex_lock(&tzd->lock);
 	tz->ops = ops;
 	tz->sensor_data = data;
+	tz->sensor_id = sensor_id;
 
 	tzd->ops->get_temp = of_thermal_get_temp;
 	tzd->ops->get_trend = of_thermal_get_trend;
@@ -519,7 +526,7 @@ thermal_zone_of_sensor_register(struct device *dev, int sensor_id, void *data,
 		}
 
 		if (sensor_specs.np == sensor_np && id == sensor_id) {
-			tzd = thermal_zone_of_add_sensor(child, sensor_np,
+			tzd = thermal_zone_of_add_sensor(child, sensor_np, sensor_id,
 							 data, ops);
 			if (!IS_ERR(tzd))
 				tzd->ops->set_mode(tzd, THERMAL_DEVICE_ENABLED);

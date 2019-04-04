@@ -351,6 +351,7 @@ struct thermal_genl_event {
  *		   hardware.
  */
 struct thermal_zone_of_device_ops {
+	int (*get_temp_id)(int, void *, int *);
 	int (*get_temp)(void *, int *);
 	int (*get_trend)(void *, int, enum thermal_trend *);
 	int (*set_trips)(void *, int, int);
