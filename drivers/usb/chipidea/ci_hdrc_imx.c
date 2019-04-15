@@ -311,26 +311,28 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, data);
 	data->usbmisc_data = usbmisc_get_init_data(dev);
-	if (IS_ERR(data->usbmisc_data))
-		return PTR_ERR(data->usbmisc_data);
+	ret = PTR_ERR_OR_ZERO(data->usbmisc_data);
+	if (ret)
+		return ret;
 
 	if ((of_usb_get_phy_mode(dev->of_node) == USBPHY_INTERFACE_MODE_HSIC)
 		&& data->usbmisc_data) {
 		pdata.flags |= CI_HDRC_IMX_IS_HSIC;
 		data->usbmisc_data->hsic = 1;
 		data->pinctrl = devm_pinctrl_get(dev);
-		if (IS_ERR(data->pinctrl)) {
-			dev_err(dev, "pinctrl get failed, err=%ld\n",
-					PTR_ERR(data->pinctrl));
-			return PTR_ERR(data->pinctrl);
+		ret = PTR_ERR_OR_ZERO(data->pinctrl);
+		if (ret) {
+			dev_err(dev, "pinctrl get failed, err=%d\n", ret);
+			return ret;
 		}
 
 		pinctrl_hsic_idle = pinctrl_lookup_state(data->pinctrl, "idle");
-		if (IS_ERR(pinctrl_hsic_idle)) {
+		ret = PTR_ERR_OR_ZERO(pinctrl_hsic_idle);
+		if (ret) {
 			dev_err(dev,
-				"pinctrl_hsic_idle lookup failed, err=%ld\n",
-					PTR_ERR(pinctrl_hsic_idle));
-			return PTR_ERR(pinctrl_hsic_idle);
+				"pinctrl_hsic_idle lookup failed, err=%d\n",
+				ret);
+			return ret;
 		}
 
 		ret = pinctrl_select_state(data->pinctrl, pinctrl_hsic_idle);
@@ -341,23 +343,25 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 
 		data->pinctrl_hsic_active = pinctrl_lookup_state(data->pinctrl,
 								"active");
-		if (IS_ERR(data->pinctrl_hsic_active)) {
+		ret = PTR_ERR_OR_ZERO(data->pinctrl_hsic_active);
+		if (ret) {
 			dev_err(dev,
-				"pinctrl_hsic_active lookup failed, err=%ld\n",
-					PTR_ERR(data->pinctrl_hsic_active));
-			return PTR_ERR(data->pinctrl_hsic_active);
+				"pinctrl_hsic_active lookup failed, err=%d\n",
+				ret);
+			return ret;
 		}
 
 		data->hsic_pad_regulator = devm_regulator_get(dev, "hsic");
-		if (PTR_ERR(data->hsic_pad_regulator) == -EPROBE_DEFER) {
+		ret = PTR_ERR_OR_ZERO(data->hsic_pad_regulator);
+		if (ret == -EPROBE_DEFER) {
 			return -EPROBE_DEFER;
-		} else if (PTR_ERR(data->hsic_pad_regulator) == -ENODEV) {
+		} else if (ret == -ENODEV) {
 			/* no pad regualator is needed */
 			data->hsic_pad_regulator = NULL;
-		} else if (IS_ERR(data->hsic_pad_regulator)) {
-			dev_err(dev, "Get HSIC pad regulator error: %ld\n",
-					PTR_ERR(data->hsic_pad_regulator));
-			return PTR_ERR(data->hsic_pad_regulator);
+		} else if (ret) {
+			dev_err(dev, "Get HSIC pad regulator error: %d\n",
+				ret);
+			return ret;
 		}
 
 		if (data->hsic_pad_regulator) {
@@ -378,8 +382,8 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 		goto disable_hsic_regulator;
 
 	data->phy = devm_usb_get_phy_by_phandle(dev, "fsl,usbphy", 0);
-	if (IS_ERR(data->phy)) {
-		ret = PTR_ERR(data->phy);
+	ret = PTR_ERR_OR_ZERO(data->phy);
+	if (ret) {
 		/* Return -EINVAL if no usbphy is available */
 		if (ret == -ENODEV)
 			ret = -EINVAL;
@@ -409,8 +413,8 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 	data->ci_pdev = ci_hdrc_add_device(dev,
 				pdev->resource, pdev->num_resources,
 				&pdata);
-	if (IS_ERR(data->ci_pdev)) {
-		ret = PTR_ERR(data->ci_pdev);
+	ret = PTR_ERR_OR_ZERO(data->ci_pdev);
+	if (ret) {
 		if (ret != -EPROBE_DEFER)
 			dev_err(dev, "ci_hdrc_add_device failed, err=%d\n",
 					ret);
