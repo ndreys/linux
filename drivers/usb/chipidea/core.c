@@ -960,38 +960,32 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 	} else {
 		/* Look for a generic PHY first */
 		ci->phy = devm_phy_get(dev->parent, "usb-phy");
-
-		if (PTR_ERR(ci->phy) == -EPROBE_DEFER) {
-			ret = -EPROBE_DEFER;
+		ret = PTR_ERR_OR_ZERO(ci->phy);
+		if (ret == -EPROBE_DEFER)
 			goto ulpi_exit;
-		} else if (IS_ERR(ci->phy)) {
+		else if (ret)
 			ci->phy = NULL;
-		}
 
 		/* Look for a legacy USB PHY from device-tree next */
 		if (!ci->phy) {
 			ci->usb_phy = devm_usb_get_phy_by_phandle(dev->parent,
 								  "phys", 0);
-
-			if (PTR_ERR(ci->usb_phy) == -EPROBE_DEFER) {
-				ret = -EPROBE_DEFER;
+			ret = PTR_ERR_OR_ZERO(ci->usb_phy);
+			if (ret == -EPROBE_DEFER)
 				goto ulpi_exit;
-			} else if (IS_ERR(ci->usb_phy)) {
+			else if (ret)
 				ci->usb_phy = NULL;
-			}
 		}
 
 		/* Look for any registered legacy USB PHY as last resort */
 		if (!ci->phy && !ci->usb_phy) {
 			ci->usb_phy = devm_usb_get_phy(dev->parent,
 						       USB_PHY_TYPE_USB2);
-
-			if (PTR_ERR(ci->usb_phy) == -EPROBE_DEFER) {
-				ret = -EPROBE_DEFER;
+			ret = PTR_ERR_OR_ZERO(ci->usb_phy);
+			if (ret == -EPROBE_DEFER)
 				goto ulpi_exit;
-			} else if (IS_ERR(ci->usb_phy)) {
+			else if (ret)
 				ci->usb_phy = NULL;
-			}
 		}
 
 		/* No USB PHY was found in the end */
