@@ -618,15 +618,15 @@ static int ci_get_platdata(struct device *dev,
 	if (platdata->dr_mode != USB_DR_MODE_PERIPHERAL) {
 		/* Get the vbus regulator */
 		platdata->reg_vbus = devm_regulator_get(dev, "vbus");
-		if (PTR_ERR(platdata->reg_vbus) == -EPROBE_DEFER) {
+		ret = PTR_ERR_OR_ZERO(platdata->reg_vbus);
+		if (ret == -EPROBE_DEFER) {
 			return -EPROBE_DEFER;
-		} else if (PTR_ERR(platdata->reg_vbus) == -ENODEV) {
+		} else if (ret == -ENODEV) {
 			/* no vbus regulator is needed */
 			platdata->reg_vbus = NULL;
-		} else if (IS_ERR(platdata->reg_vbus)) {
-			dev_err(dev, "Getting regulator error: %ld\n",
-				PTR_ERR(platdata->reg_vbus));
-			return PTR_ERR(platdata->reg_vbus);
+		} else if (ret) {
+			dev_err(dev, "Getting regulator error: %d\n", ret);
+			return ret;
 		}
 		/* Get TPL support */
 		if (!platdata->tpl_support)
@@ -693,12 +693,16 @@ static int ci_get_platdata(struct device *dev,
 	if (of_property_read_bool(dev->of_node, "extcon")) {
 		/* Each one of them is not mandatory */
 		ext_vbus = extcon_get_edev_by_phandle(dev, 0);
-		if (IS_ERR(ext_vbus) && PTR_ERR(ext_vbus) != -ENODEV)
-			return PTR_ERR(ext_vbus);
+		ret = PTR_ERR_OR_ZERO(ext_vbus);
+		if (ret && ret != -ENODEV) {
+			return ret;
+		}
 
 		ext_id = extcon_get_edev_by_phandle(dev, 1);
-		if (IS_ERR(ext_id) && PTR_ERR(ext_id) != -ENODEV)
-			return PTR_ERR(ext_id);
+		ret = PTR_ERR_OR_ZERO(ext_id);
+		if (ret && ret != -ENODEV) {
+			return ret;
+		}
 	}
 
 	cable = &platdata->vbus_extcon;
