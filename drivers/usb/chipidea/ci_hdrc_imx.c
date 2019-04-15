@@ -163,33 +163,33 @@ static struct imx_usbmisc_data *usbmisc_get_init_data(struct device *dev)
 static int imx_get_clks(struct device *dev)
 {
 	struct ci_hdrc_imx_data *data = dev_get_drvdata(dev);
-	int ret = 0;
+	int ret;
 
 	data->clk_ipg = devm_clk_get(dev, "ipg");
 	if (IS_ERR(data->clk_ipg)) {
 		/* If the platform only needs one clocks */
 		data->clk = devm_clk_get(dev, NULL);
-		if (IS_ERR(data->clk)) {
-			ret = PTR_ERR(data->clk);
+		ret = PTR_ERR_OR_ZERO(data->clk);
+		if (ret) {
 			dev_err(dev,
-				"Failed to get clks, err=%ld,%ld\n",
-				PTR_ERR(data->clk), PTR_ERR(data->clk_ipg));
+				"Failed to get clks, err=%d,%ld\n",
+				ret, PTR_ERR(data->clk_ipg));
 			return ret;
 		}
 		return ret;
 	}
 
 	data->clk_ahb = devm_clk_get(dev, "ahb");
-	if (IS_ERR(data->clk_ahb)) {
-		ret = PTR_ERR(data->clk_ahb);
+	ret = PTR_ERR_OR_ZERO(data->clk_ahb);
+	if (ret) {
 		dev_err(dev,
 			"Failed to get ahb clock, err=%d\n", ret);
 		return ret;
 	}
 
 	data->clk_per = devm_clk_get(dev, "per");
-	if (IS_ERR(data->clk_per)) {
-		ret = PTR_ERR(data->clk_per);
+	ret = PTR_ERR_OR_ZERO(data->clk_per);
+	if (ret) {
 		dev_err(dev,
 			"Failed to get per clock, err=%d\n", ret);
 		return ret;
