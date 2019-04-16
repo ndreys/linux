@@ -1090,17 +1090,17 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 		goto stop;
 
 	if (ci->supports_runtime_pm) {
-		pm_runtime_set_active(&pdev->dev);
-		pm_runtime_enable(&pdev->dev);
-		pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
+		pm_runtime_set_active(dev);
+		pm_runtime_enable(dev);
+		pm_runtime_set_autosuspend_delay(dev, 2000);
 		pm_runtime_mark_last_busy(ci->dev);
-		pm_runtime_use_autosuspend(&pdev->dev);
+		pm_runtime_use_autosuspend(dev);
 	}
 
 	if (ci_otg_is_fsm_mode(ci))
 		ci_hdrc_otg_fsm_start(ci);
 
-	device_set_wakeup_capable(&pdev->dev, true);
+	device_set_wakeup_capable(dev, true);
 	dbg_create_files(ci);
 
 	ret = sysfs_create_group(&dev->kobj, &ci_attr_group);
