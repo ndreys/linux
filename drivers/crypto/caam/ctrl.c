@@ -687,9 +687,8 @@ static int caam_probe(struct platform_device *pdev)
 		/* VIRT_EN_INCL = 1 & VIRT_EN_POR = 1 or
 		 * VIRT_EN_INCL = 1 & VIRT_EN_POR = 0 & SCFGR_VIRT_EN = 1
 		 */
-		if ((comp_params & CTPR_MS_VIRT_EN_POR) ||
-		    (!(comp_params & CTPR_MS_VIRT_EN_POR) &&
-		       (scfgr & SCFGR_VIRT_EN)))
+		if (comp_params & CTPR_MS_VIRT_EN_POR ||
+		    scfgr & SCFGR_VIRT_EN)
 				ctrlpriv->virt_en = 1;
 	} else {
 		/* VIRT_EN_INCL = 0 && VIRT_EN_POR_VALUE = 1 */
