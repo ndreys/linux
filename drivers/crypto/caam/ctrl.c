@@ -619,7 +619,7 @@ static int caam_probe(struct platform_device *pdev)
 		caam_ptr_sz = sizeof(u64);
 	else
 		caam_ptr_sz = sizeof(u32);
-	caam_dpaa2 = !!(comp_params & CTPR_MS_DPAA2);
+	caam_dpaa2 = comp_params & CTPR_MS_DPAA2;
 	ctrlpriv->qi_present = !!(comp_params & CTPR_MS_QI_MASK);
 
 #ifdef CONFIG_CAAM_QI
