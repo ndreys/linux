@@ -1962,7 +1962,7 @@ int caam_algapi_hash_init(struct device *ctrldev)
 	} else {
 		u32 mdha = rd_reg32(&priv->ctrl->vreg.mdha);
 
-		md_vid = (mdha & CHA_VER_VID_MASK) >> CHA_VER_VID_SHIFT;
+		md_vid = FIELD_GET(CHA_VER_VID, mdha);
 		md_inst = mdha & CHA_VER_NUM_MASK;
 	}
 

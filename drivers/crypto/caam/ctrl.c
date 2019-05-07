@@ -774,8 +774,7 @@ static int caam_probe(struct platform_device *pdev)
 		rng_vid = (rd_reg32(&ctrl->perfmon.cha_id_ls) &
 			   CHA_ID_LS_RNG_MASK) >> CHA_ID_LS_RNG_SHIFT;
 	else
-		rng_vid = (rd_reg32(&ctrl->vreg.rng) & CHA_VER_VID_MASK) >>
-			   CHA_VER_VID_SHIFT;
+		rng_vid = FIELD_GET(CHA_VER_VID, rd_reg32(&ctrl->vreg.rng));
 
 	/*
 	 * If SEC has RNG version >= 4 and RNG state handle has not been

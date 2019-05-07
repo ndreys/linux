@@ -2550,8 +2550,8 @@ int caam_qi_algapi_init(struct device *ctrldev)
 		aesa = rd_reg32(&priv->ctrl->vreg.aesa);
 		mdha = rd_reg32(&priv->ctrl->vreg.mdha);
 
-		aes_vid = (aesa & CHA_VER_VID_MASK) >> CHA_VER_VID_SHIFT;
-		md_vid = (mdha & CHA_VER_VID_MASK) >> CHA_VER_VID_SHIFT;
+		aes_vid = FIELD_GET(CHA_VER_VID, aesa);
+		md_vid = FIELD_GET(CHA_VER_VID, mdha);
 
 		des_inst = rd_reg32(&priv->ctrl->vreg.desa) & CHA_VER_NUM_MASK;
 		aes_inst = aesa & CHA_VER_NUM_MASK;
