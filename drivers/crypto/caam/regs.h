@@ -13,6 +13,8 @@
 #include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/io-64-nonatomic-hi-lo.h>
+#include <linux/bits.h>
+#include <linux/bitfield.h>
 
 /*
  * Architecture-specific register access methods
@@ -311,8 +313,7 @@ struct version_regs {
 #define CHA_VER_REV_SHIFT	16
 #define CHA_VER_REV_MASK	(0xffull << CHA_VER_REV_SHIFT)
 /* CHA Version ID */
-#define CHA_VER_VID_SHIFT	24
-#define CHA_VER_VID_MASK	(0xffull << CHA_VER_VID_SHIFT)
+#define CHA_VER_VID		GENMASK(31, 24)
 
 /* CHA Miscellaneous Information - AESA_MISC specific */
 #define CHA_VER_MISC_AES_GCM	BIT(1 + CHA_VER_MISC_SHIFT)
