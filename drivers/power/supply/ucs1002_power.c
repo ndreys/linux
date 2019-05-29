@@ -491,7 +491,7 @@ static const struct regulator_desc ucs1002_regulator_descriptor = {
 static int ucs1002_probe(struct i2c_client *client,
 			 const struct i2c_device_id *dev_id)
 {
-	struct device *dev = &client->dev;
+	struct device *hwmon, *dev = &client->dev;
 	struct power_supply_config charger_config = {};
 	const struct regmap_config regmap_config = {
 		.reg_bits = 8,
@@ -568,6 +568,13 @@ static int ucs1002_probe(struct i2c_client *client,
 	ret = PTR_ERR_OR_ZERO(info->charger);
 	if (ret) {
 		dev_err(dev, "Failed to register power supply: %d\n", ret);
+		return ret;
+	}
+
+	hwmon = devm_power_supply_add_hwmon_sysfs(info->charger);
+	ret = PTR_ERR_OR_ZERO(hwmon);
+	if (ret) {
+		dev_err(dev, "Failed to add hmwon attributes: %d\n", ret);
 		return ret;
 	}
 
