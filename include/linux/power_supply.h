@@ -481,4 +481,15 @@ static inline bool power_supply_is_watt_property(enum power_supply_property psp)
 	return 0;
 }
 
+#ifdef CONFIG_POWER_SUPPLY_HWMON
+extern struct device *
+devm_power_supply_add_hwmon_sysfs(struct power_supply *psy);
+#else
+static struct device *
+devm_power_supply_add_hwmon_sysfs(struct power_supply *psy)
+{
+	return 0;
+}
+#endif
+
 #endif /* __LINUX_POWER_SUPPLY_H__ */
