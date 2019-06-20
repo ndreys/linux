@@ -601,6 +601,8 @@ static int caam_probe(struct platform_device *pdev)
 	}
 	caam_imx = (bool)imx_soc_match;
 
+	caam_ptr_sz = sizeof(dma_addr_t);
+
 	/* Get configuration properties from device tree */
 	/* First, get register page */
 	ctrl = of_iomap(nprop, 0);
