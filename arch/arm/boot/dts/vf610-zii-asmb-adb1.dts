@@ -1,0 +1,266 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2019 Zodiac Inflight Innovations
+ */
+
+/dts-v1/;
+#include "vf610-zii-asmb.dtsi"
+
+/ {
+	model = "ZII VF610 ASMB ADB1 Board";
+	compatible = "zii,vf610adb1", "zii,vf610dev", "fsl,vf610";
+};
+
+&fec1_mdio {
+	broken-switch@0 {
+		reg = <0>;
+		compatible = "marvell,mv88e6190";
+		pinctrl-0 = <&pinctrl_gpio_switch0>;
+		pinctrl-names = "default";
+		eeprom-length = <65536>;
+		reset-gpios = <&gpio3 11 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		status="disabled";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				label = "cpu";
+				ethernet = <&fec1>;
+
+				fixed-link {
+					speed = <100>;
+					full-duplex;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "eth_cu_1000_6";
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "eth_cu_1000_5";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "eth_cu_1000_4";
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "eth_cu_1000_3";
+			};
+
+			port@5 {
+				reg = <5>;
+				label = "eth_cu_1000_7";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+
+			port@6 {
+				reg = <6>;
+				label = "eth_cu_1000_11";
+			};
+
+			port@8 {
+				reg = <8>;
+				label = "eth_cu_1000_8";
+			};
+
+			port@9 {
+				reg = <9>;
+				label = "eth_fc_1000_50a";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+					link-gpios = <&broken_gpio9 0
+						      GPIO_ACTIVE_HIGH>;
+				};
+			};
+
+			port@10 {
+				reg = <10>;
+				label = "eth_fc_1000_50b";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+					link-gpios = <&broken_gpio9 1
+						      GPIO_ACTIVE_HIGH>;
+				};				
+			};
+		};
+
+		mdio1 {
+			compatible = "marvell,mv88e6xxx-mdio-external";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			phy@0 {
+				compatible = "ethernet-phy-ieee802.3-c45";
+				interrupt-parent = <&broken_gpio9>;
+				interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+				reg = <0>;
+			};
+		};
+	};
+};
+
+&i2c0 {
+	broken_gpio9: broken-gpio-expander@20 {
+		compatible = "semtech,sx1503q";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sx1503_20>;
+		#gpio-cells = <2>;
+		#interrupt-cells = <2>;
+		reg = <0x20>;
+		gpio-controller;
+		interrupt-controller;
+		interrupt-parent = <&gpio1>;
+		interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
+		status = "disabled";
+	};
+
+	broken-temp-sensor@49 {
+		compatible = "national,lm75";
+		reg = <0x49>;
+		status = "disabled";
+	};
+
+	broken-gpio-expander@23 {
+		compatible = "nxp,pca9555";
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x23>;
+		status = "disabled";
+	};
+
+	broken-eerprom@54 {
+		compatible = "atmel,24c08";
+		reg = <0x54>;
+		status = "disabled";
+	};
+};
+
+&i2c2 {
+	gpio9: gpio-expander@20 {
+		compatible = "semtech,sx1503q";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sx1503_20>;
+		#gpio-cells = <2>;
+		#interrupt-cells = <2>;
+		reg = <0x20>;
+		gpio-controller;
+		interrupt-controller;
+		interrupt-parent = <&gpio1>;
+		interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
+		status = "disabled";
+	};
+
+	temp-sensor@49 {
+		compatible = "national,lm75";
+		reg = <0x49>;
+		status = "disabled";
+	};
+
+	gpio10: gpio-expander@23 {
+		compatible = "nxp,pca9555";
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x23>;
+		status = "disabled";
+	};
+
+	eerprom@54 {
+		compatible = "atmel,24c08";
+		reg = <0x54>;
+		status = "disabled";
+	};
+};
+
+&nameplate_eeprom {
+	status = "disabled";
+};
+
+&sff1 {
+	tx-disable-gpios = <&gpio10 0 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&sff2 {
+	tx-disable-gpios = <&gpio10 1 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&switch0 {
+	status = "disabled";
+
+	ports {
+		port@1 {
+			reg = <1>;
+			label = "eth_cu_1000_6";
+		};
+
+		port@2 {
+			reg = <2>;
+			label = "eth_cu_1000_5";
+		};
+
+		port@3 {
+			reg = <3>;
+			label = "eth_cu_1000_4";
+		};
+
+		port@4 {
+			reg = <4>;
+			label = "eth_cu_1000_3";
+		};
+
+		port@5 {
+			reg = <5>;
+			label = "eth_cu_1000_7";
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
+		};
+
+		port@6 {
+			reg = <6>;
+			label = "eth_cu_1000_11";
+		};
+
+		port@8 {
+			reg = <8>;
+			label = "eth_cu_1000_8";
+		};
+	};
+
+	mdio1 {
+		compatible = "marvell,mv88e6xxx-mdio-external";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy@0 {
+			compatible = "ethernet-phy-ieee802.3-c45";
+			interrupt-parent = <&gpio9>;
+			interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+			reg = <0>;
+		};
+	};
+};
