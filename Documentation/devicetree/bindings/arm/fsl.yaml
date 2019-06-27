@@ -326,6 +326,8 @@ properties:
       - description: ZII's VF610 based Boards
         items:
           - enum:
+              - zii,vf610adb1      # ZII VF610 ASMB ADB1 Board
+              - zii,vf610adb2      # ZII VF610 ASMB ADB2 Board
               - zii,vf610cfu1      # ZII VF610 CFU1 Board
               - zii,vf610dev-c     # ZII VF610 Development Board, Rev C
               - zii,vf610dev-b     # ZII VF610 Development Board, Rev B
