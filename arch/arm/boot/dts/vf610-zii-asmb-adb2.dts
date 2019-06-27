@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2019 Zodiac Inflight Innovations
+ */
+
+
+/dts-v1/;
+#include "vf610-zii-asmb.dtsi"
+
+
+/ {
+	model = "ZII VF610 ASMB ADB2";
+	compatible = "zii,vf610adb2", "zii,vf610dev", "fsl,vf610";
+};
+
+&sff1 {
+	tx-disable-gpios = <&gpio9 8 GPIO_ACTIVE_HIGH>;
+};
+
+&sff2 {
+	tx-disable-gpios = <&gpio9 9 GPIO_ACTIVE_HIGH>;
+};
+
+&switch0 {
+	ports {
+		port@1 {
+			reg = <1>;
+			label = "eth_cu_1000_3";
+		};
+
+		port@2 {
+			reg = <2>;
+			label = "eth_cu_1000_4";
+		};
+
+		port@3 {
+			reg = <3>;
+			label = "eth_cu_1000_5";
+		};
+
+		port@4 {
+			reg = <4>;
+			label = "eth_cu_1000_6";
+		};
+
+		port@5 {
+			reg = <5>;
+			label = "eth_cu_1000_7";
+		};
+
+		port@6 {
+			reg = <6>;
+			label = "eth_cu_1000_8";
+		};
+
+		port@7 {
+                        reg = <7>;
+                        label = "eth_cu_1000_9";
+                };
+
+		port@8 {
+			reg = <8>;
+			label = "eth_cu_1000_10";
+		};
+	};
+};
+
+&i2c2 {
+	i2c-mux@70 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+
+		sff1_i2c: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		sff2_i2c: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+                i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+
+                        gpio9: gpio-expander@20 {
+				compatible = "semtech,sx1503q";
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_sx1503_20>;
+				#gpio-cells = <2>;
+				#interrupt-cells = <2>;
+				reg = <0x20>;
+				gpio-controller;
+				interrupt-controller;
+				interrupt-parent = <&gpio1>;
+				interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
+			};
+
+                        eeprom@54 {
+		               compatible = "atmel,24c08";
+		               reg = <0x54>;
+	                };
+
+			temperature-sensor@48 {
+				compatible = "national,lm75";
+				reg = <0x48>;
+			};
+		};
+	};
+};
