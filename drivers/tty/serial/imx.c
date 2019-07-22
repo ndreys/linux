@@ -387,21 +387,19 @@ static void imx_uart_ucrs_restore(struct imx_port *sport,
 #endif
 
 /* called with port.lock taken and irqs caller dependent */
-static void imx_uart_rts_active(struct imx_port *sport, u32 *ucr2)
+static void imx_uart_rts_set(struct imx_port *sport, u32 *ucr2, bool on)
 {
-	*ucr2 &= ~(UCR2_CTSC | UCR2_CTS);
 
-	sport->port.mctrl |= TIOCM_RTS;
-	mctrl_gpio_set(sport->gpios, sport->port.mctrl);
-}
+	if (on) {
+		*ucr2 &= ~(UCR2_CTSC | UCR2_CTS);
 
-/* called with port.lock taken and irqs caller dependent */
-static void imx_uart_rts_inactive(struct imx_port *sport, u32 *ucr2)
-{
-	*ucr2 &= ~UCR2_CTSC;
-	*ucr2 |= UCR2_CTS;
+		sport->port.mctrl |= TIOCM_RTS;
+	} else {
+		*ucr2 &= ~UCR2_CTSC;
+		*ucr2 |= UCR2_CTS;
 
-	sport->port.mctrl &= ~TIOCM_RTS;
+		sport->port.mctrl &= ~TIOCM_RTS;
+	}
 	mctrl_gpio_set(sport->gpios, sport->port.mctrl);
 }
 
@@ -448,10 +446,8 @@ static void imx_uart_stop_tx(struct uart_port *port)
 	if (port->rs485.flags & SER_RS485_ENABLED &&
 	    imx_uart_readl(sport, USR2) & USR2_TXDC) {
 		u32 ucr2 = imx_uart_readl(sport, UCR2), ucr4;
-		if (port->rs485.flags & SER_RS485_RTS_AFTER_SEND)
-			imx_uart_rts_active(sport, &ucr2);
-		else
-			imx_uart_rts_inactive(sport, &ucr2);
+		imx_uart_rts_set(sport, &ucr2,
+				 port->rs485.flags & SER_RS485_RTS_AFTER_SEND);
 		imx_uart_writel(sport, ucr2, UCR2);
 
 		imx_uart_start_rx(port);
@@ -660,10 +656,8 @@ static void imx_uart_start_tx(struct uart_port *port)
 		u32 ucr2;
 
 		ucr2 = imx_uart_readl(sport, UCR2);
-		if (port->rs485.flags & SER_RS485_RTS_ON_SEND)
-			imx_uart_rts_active(sport, &ucr2);
-		else
-			imx_uart_rts_inactive(sport, &ucr2);
+		imx_uart_rts_set(sport, &ucr2,
+				 port->rs485.flags & SER_RS485_RTS_ON_SEND);
 		imx_uart_writel(sport, ucr2, UCR2);
 
 		if (!(port->rs485.flags & SER_RS485_RX_DURING_TX))
@@ -1587,11 +1581,8 @@ imx_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 		 * it under manual control and keep transmitter
 		 * disabled.
 		 */
-		if (port->rs485.flags & SER_RS485_RTS_AFTER_SEND)
-			imx_uart_rts_active(sport, &ucr2);
-		else
-			imx_uart_rts_inactive(sport, &ucr2);
-
+		imx_uart_rts_set(sport, &ucr2,
+				 port->rs485.flags & SER_RS485_RTS_AFTER_SEND);
 	} else if (termios->c_cflag & CRTSCTS) {
 		/*
 		 * Only let receiver control RTS output if we were not requested
@@ -1842,10 +1833,8 @@ static int imx_uart_rs485_config(struct uart_port *port,
 
 		/* disable transmitter */
 		ucr2 = imx_uart_readl(sport, UCR2);
-		if (rs485conf->flags & SER_RS485_RTS_AFTER_SEND)
-			imx_uart_rts_active(sport, &ucr2);
-		else
-			imx_uart_rts_inactive(sport, &ucr2);
+		imx_uart_rts_set(sport, &ucr2,
+				 rs485conf->flags & SER_RS485_RTS_AFTER_SEND);
 		imx_uart_writel(sport, ucr2, UCR2);
 	}
 
