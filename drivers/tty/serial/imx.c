@@ -1488,7 +1488,7 @@ static void imx_uart_flush_buffer(struct uart_port *port)
 		return;
 
 	sport->tx_bytes = 0;
-	dmaengine_terminate_all(sport->dma_chan_tx);
+	dmaengine_terminate_async(sport->dma_chan_tx);
 	if (sport->dma_is_txing) {
 		u32 ucr1;
 
