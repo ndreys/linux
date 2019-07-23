@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/tty_flip.h>
 
+#include "serial_mctrl_gpio.h"
+
 /* All registers are 8-bit width */
 #define UARTBDH			0x00
 #define UARTBDL			0x01
@@ -263,6 +265,8 @@ struct lpuart_port {
 	struct circ_buf		rx_ring;
 	int			rx_dma_rng_buf_len;
 	unsigned int		dma_tx_nents;
+	struct mctrl_gpios	*gpios;
+	bool			auto_rts;
 };
 
 struct lpuart_soc_data {
@@ -301,6 +305,16 @@ static const struct of_device_id lpuart_dt_ids[] = {
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, lpuart_dt_ids);
+
+static void lpuart_rts_set(struct lpuart_port *sport, bool on)
+{
+	if (on)
+		sport->port.mctrl |= TIOCM_RTS;
+	else
+		sport->port.mctrl &= ~TIOCM_RTS;
+
+	mctrl_gpio_set(sport->gpios, sport->port.mctrl);
+}
 
 /* Forward declare this for the dma callbacks*/
 static void lpuart_dma_tx_complete(void *arg);
@@ -368,12 +382,45 @@ static unsigned int lpuart_get_baud_clk_rate(struct lpuart_port *sport)
 #define lpuart_enable_clks(x)	__lpuart_enable_clks(x, true)
 #define lpuart_disable_clks(x)	__lpuart_enable_clks(x, false)
 
+static unsigned int lpuart_tx_empty(struct uart_port *port);
+
 static void lpuart_stop_tx(struct uart_port *port)
 {
+	struct lpuart_port *sport = container_of(port,
+						 struct lpuart_port,
+						 port);
 	unsigned char temp;
 
 	temp = readb(port->membase + UARTCR2);
-	temp &= ~(UARTCR2_TIE | UARTCR2_TCIE);
+	temp &= ~UARTCR2_TIE;
+	if (port->rs485.flags & SER_RS485_ENABLED) {
+		if (lpuart_tx_empty(port)) {
+			/*
+			 * Just in case the shifter is already empty,
+			 * save some extra work, toggle RTS right now,
+			 * and skip enabling TC interrupt.
+			 */
+			lpuart_rts_set(sport,
+				port->rs485.flags & SER_RS485_RTS_AFTER_SEND);
+		} else if (!sport->auto_rts) {
+			temp |= UARTCR2_TCIE;
+
+			if (sport->lpuart_dma_tx_use) {
+				/*
+				 * Switch interrupts back on if DMA is
+				 * being used in order to catch TC
+				 * event
+				 */
+				unsigned char cr5;
+
+				cr5 = readb(port->membase + UARTCR5);
+				cr5  &= ~UARTCR5_TDMAS;
+				writeb(cr5, port->membase + UARTCR5);
+			}
+		}
+	} else {
+		temp &= ~UARTCR2_TCIE;
+	}
 	writeb(temp, port->membase + UARTCR2);
 }
 
@@ -447,6 +494,12 @@ static void lpuart_dma_tx(struct lpuart_port *sport)
 	dma_async_issue_pending(sport->dma_tx_chan);
 }
 
+static bool lpuart_is_32(struct lpuart_port *sport)
+{
+	return sport->port.iotype == UPIO_MEM32 ||
+	       sport->port.iotype ==  UPIO_MEM32BE;
+}
+
 static void lpuart_dma_tx_complete(void *arg)
 {
 	struct lpuart_port *sport = arg;
@@ -466,8 +519,17 @@ static void lpuart_dma_tx_complete(void *arg)
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&sport->port);
 
-	if (!uart_tx_stopped_or_empty(&sport->port))
+	if (uart_tx_stopped_or_empty(&sport->port)) {
+		if (!lpuart_is_32(sport)) {
+			/*
+			 * Call stop_tx to configure TC interrupt
+			 * we'll use to drive RTS GPIO
+			 */
+			lpuart_stop_tx(&sport->port);
+		}
+	} else {
 		lpuart_dma_tx(sport);
+	}
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 }
@@ -503,12 +565,6 @@ static int lpuart_dma_tx_request(struct uart_port *port)
 	}
 
 	return 0;
-}
-
-static bool lpuart_is_32(struct lpuart_port *sport)
-{
-	return sport->port.iotype == UPIO_MEM32 ||
-	       sport->port.iotype ==  UPIO_MEM32BE;
 }
 
 static void lpuart_flush_buffer(struct uart_port *port)
@@ -729,7 +785,23 @@ static void lpuart_start_tx(struct uart_port *port)
 	unsigned char temp;
 
 	temp = readb(port->membase + UARTCR2);
-	writeb(temp | UARTCR2_TIE, port->membase + UARTCR2);
+	temp &= ~UARTCR2_TCIE;
+	temp |= UARTCR2_TIE;
+	writeb(temp, port->membase + UARTCR2);
+
+	if (port->rs485.flags & SER_RS485_ENABLED) {
+		if (sport->lpuart_dma_tx_use) {
+			/*
+			 * Re-enable DMA in case it was previosly
+			 * disabled to get a TC interrupt
+			 */
+			temp = readb(port->membase + UARTCR5);
+			writeb(temp | UARTCR5_TDMAS, port->membase + UARTCR5);
+		}
+
+		lpuart_rts_set(sport,
+			       port->rs485.flags & SER_RS485_RTS_ON_SEND);
+	}
 
 	if (sport->lpuart_dma_tx_use) {
 		if (!uart_tx_stopped_or_empty(port))
@@ -938,17 +1010,36 @@ out:
 	tty_flip_buffer_push(port);
 }
 
+static void lpuart_tcint(struct lpuart_port *sport)
+{
+	struct uart_port *port = &sport->port;
+	unsigned char cr2;
+
+	cr2 = readb(port->membase + UARTCR2);
+	cr2 &= ~UARTCR2_TCIE;
+	writeb(cr2, port->membase + UARTCR2);
+
+	lpuart_rts_set(sport, port->rs485.flags & SER_RS485_RTS_AFTER_SEND);
+}
+
 static irqreturn_t lpuart_int(int irq, void *dev_id)
 {
 	struct lpuart_port *sport = dev_id;
-	unsigned char sts;
+	unsigned char sts, cr2;
 
 	sts = readb(sport->port.membase + UARTSR1);
+	cr2 = readb(sport->port.membase + UARTCR2);
 
 	if (sts & UARTSR1_RDRF && !sport->lpuart_dma_rx_use)
 		lpuart_rxint(sport);
-
-	if (sts & UARTSR1_TDRE && !sport->lpuart_dma_tx_use)
+	/*
+	 * We want TC to have higher priority than TDRE, since TDRE
+	 * will become set before and stay set during TC even we use
+	 * to control RTS
+	 */
+	if (sts & UARTSR1_TC && cr2 & UARTCR2_TCIE)
+		lpuart_tcint(sport);
+	else if (sts & UARTSR1_TDRE && !sport->lpuart_dma_tx_use)
 		lpuart_txint(sport);
 
 	return IRQ_HANDLED;
@@ -1249,6 +1340,8 @@ static int lpuart_config_rs485(struct uart_port *port,
 			modem &= ~UARTMODEM_TXRTSPOL;
 		else if (rs485->flags & SER_RS485_RTS_AFTER_SEND)
 			modem |= UARTMODEM_TXRTSPOL;
+
+		lpuart_rts_set(sport, rs485->flags & SER_RS485_RTS_AFTER_SEND);
 	}
 
 	/* Store the new configuration */
@@ -1358,6 +1451,8 @@ static void lpuart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 
 		writeb(temp, port->membase + UARTMODEM);
 	}
+
+	mctrl_gpio_set(sport->gpios, mctrl);
 }
 
 static void lpuart32_set_mctrl(struct uart_port *port, unsigned int mctrl)
@@ -1685,8 +1780,12 @@ lpuart_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * When auto RS-485 RTS mode is enabled,
 	 * hardware flow control need to be disabled.
 	 */
-	if (sport->port.rs485.flags & SER_RS485_ENABLED)
+	if (sport->port.rs485.flags & SER_RS485_ENABLED) {
 		termios->c_cflag &= ~CRTSCTS;
+
+		lpuart_rts_set(sport,
+			       port->rs485.flags & SER_RS485_RTS_AFTER_SEND);
+	}
 
 	if (termios->c_cflag & CRTSCTS)
 		modem |= UARTMODEM_RXRTSE | UARTMODEM_TXCTSE;
@@ -2442,6 +2541,13 @@ static int lpuart_probe(struct platform_device *pdev)
 	else
 		sport->port.rs485_config = lpuart_config_rs485;
 
+	sport->gpios = mctrl_gpio_init_noauto(sport->port.dev, 0);
+	ret = PTR_ERR_OR_ZERO(sport->gpios);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to get mctrl gpios: %d\n", ret);
+		return ret;
+	}
+
 	sport->ipg_clk = devm_clk_get(&pdev->dev, "ipg");
 	if (IS_ERR(sport->ipg_clk)) {
 		ret = PTR_ERR(sport->ipg_clk);
@@ -2486,6 +2592,8 @@ static int lpuart_probe(struct platform_device *pdev)
 		goto failed_attach_port;
 
 	uart_get_rs485_mode(&pdev->dev, &sport->port.rs485);
+	sport->auto_rts = IS_ERR_OR_NULL(mctrl_gpio_to_gpiod(sport->gpios,
+							     UART_GPIO_RTS));
 
 	if (sport->port.rs485.flags & SER_RS485_RX_DURING_TX)
 		dev_err(&pdev->dev, "driver doesn't support RX during TX\n");
