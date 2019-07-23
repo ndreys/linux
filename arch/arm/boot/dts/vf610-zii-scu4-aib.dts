@@ -698,6 +698,16 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart0>;
 	status = "okay";
+	/*
+	 * LPUART driver implements Rx DMA polling timer that fires
+	 * off at regular intervals and checks if any data was
+	 * received. Since UART0 is configured to be an stdout, which
+	 * is mostly a transmit interfce, switch it to use DMA only
+	 * for Tx to avoid constantly processing mostly no-op Rx DMA
+	 * polls
+	 */
+	dmas = <&edma0 0 3>;
+	dma-names = "tx";
 };
 
 &uart1 {
