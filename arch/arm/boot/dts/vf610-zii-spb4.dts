@@ -254,6 +254,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
+	linux,rs485-enabled-at-boot-time;
+	rts-gpios = <&gpio2 21 GPIO_ACTIVE_HIGH>;
 };
 
 &wdoga5 {
@@ -357,6 +359,7 @@
 		fsl,pins = <
 			VF610_PAD_PTA30__UART3_TX		0x21a2
 			VF610_PAD_PTA31__UART3_RX		0x21a1
+			VF610_PAD_PTD3__GPIO_82			0x31c2
 		>;
 	};
 };
