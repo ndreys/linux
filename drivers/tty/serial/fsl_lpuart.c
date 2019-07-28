@@ -531,7 +531,7 @@ static void lpuart_flush_buffer(struct uart_port *port)
 				sport->dma_tx_nents, DMA_TO_DEVICE);
 			sport->dma_tx_in_progress = false;
 		}
-		dmaengine_terminate_all(sport->dma_tx_chan);
+		dmaengine_terminate_async(sport->dma_tx_chan);
 	}
 
 	if (lpuart_is_32(sport)) {
@@ -1206,7 +1206,7 @@ static void lpuart_dma_rx_free(struct uart_port *port)
 					struct lpuart_port, port);
 
 	if (sport->dma_rx_chan)
-		dmaengine_terminate_all(sport->dma_rx_chan);
+		dmaengine_terminate_async(sport->dma_rx_chan);
 
 	dma_unmap_sg(sport->port.dev, &sport->rx_sgl, 1, DMA_FROM_DEVICE);
 	kfree(sport->rx_ring.buf);
@@ -1606,7 +1606,7 @@ static void lpuart_dma_shutdown(struct lpuart_port *sport)
 		if (wait_event_interruptible(sport->dma_wait,
 			!sport->dma_tx_in_progress) != false) {
 			sport->dma_tx_in_progress = false;
-			dmaengine_terminate_all(sport->dma_tx_chan);
+			dmaengine_terminate_async(sport->dma_tx_chan);
 		}
 	}
 }
@@ -2596,7 +2596,7 @@ static int lpuart_suspend(struct device *dev)
 
 	if (sport->lpuart_dma_tx_use) {
 		sport->dma_tx_in_progress = false;
-		dmaengine_terminate_all(sport->dma_tx_chan);
+		dmaengine_terminate_async(sport->dma_tx_chan);
 	}
 
 	if (sport->port.suspended && !irq_wake)
