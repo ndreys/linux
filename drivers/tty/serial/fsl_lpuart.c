@@ -263,7 +263,6 @@ struct lpuart_port {
 	struct circ_buf		rx_ring;
 	int			rx_dma_rng_buf_len;
 	unsigned int		dma_tx_nents;
-	wait_queue_head_t	dma_wait;
 };
 
 struct lpuart_soc_data {
@@ -463,17 +462,9 @@ static void lpuart_dma_tx_complete(void *arg)
 
 	sport->port.icount.tx += sport->dma_tx_bytes;
 	sport->dma_tx_in_progress = false;
-	spin_unlock_irqrestore(&sport->port.lock, flags);
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&sport->port);
-
-	if (waitqueue_active(&sport->dma_wait)) {
-		wake_up(&sport->dma_wait);
-		return;
-	}
-
-	spin_lock_irqsave(&sport->port.lock, flags);
 
 	if (!uart_tx_stopped_or_empty(&sport->port))
 		lpuart_dma_tx(sport);
@@ -1489,7 +1480,6 @@ static void lpuart_tx_dma_startup(struct lpuart_port *sport)
 	u32 uartbaud;
 
 	if (sport->dma_tx_chan && !lpuart_dma_tx_request(&sport->port)) {
-		init_waitqueue_head(&sport->dma_wait);
 		sport->lpuart_dma_tx_use = true;
 		if (lpuart_is_32(sport)) {
 			uartbaud = lpuart32_read(&sport->port, UARTBAUD);
@@ -1603,11 +1593,8 @@ static void lpuart_dma_shutdown(struct lpuart_port *sport)
 	}
 
 	if (sport->lpuart_dma_tx_use) {
-		if (wait_event_interruptible(sport->dma_wait,
-			!sport->dma_tx_in_progress) != false) {
-			sport->dma_tx_in_progress = false;
-			dmaengine_terminate_async(sport->dma_tx_chan);
-		}
+		dmaengine_terminate_sync(sport->dma_tx_chan);
+		sport->dma_tx_in_progress = false;
 	}
 }
 
