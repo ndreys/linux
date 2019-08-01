@@ -358,7 +358,7 @@ static int qe_uart_tx_pump(struct uart_qe_port *qe_port)
 		return 1;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		qe_uart_stop_tx(port);
 		return 0;
 	}

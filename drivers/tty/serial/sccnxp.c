@@ -450,7 +450,7 @@ static void sccnxp_handle_tx(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		/* Disable TX if FIFO is empty */
 		if (sccnxp_port_read(port, SCCNXP_SR_REG) & SR_TXEMT) {
 			sccnxp_disable_irq(port, IMR_TXRDY);

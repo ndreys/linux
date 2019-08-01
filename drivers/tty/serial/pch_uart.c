@@ -795,7 +795,7 @@ static int pop_tx(struct eg20t_port *priv, int size)
 	struct uart_port *port = &priv->port;
 	struct circ_buf *xmit = &port->state->xmit;
 
-	if (uart_tx_stopped(port) || uart_circ_empty(xmit) || count >= size)
+	if (uart_tx_stopped_or_empty(port) || count >= size)
 		goto pop_tx_end;
 
 	do {

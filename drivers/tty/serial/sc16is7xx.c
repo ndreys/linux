@@ -643,7 +643,7 @@ static void sc16is7xx_handle_tx(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return;
 
 	/* Get length of data pending in circular buffer */

@@ -87,7 +87,7 @@ static void mlb_usio_tx_chars(struct uart_port *port)
 		port->x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		mlb_usio_stop_tx(port);
 		return;
 	}

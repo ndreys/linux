@@ -175,7 +175,7 @@ static void pl010_tx_chars(struct uart_amba_port *uap)
 		uap->port.x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&uap->port)) {
+	if (uart_tx_stopped_or_empty(&uap->port)) {
 		pl010_stop_tx(&uap->port);
 		return;
 	}

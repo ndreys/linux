@@ -198,7 +198,7 @@ static void handle_tx(struct uart_port *port)
 		port->icount.tx++;
 		port->x_char = 0;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		vt8500_stop_tx(port);
 		return;
 	}

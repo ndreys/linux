@@ -267,7 +267,7 @@ static inline void dz_transmit_chars(struct dz_mux *mux)
 		return;
 	}
 	/* If nothing to do or stopped or hardware stopped. */
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&dport->port)) {
+	if (uart_tx_stopped_or_empty(&dport->port)) {
 		spin_lock(&dport->port.lock);
 		dz_stop_tx(&dport->port);
 		spin_unlock(&dport->port.lock);

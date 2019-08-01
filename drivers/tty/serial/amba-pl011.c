@@ -565,8 +565,7 @@ static void pl011_dma_tx_callback(void *data)
 	 * a TX buffer completing, we must update the tx queued status to
 	 * get further refills (hence we check dmacr).
 	 */
-	if (!(dmacr & UART011_TXDMAE) || uart_tx_stopped(&uap->port) ||
-	    uart_circ_empty(&uap->port.state->xmit)) {
+	if (!(dmacr & UART011_TXDMAE) || uart_tx_stopped_or_empty(&uap->port)) {
 		uap->dmatx.queued = false;
 		spin_unlock_irqrestore(&uap->port.lock, flags);
 		return;
@@ -1391,7 +1390,7 @@ static bool pl011_tx_chars(struct uart_amba_port *uap, bool from_irq)
 		uap->port.x_char = 0;
 		--count;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&uap->port)) {
+	if (uart_tx_stopped_or_empty(&uap->port)) {
 		pl011_stop_tx(&uap->port);
 		return false;
 	}

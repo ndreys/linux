@@ -289,8 +289,7 @@ static void max3100_work(struct work_struct *w)
 				tx = s->port.x_char;
 				s->port.icount.tx++;
 				s->port.x_char = 0;
-			} else if (!uart_circ_empty(xmit) &&
-				   !uart_tx_stopped(&s->port)) {
+			} else if (!uart_tx_stopped_or_empty(&s->port)) {
 				tx = xmit->buf[xmit->tail];
 				xmit->tail = (xmit->tail + 1) &
 					(UART_XMIT_SIZE - 1);
@@ -314,8 +313,7 @@ static void max3100_work(struct work_struct *w)
 	} while (!s->force_end_work &&
 		 !freezing(current) &&
 		 ((rx & MAX3100_R) ||
-		  (!uart_circ_empty(xmit) &&
-		   !uart_tx_stopped(&s->port))));
+		  !uart_tx_stopped_or_empty(&s->port)));
 
 	if (rxchars > 0)
 		tty_flip_buffer_push(&s->port.state->port);

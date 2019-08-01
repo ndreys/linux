@@ -251,7 +251,7 @@ static void transmit_chars(struct uart_sunsab_port *up,
 	set_bit(SAB82532_XPR, &up->irqflags);
 	sunsab_tx_idle(up);
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&up->port)) {
+	if (uart_tx_stopped_or_empty(&up->port)) {
 		up->interrupt_mask1 |= SAB82532_IMR1_XPR;
 		writeb(up->interrupt_mask1, &up->regs->w.imr1);
 		return;
@@ -438,7 +438,7 @@ static void sunsab_start_tx(struct uart_port *port)
 	struct circ_buf *xmit = &up->port.state->xmit;
 	int i;
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return;
 
 	up->interrupt_mask1 &= ~(SAB82532_IMR1_ALLS|SAB82532_IMR1_XPR);

@@ -292,7 +292,7 @@ static void __serial_lpc32xx_tx(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		goto exit_tx;
 
 	/* Transfer data */

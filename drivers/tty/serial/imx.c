@@ -501,7 +501,7 @@ static inline void imx_uart_transmit_buffer(struct imx_port *sport)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&sport->port)) {
+	if (uart_tx_stopped_or_empty(&sport->port)) {
 		imx_uart_stop_tx(&sport->port);
 		return;
 	}
@@ -568,7 +568,7 @@ static void imx_uart_dma_tx_callback(void *data)
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&sport->port);
 
-	if (!uart_circ_empty(xmit) && !uart_tx_stopped(&sport->port))
+	if (!uart_tx_stopped_or_empty(&sport->port))
 		imx_uart_dma_tx(sport);
 	else if (sport->port.rs485.flags & SER_RS485_ENABLED) {
 		u32 ucr4 = imx_uart_readl(sport, UCR4);
@@ -689,8 +689,7 @@ static void imx_uart_start_tx(struct uart_port *port)
 			return;
 		}
 
-		if (!uart_circ_empty(&port->state->xmit) &&
-		    !uart_tx_stopped(port))
+		if (!uart_tx_stopped_or_empty(port))
 			imx_uart_dma_tx(sport);
 		return;
 	}

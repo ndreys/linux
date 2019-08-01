@@ -616,7 +616,7 @@ static void zs_raw_transmit_chars(struct zs_port *zport)
 	}
 
 	/* If nothing to do or stopped or hardware stopped.  */
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&zport->port)) {
+	if (uart_tx_stopped_or_empty(&zport->port)) {
 		zs_raw_stop_tx(zport);
 		return;
 	}

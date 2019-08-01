@@ -1442,7 +1442,7 @@ mpc52xx_uart_int_tx_chars(struct uart_port *port)
 	}
 
 	/* Nothing to do ? */
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		mpc52xx_uart_stop_tx(port);
 		return 0;
 	}

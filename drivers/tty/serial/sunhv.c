@@ -204,7 +204,7 @@ static void transmit_chars(struct uart_port *port)
 		return;
 
 	xmit = &port->state->xmit;
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return;
 
 	sunhv_ops->transmit_chars(port, xmit);

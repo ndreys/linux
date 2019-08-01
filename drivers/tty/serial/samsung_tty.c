@@ -836,7 +836,7 @@ static irqreturn_t s3c24xx_serial_tx_chars(int irq, void *id)
 	 * stopped, disable the uart and exit
 	 */
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stoppped_or_empty(xmit)) {
 		s3c24xx_serial_stop_tx(port);
 		goto out;
 	}

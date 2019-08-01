@@ -163,7 +163,7 @@ static irqreturn_t serial21285_tx_chars(int irq, void *dev_id)
 		port->x_char = 0;
 		goto out;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		serial21285_stop_tx(port);
 		goto out;
 	}

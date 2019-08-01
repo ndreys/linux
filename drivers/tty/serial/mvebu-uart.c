@@ -308,7 +308,7 @@ static void mvebu_uart_tx_chars(struct uart_port *port, unsigned int status)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		mvebu_uart_stop_tx(port);
 		return;
 	}

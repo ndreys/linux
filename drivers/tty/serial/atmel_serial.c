@@ -828,7 +828,7 @@ static void atmel_tx_chars(struct uart_port *port)
 		port->icount.tx++;
 		port->x_char = 0;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return;
 
 	while (atmel_uart_readl(port, ATMEL_US_CSR) &
@@ -929,7 +929,7 @@ static void atmel_tx_dma(struct uart_port *port)
 	if (atmel_port->desc_tx != NULL)
 		return;
 
-	if (!uart_circ_empty(xmit) && !uart_tx_stopped(port)) {
+	if (!uart_tx_stopped_or_empty(port)) {
 		/*
 		 * DMA is idle now.
 		 * Port xmit buffer is already mapped,
@@ -1461,7 +1461,7 @@ static void atmel_tx_pdc(struct uart_port *port)
 	/* disable PDC transmit */
 	atmel_uart_writel(port, ATMEL_PDC_PTCR, ATMEL_PDC_TXTDIS);
 
-	if (!uart_circ_empty(xmit) && !uart_tx_stopped(port)) {
+	if (!uart_tx_stopped_or_empty(port)) {
 		dma_sync_single_for_device(port->dev,
 					   pdc->dma_addr,
 					   pdc->dma_size,

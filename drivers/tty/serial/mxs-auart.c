@@ -588,7 +588,7 @@ static void mxs_auart_tx_chars(struct mxs_auart_port *s)
 		if (test_and_set_bit(MXS_AUART_DMA_TX_SYNC, &s->flags))
 			return;
 
-		while (!uart_circ_empty(xmit) && !uart_tx_stopped(&s->port)) {
+		while (!uart_tx_stopped_or_empty(&s->port)) {
 			size = min_t(u32, UART_XMIT_SIZE - i,
 				     CIRC_CNT_TO_END(xmit->head,
 						     xmit->tail,
@@ -621,7 +621,7 @@ static void mxs_auart_tx_chars(struct mxs_auart_port *s)
 			s->port.x_char = 0;
 			continue;
 		}
-		if (!uart_circ_empty(xmit) && !uart_tx_stopped(&s->port)) {
+		if (!uart_tx_stopped_or_empty(&s->port)) {
 			s->port.icount.tx++;
 			mxs_write(xmit->buf[xmit->tail], s, REG_DATA);
 			xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);

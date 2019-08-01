@@ -182,7 +182,7 @@ static void transmit_chars(struct uart_pxa_port *up)
 		up->port.x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&up->port)) {
+	if (uart_tx_stopped_or_empty(&up->port)) {
 		serial_pxa_stop_tx(&up->port);
 		return;
 	}

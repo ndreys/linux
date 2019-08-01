@@ -184,7 +184,7 @@ static void sirfsoc_uart_tx_with_dma(struct sirfsoc_uart_port *sirfport)
 
 	tran_size = CIRC_CNT_TO_END(xmit->head, xmit->tail, UART_XMIT_SIZE);
 	tran_start = (unsigned long)(xmit->buf + xmit->tail);
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port) ||
+	if (uart_tx_stopped_or_empty(port) ||
 			!tran_size)
 		return;
 	if (sirfport->tx_dma_state == TX_DMA_PAUSE) {
@@ -570,7 +570,7 @@ recv_char:
 		if (sirfport->tx_dma_chan)
 			sirfsoc_uart_tx_with_dma(sirfport);
 		else {
-			if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+			if (uart_tx_stopped_or_empty(port)) {
 				spin_unlock(&port->lock);
 				return IRQ_HANDLED;
 			} else {

@@ -254,7 +254,7 @@ static void pnx8xxx_tx_chars(struct pnx8xxx_port *sport)
 	 */
 	pnx8xxx_mctrl_check(sport);
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&sport->port)) {
+	if (uart_tx_stopped_or_empty(&sport->port)) {
 		pnx8xxx_stop_tx(&sport->port);
 		return;
 	}

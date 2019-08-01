@@ -190,7 +190,7 @@ static void mux_write(struct uart_port *port)
 		return;
 	}
 
-	if(uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if(uart_tx_stopped_or_empty(port)) {
 		mux_stop_tx(port);
 		return;
 	}

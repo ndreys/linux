@@ -143,7 +143,7 @@ static void efm32_uart_tx_chars(struct efm32_uart_port *efm_port)
 			port->x_char = 0;
 			continue;
 		}
-		if (!uart_circ_empty(xmit) && !uart_tx_stopped(port)) {
+		if (!uart_tx_stopped_or_empty(port)) {
 			port->icount.tx++;
 			efm32_uart_write32(efm_port, xmit->buf[xmit->tail],
 					UARTn_TXDATA);

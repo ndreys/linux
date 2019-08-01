@@ -154,7 +154,7 @@ static irqreturn_t uart_clps711x_int_tx(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		if (s->tx_enabled) {
 			disable_irq_nosync(port->irq);
 			s->tx_enabled = 0;

@@ -322,7 +322,6 @@ static void sprd_start_tx_dma(struct uart_port *port)
 {
 	struct sprd_uart_port *sp =
 		container_of(port, struct sprd_uart_port, port);
-	struct circ_buf *xmit = &port->state->xmit;
 
 	if (port->x_char) {
 		serial_out(port, SPRD_TXD, port->x_char);
@@ -331,7 +330,7 @@ static void sprd_start_tx_dma(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		sprd_stop_tx_dma(port);
 		return;
 	}
@@ -636,7 +635,7 @@ static inline void sprd_tx(struct uart_port *port)
 		return;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
+	if (uart_tx_stopped_or_empty(port)) {
 		sprd_stop_tx(port);
 		return;
 	}

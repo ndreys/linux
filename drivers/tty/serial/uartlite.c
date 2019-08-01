@@ -184,7 +184,7 @@ static int ulite_transmit(struct uart_port *port, int stat)
 		return 1;
 	}
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return 0;
 
 	uart_out32(xmit->buf[xmit->tail], ULITE_TX, port);

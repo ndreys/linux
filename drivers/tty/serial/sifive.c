@@ -308,7 +308,7 @@ static void __ssp_transmit_chars(struct sifive_serial_port *ssp)
 		ssp->port.x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&ssp->port)) {
+	if (uart_tx_stopped_or_empty(&ssp->port)) {
 		sifive_serial_stop_tx(&ssp->port);
 		return;
 	}

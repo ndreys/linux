@@ -395,7 +395,7 @@ static void sbd_transmit_chars(struct sbd_port *sport)
 	}
 
 	/* If nothing to do or stopped or hardware stopped.  */
-	stop_tx = (uart_circ_empty(xmit) || uart_tx_stopped(&sport->port));
+	stop_tx = uart_tx_stopped_or_empty(&sport->port);
 
 	/* Send char.  */
 	if (!stop_tx) {

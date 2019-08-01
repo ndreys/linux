@@ -245,7 +245,7 @@ static void sa1100_tx_chars(struct sa1100_port *sport)
 	 */
 	sa1100_mctrl_check(sport);
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&sport->port)) {
+	if (uart_tx_stopped_or_empty(&sport->port)) {
 		sa1100_stop_tx(&sport->port);
 		return;
 	}

@@ -371,7 +371,7 @@ static void transmit_chars(struct uart_omap_port *up, unsigned int lsr)
 		up->port.x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&up->port)) {
+	if (uart_tx_stopped_or_empty(&up->port)) {
 		serial_omap_stop_tx(&up->port);
 		return;
 	}
