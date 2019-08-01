@@ -341,6 +341,13 @@ static inline unsigned imx_uart_uts_reg(struct imx_port *sport)
 	return sport->devdata->uts_reg;
 }
 
+static void imx_uart_wait_bit(struct imx_port *sport, unsigned int offset,
+			      u32 mask, u32 value)
+{
+	while ((imx_uart_readl(sport, offset) & mask) != value)
+		cpu_relax();
+}
+
 static inline int imx_uart_is_imx1(struct imx_port *sport)
 {
 	return sport->devdata->devtype == IMX1_UART;
@@ -1808,17 +1815,13 @@ static void imx_uart_poll_put_char(struct uart_port *port, unsigned char c)
 	unsigned int status;
 
 	/* drain */
-	do {
-		status = imx_uart_readl(sport, USR1);
-	} while (~status & USR1_TRDY);
+	imx_uart_wait_bit(sport, USR1, USR1_TRDY, USR1_TRDY);
 
 	/* write */
 	imx_uart_writel(sport, c, URTX0);
 
 	/* flush */
-	do {
-		status = imx_uart_readl(sport, USR2);
-	} while (~status & USR2_TXDC);
+	imx_uart_wait_bit(sport, USR2, USR2_TXDC, USR2_TXDC);
 }
 #endif
 
@@ -1892,8 +1895,7 @@ static void imx_uart_console_putchar(struct uart_port *port, int ch)
 {
 	struct imx_port *sport = (struct imx_port *)port;
 
-	while (imx_uart_readl(sport, imx_uart_uts_reg(sport)) & UTS_TXFULL)
-		barrier();
+	imx_uart_wait_bit(sport, imx_uart_uts_reg(sport), UTS_TXFULL, 0);
 
 	imx_uart_writel(sport, ch, URTX0);
 }
@@ -1948,7 +1950,7 @@ imx_uart_console_write(struct console *co, const char *s, unsigned int count)
 	 *	Finally, wait for transmitter to become empty
 	 *	and restore UCR1/2/3
 	 */
-	while (!(imx_uart_readl(sport, USR2) & USR2_TXDC));
+	imx_uart_wait_bit(sport, USR2, USR2_TXDC, USR2_TXDC);
 
 	imx_uart_ucrs_restore(sport, &old_ucr);
 
@@ -2089,8 +2091,7 @@ static void imx_uart_console_early_putchar(struct uart_port *port, int ch)
 {
 	struct imx_port *sport = (struct imx_port *)port;
 
-	while (imx_uart_readl(sport, IMX21_UTS) & UTS_TXFULL)
-		cpu_relax();
+	imx_uart_wait_bit(sport, IMX21_UTS, UTS_TXFULL, 0);
 
 	imx_uart_writel(sport, ch, URTX0);
 }
