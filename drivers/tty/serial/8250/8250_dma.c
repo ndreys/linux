@@ -69,7 +69,7 @@ int serial8250_tx_dma(struct uart_8250_port *p)
 	if (dma->tx_running)
 		return 0;
 
-	if (uart_tx_stopped(&p->port) || uart_circ_empty(xmit)) {
+	if (uart_tx_stopped_or_empty(&p->port)) {
 		/* We have been called from __dma_tx_complete() */
 		serial8250_rpm_put_tx(p);
 		return 0;

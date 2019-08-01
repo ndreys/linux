@@ -436,6 +436,11 @@ static inline int uart_tx_stopped(struct uart_port *port)
 	return 0;
 }
 
+static inline bool uart_tx_stopped_or_empty(struct uart_port *port)
+{
+	return uart_circ_empty(&port->state->xmit) || uart_tx_stopped(port);
+}
+
 static inline bool uart_cts_enabled(struct uart_port *uport)
 {
 	return !!(uport->status & UPSTAT_CTS_ENABLE);

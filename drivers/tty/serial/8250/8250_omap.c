@@ -921,7 +921,7 @@ static void omap_8250_dma_tx_complete(void *param)
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&p->port);
 
-	if (!uart_circ_empty(xmit) && !uart_tx_stopped(&p->port)) {
+	if (!uart_tx_stopped_or_empty(&p->port)) {
 		int ret;
 
 		ret = omap_8250_tx_dma(p);
@@ -950,7 +950,7 @@ static int omap_8250_tx_dma(struct uart_8250_port *p)
 
 	if (dma->tx_running)
 		return 0;
-	if (uart_tx_stopped(&p->port) || uart_circ_empty(xmit)) {
+	if (uart_tx_stopped_or_empty(&p->port)) {
 
 		/*
 		 * Even if no data, we need to return an error for the two cases
@@ -1072,8 +1072,7 @@ static int omap_8250_dma_handle_irq(struct uart_port *port)
 	}
 	serial8250_modem_status(up);
 	if (status & UART_LSR_THRE && up->dma->tx_err) {
-		if (uart_tx_stopped(&up->port) ||
-		    uart_circ_empty(&up->port.state->xmit)) {
+		if (uart_tx_stopped_or_empty(&up->port)) {
 			up->dma->tx_err = 0;
 			serial8250_tx_chars(up);
 		} else  {

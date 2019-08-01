@@ -139,7 +139,7 @@ static void mps2_uart_tx_chars(struct uart_port *port)
 			continue;
 		}
 
-		if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+		if (uart_tx_stopped_or_empty(port))
 			break;
 
 		mps2_uart_write8(port, xmit->buf[xmit->tail], UARTn_DATA);

@@ -122,7 +122,7 @@ static void timbuart_handle_tx_port(struct uart_port *port, u32 isr, u32 *ier)
 		container_of(port, struct timbuart_port, port);
 	struct circ_buf *xmit = &port->state->xmit;
 
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
+	if (uart_tx_stopped_or_empty(port))
 		return;
 
 	if (port->x_char)
