@@ -598,10 +598,12 @@ static int caam_probe(struct platform_device *pdev)
 		ret = init_clocks(dev, imx_soc_match->data);
 		if (ret)
 			return ret;
+
+		caam_ptr_sz = sizeof(u32);
+	} else {
+		caam_ptr_sz = sizeof(dma_addr_t);
 	}
 	caam_imx = (bool)imx_soc_match;
-
-	caam_ptr_sz = sizeof(dma_addr_t);
 
 	/* Get configuration properties from device tree */
 	/* First, get register page */
