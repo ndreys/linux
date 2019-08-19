@@ -333,6 +333,8 @@ struct mv88e6xxx_chip {
 
 	/* Array of port structures. */
 	struct mv88e6xxx_port ports[DSA_MAX_PORTS];
+
+	struct dentry *debugfs_dir;
 };
 
 struct mv88e6xxx_bus_ops {
@@ -678,5 +680,7 @@ static inline void mv88e6xxx_reg_unlock(struct mv88e6xxx_chip *chip)
 {
 	mutex_unlock(&chip->reg_lock);
 }
+
+void mv88e6xxx_register_imp_debugfs(struct mv88e6xxx_chip *chip);
 
 #endif /* _MV88E6XXX_CHIP_H */
