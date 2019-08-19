@@ -5152,6 +5152,8 @@ static int mv88e6xxx_probe(struct mdio_device *mdiodev)
 	if (err)
 		goto out_mdio;
 
+	mv88e6xxx_register_imp_debugfs(chip);
+
 	return 0;
 
 out_mdio:
