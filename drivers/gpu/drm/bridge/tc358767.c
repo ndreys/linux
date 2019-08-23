@@ -17,6 +17,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
@@ -222,11 +223,10 @@
 #define COLOR_B			GENMASK(15, 8)
 #define ENI2CFILTER		BIT(4)
 #define COLOR_BAR_MODE		GENMASK(1, 0)
+#define COLOR_BAR_MODE_NORMAL	0
 #define COLOR_BAR_MODE_BARS	2
-#define PLL_DBG			0x0a04
 
-static bool tc_test_pattern;
-module_param_named(test, tc_test_pattern, bool, 0644);
+#define PLL_DBG			0x0a04
 
 struct tc_edp_link {
 	struct drm_dp_link	base;
@@ -789,16 +789,6 @@ static int tc_set_video_mode(struct tc_data *tc,
 	if (ret)
 		return ret;
 
-	/* Test pattern settings */
-	ret = regmap_write(tc->regmap, TSTCTL,
-			   FIELD_PREP(COLOR_R, 120) |
-			   FIELD_PREP(COLOR_G, 20) |
-			   FIELD_PREP(COLOR_B, 99) |
-			   ENI2CFILTER |
-			   FIELD_PREP(COLOR_BAR_MODE, COLOR_BAR_MODE_BARS));
-	if (ret)
-		return ret;
-
 	/* DP Main Stream Attributes */
 	vid_sync_dly = hsync_len + left_margin + mode->hdisplay;
 	ret = regmap_write(tc->regmap, DP0_VIDSYNCDELAY,
@@ -1150,14 +1140,6 @@ static int tc_stream_enable(struct tc_data *tc)
 
 	dev_dbg(tc->dev, "enable video stream\n");
 
-	/* PXL PLL setup */
-	if (tc_test_pattern) {
-		ret = tc_pxl_pll_en(tc, clk_get_rate(tc->refclk),
-				    1000 * tc->mode.clock);
-		if (ret)
-			return ret;
-	}
-
 	ret = tc_set_video_mode(tc, &tc->mode);
 	if (ret)
 		return ret;
@@ -1186,12 +1168,8 @@ static int tc_stream_enable(struct tc_data *tc)
 	if (ret)
 		return ret;
 	/* Set input interface */
-	value = DP0_AUDSRC_NO_INPUT;
-	if (tc_test_pattern)
-		value |= DP0_VIDSRC_COLOR_BAR;
-	else
-		value |= DP0_VIDSRC_DPI_RX;
-	ret = regmap_write(tc->regmap, SYSCTRL, value);
+	ret = regmap_write(tc->regmap, SYSCTRL,
+			   DP0_AUDSRC_NO_INPUT | DP0_VIDSRC_DPI_RX);
 	if (ret)
 		return ret;
 
@@ -1220,39 +1198,44 @@ static void tc_bridge_pre_enable(struct drm_bridge *bridge)
 	drm_panel_prepare(tc->panel);
 }
 
-static void tc_bridge_enable(struct drm_bridge *bridge)
+static int __tc_bridge_enable(struct tc_data *tc)
 {
-	struct tc_data *tc = bridge_to_tc(bridge);
 	int ret;
 
 	ret = tc_get_display_props(tc);
 	if (ret < 0) {
 		dev_err(tc->dev, "failed to read display props: %d\n", ret);
-		return;
+		return ret;
 	}
 
 	ret = tc_main_link_enable(tc);
 	if (ret < 0) {
 		dev_err(tc->dev, "main link enable error: %d\n", ret);
-		return;
+		return ret;
 	}
 
 	ret = tc_stream_enable(tc);
 	if (ret < 0) {
 		dev_err(tc->dev, "main link stream start error: %d\n", ret);
 		tc_main_link_disable(tc);
-		return;
 	}
+
+	return ret;
+}
+
+static void tc_bridge_enable(struct drm_bridge *bridge)
+{
+	struct tc_data *tc = bridge_to_tc(bridge);
+
+	if (__tc_bridge_enable(tc) < 0)
+		return;
 
 	drm_panel_enable(tc->panel);
 }
 
-static void tc_bridge_disable(struct drm_bridge *bridge)
+static int __tc_bridge_disable(struct tc_data *tc)
 {
-	struct tc_data *tc = bridge_to_tc(bridge);
 	int ret;
-
-	drm_panel_disable(tc->panel);
 
 	ret = tc_stream_disable(tc);
 	if (ret < 0)
@@ -1261,6 +1244,16 @@ static void tc_bridge_disable(struct drm_bridge *bridge)
 	ret = tc_main_link_disable(tc);
 	if (ret < 0)
 		dev_err(tc->dev, "main link disable error: %d\n", ret);
+
+	return ret;
+}
+
+static void tc_bridge_disable(struct drm_bridge *bridge)
+{
+	struct tc_data *tc = bridge_to_tc(bridge);
+
+	drm_panel_disable(tc->panel);
+	__tc_bridge_disable(tc);
 }
 
 static void tc_bridge_post_disable(struct drm_bridge *bridge)
@@ -1372,6 +1365,77 @@ static enum drm_connector_status tc_connector_detect(struct drm_connector *conne
 		return connector_status_disconnected;
 }
 
+static int tc_tstctl_set(void *data, u64 val)
+{
+	struct tc_data *tc = data;
+	int ret;
+
+	if (FIELD_GET(COLOR_BAR_MODE, val) == COLOR_BAR_MODE_NORMAL) {
+		ret = regmap_write(tc->regmap, SYSCTRL, DP0_VIDSRC_DPI_RX);
+		if (ret) {
+			dev_err(tc->dev,
+				"failed to select dpi video stream\n");
+			return ret;
+		}
+
+		ret = regmap_write(tc->regmap, TSTCTL, val | ENI2CFILTER);
+		if (ret) {
+			dev_err(tc->dev, "failed to set TSTCTL\n");
+			return ret;
+		}
+
+		ret = tc_pxl_pll_dis(tc);
+		if (ret) {
+			dev_err(tc->dev, "failed to disable PLL\n");
+			return ret;
+		}
+
+		/*
+		 * Re-establish DP link
+		 */
+		ret = __tc_bridge_disable(tc);
+		if (ret)
+			return ret;
+
+		ret = __tc_bridge_enable(tc);
+		if (ret)
+			return ret;
+	} else {
+		ret = tc_pxl_pll_en(tc, clk_get_rate(tc->refclk),
+				    1000 * tc->mode.clock);
+		if (ret) {
+			dev_err(tc->dev, "failed to enable PLL\n");
+			return ret;
+		}
+
+		ret = regmap_write(tc->regmap, TSTCTL, val | ENI2CFILTER);
+		if (ret) {
+			dev_err(tc->dev, "failed to set TSTCTL\n");
+			return ret;
+		}
+
+		ret = regmap_write(tc->regmap, SYSCTRL, DP0_VIDSRC_COLOR_BAR);
+		if (ret) {
+			dev_err(tc->dev, "failed to color bar video stream\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(tc_tstctl_fops, NULL, tc_tstctl_set, "%llu\n");
+
+static int tc_late_register(struct drm_connector *connector)
+{
+	if (connector->debugfs_entry)
+		debugfs_create_file_unsafe("tstctl", 0644,
+					   connector->debugfs_entry,
+					   connector_to_tc(connector),
+					   &tc_tstctl_fops);
+	return 0;
+}
+
 static const struct drm_connector_funcs tc_connector_funcs = {
 	.detect = tc_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
@@ -1379,6 +1443,7 @@ static const struct drm_connector_funcs tc_connector_funcs = {
 	.reset = drm_atomic_helper_connector_reset,
 	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	.late_register = tc_late_register,
 };
 
 static int tc_bridge_attach(struct drm_bridge *bridge)
