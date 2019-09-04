@@ -566,7 +566,7 @@ static void caam_remove_debugfs(void *root)
 /* Probe routine for CAAM top (controller) level */
 static int caam_probe(struct platform_device *pdev)
 {
-	int ret, ring, gen_sk, ent_delay = RTSDCTL_ENT_DLY_MIN;
+	int ret, total_jobrs, gen_sk, ent_delay = RTSDCTL_ENT_DLY_MIN;
 	u64 caam_id;
 	const struct soc_device_attribute *imx_soc_match;
 	struct device *dev;
@@ -754,21 +754,15 @@ static int caam_probe(struct platform_device *pdev)
 #endif
 	}
 
-	ring = 0;
+	total_jobrs = 0;
 	for_each_available_child_of_node(nprop, np)
 		if (of_device_is_compatible(np, "fsl,sec-v4.0-job-ring") ||
 		    of_device_is_compatible(np, "fsl,sec4.0-job-ring")) {
-			ctrlpriv->jr[ring] = (struct caam_job_ring __iomem __force *)
-					     ((__force uint8_t *)ctrl +
-					     (ring + JR_BLOCK_NUMBER) *
-					      BLOCK_OFFSET
-					     );
-			ctrlpriv->total_jobrs++;
-			ring++;
+			total_jobrs++;
 		}
 
 	/* If no QI and no rings specified, quit and go home */
-	if ((!ctrlpriv->qi_present) && (!ctrlpriv->total_jobrs)) {
+	if ((!ctrlpriv->qi_present) && (!total_jobrs)) {
 		dev_err(dev, "no queues configured, terminating\n");
 		return -ENOMEM;
 	}
@@ -854,7 +848,7 @@ static int caam_probe(struct platform_device *pdev)
 	dev_info(dev, "device ID = 0x%016llx (Era %d)\n", caam_id,
 		 ctrlpriv->era);
 	dev_info(dev, "job rings = %d, qi = %d\n",
-		 ctrlpriv->total_jobrs, ctrlpriv->qi_present);
+		 total_jobrs, ctrlpriv->qi_present);
 
 #ifdef CONFIG_DEBUG_FS
 	debugfs_create_file("rq_dequeued", S_IRUSR | S_IRGRP | S_IROTH,

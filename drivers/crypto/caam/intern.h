@@ -72,7 +72,6 @@ struct caam_drv_private {
 	struct caam_deco __iomem *deco; /* DECO/CCB views */
 	struct caam_assurance __iomem *assure;
 	struct caam_queue_if __iomem *qi; /* QI control region */
-	struct caam_job_ring __iomem *jr[4];	/* JobR's register space */
 
 	struct iommu_domain *domain;
 
@@ -80,7 +79,6 @@ struct caam_drv_private {
 	 * Detected geometry block. Filled in from device tree if powerpc,
 	 * or from register-based version detection code
 	 */
-	u8 total_jobrs;		/* Total Job Rings in device */
 	u8 qi_present;		/* Nonzero if QI present in device */
 	u8 mc_en;		/* Nonzero if MC f/w is active */
 	int secvio_irq;		/* Security violation interrupt number */
