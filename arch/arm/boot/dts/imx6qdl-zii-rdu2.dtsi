@@ -68,7 +68,7 @@
 		regulator-name = "5V_USER_USB";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio3 22 GPIO_ACTIVE_LOW>;
+		gpio = <&gpio3 22 0>;
 		startup-delay-us = <1000>;
 	};
 
