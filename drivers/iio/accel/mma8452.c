@@ -654,10 +654,13 @@ static int mma8452_freefall_mode_enabled(struct mma8452_data *data)
 
 static int mma8452_set_freefall_mode(struct mma8452_data *data, bool state)
 {
-	int val;
+	int val, old_state;
 
-	if ((state && mma8452_freefall_mode_enabled(data)) ||
-	    (!state && !(mma8452_freefall_mode_enabled(data))))
+	old_state = mma8452_freefall_mode_enabled(data);
+	if (old_state < 0)
+		return old_state;
+
+	if (state == (bool)old_state)
 		return 0;
 
 	val = i2c_smbus_read_byte_data(data->client, MMA8452_FF_MT_CFG);
