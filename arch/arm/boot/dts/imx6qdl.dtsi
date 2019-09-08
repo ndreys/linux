@@ -174,6 +174,12 @@
 			clocks = <&clks IMX6QDL_CLK_APBH_DMA>;
 		};
 
+		irq_sec_vio: caam_secvio {
+			compatible = "fsl,imx6q-caam-secvio";
+			interrupts = <0 20 0x04>;
+			secvio_src = <0x8000001d>;
+		};
+
 		gpmi: gpmi-nand@112000 {
 			compatible = "fsl,imx6q-gpmi-nand";
 			reg = <0x00112000 0x2000>, <0x00114000 0x2000>;
@@ -815,6 +821,11 @@
 				interrupts = <0 45 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_USBPHY2>;
 				fsl,anatop = <&anatop>;
+			};
+
+			caam_snvs: caam-snvs@20cc000 {
+				compatible = "fsl,imx6q-caam-snvs";
+				reg = <0x020cc000 0x4000>;
 			};
 
 			snvs: snvs@20cc000 {
