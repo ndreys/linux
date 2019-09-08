@@ -654,10 +654,13 @@ static int mma8452_freefall_mode_enabled(struct mma8452_data *data)
 
 static int mma8452_set_freefall_mode(struct mma8452_data *data, bool state)
 {
-	int val;
+	int val, old_state;
 
-	if ((state && mma8452_freefall_mode_enabled(data)) ||
-	    (!state && !(mma8452_freefall_mode_enabled(data))))
+	old_state = mma8452_freefall_mode_enabled(data);
+	if (old_state < 0)
+		return old_state;
+
+	if (state == (bool)old_state)
 		return 0;
 
 	val = i2c_smbus_read_byte_data(data->client, MMA8452_FF_MT_CFG);
@@ -989,7 +992,11 @@ static int mma8452_write_event_config(struct iio_dev *indio_dev,
 			return val;
 
 		if (state) {
-			if (mma8452_freefall_mode_enabled(data)) {
+			ret = mma8452_freefall_mode_enabled(data);
+			if (ret < 0)
+				return ret;
+
+			if (ret) {
 				val &= ~BIT(idx_x + ev_regs->ev_cfg_chan_shift);
 				val &= ~BIT(idx_y + ev_regs->ev_cfg_chan_shift);
 				val &= ~BIT(idx_z + ev_regs->ev_cfg_chan_shift);
@@ -998,7 +1005,10 @@ static int mma8452_write_event_config(struct iio_dev *indio_dev,
 			val |= BIT(chan->scan_index +
 					ev_regs->ev_cfg_chan_shift);
 		} else {
-			if (mma8452_freefall_mode_enabled(data))
+			ret = mma8452_freefall_mode_enabled(data);
+			if (ret < 0)
+				return ret;
+			if (ret)
 				return 0;
 
 			val &= ~BIT(chan->scan_index +
@@ -1065,7 +1075,7 @@ static irqreturn_t mma8452_interrupt(int irq, void *p)
 	}
 
 	if (src & MMA8452_INT_FF_MT) {
-		if (mma8452_freefall_mode_enabled(data)) {
+		if (mma8452_freefall_mode_enabled(data) > 0) {
 			s64 ts = iio_get_time_ns(indio_dev);
 
 			iio_push_event(indio_dev,
