@@ -12,6 +12,7 @@
 
 #include "ctrl.h"
 #include "jr.h"
+#include "regs.h"
 
 /* Currently comes from Kconfig param as a ^2 (driver-required) */
 #define JOBR_DEPTH (1 << CONFIG_CRYPTO_DEV_FSL_CAAM_RINGSIZE)
@@ -67,11 +68,15 @@ struct caam_drv_private_jr {
  * Driver-private storage for a single CAAM block instance
  */
 struct caam_drv_private {
+	struct device *smdev;
+
 	/* Physical-presence section */
 	struct caam_ctrl __iomem *ctrl; /* controller region */
 	struct caam_deco __iomem *deco; /* DECO/CCB views */
 	struct caam_assurance __iomem *assure;
 	struct caam_queue_if __iomem *qi; /* QI control region */
+	dma_addr_t __iomem *sm_base;	/* Secure memory storage base */
+	u32 sm_size;
 
 	struct iommu_domain *domain;
 
