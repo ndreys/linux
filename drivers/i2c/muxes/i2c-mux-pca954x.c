@@ -384,7 +384,7 @@ static int pca954x_irq_setup(struct i2c_mux_core *muxc)
 	return 0;
 }
 
-static void pca954x_cleanup(struct i2c_mux_core *muxc)
+static void pca954x_cleanup(void *muxc)
 {
 	struct pca954x *data = i2c_mux_priv(muxc);
 	struct i2c_client *client = data->client;
@@ -479,15 +479,19 @@ static int pca954x_probe(struct i2c_client *client,
 	if (idle_disconnect_dt)
 		data->idle_state = MUX_IDLE_DISCONNECT;
 
+	ret = devm_add_action(dev, pca954x_cleanup, muxc);
+	if (ret)
+		return ret;
+
 	ret = pca954x_irq_setup(muxc);
 	if (ret)
-		goto fail_cleanup;
+		return ret;
 
 	/* Now create an adapter for each channel */
 	for (num = 0; num < data->chip->nchans; num++) {
 		ret = i2c_mux_add_adapter(muxc, 0, num, 0);
 		if (ret)
-			goto fail_cleanup;
+			return ret;
 	}
 
 	if (data->irq) {
@@ -496,7 +500,7 @@ static int pca954x_probe(struct i2c_client *client,
 						IRQF_ONESHOT | IRQF_SHARED,
 						"pca954x", data);
 		if (ret)
-			goto fail_cleanup;
+			return ret;
 	}
 
 	/*
@@ -509,18 +513,6 @@ static int pca954x_probe(struct i2c_client *client,
 		 num, data->chip->muxtype == pca954x_ismux
 				? "mux" : "switch", client->name);
 
-	return 0;
-
-fail_cleanup:
-	pca954x_cleanup(muxc);
-	return ret;
-}
-
-static int pca954x_remove(struct i2c_client *client)
-{
-	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-
-	pca954x_cleanup(muxc);
 	return 0;
 }
 
@@ -545,7 +537,6 @@ static struct i2c_driver pca954x_driver = {
 		.of_match_table = of_match_ptr(pca954x_of_match),
 	},
 	.probe		= pca954x_probe,
-	.remove		= pca954x_remove,
 	.id_table	= pca954x_id,
 };
 
