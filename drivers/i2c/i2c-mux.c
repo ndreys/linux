@@ -40,7 +40,9 @@ static void i2c_mux_deselect(struct i2c_mux_core *muxc,
 			     struct i2c_mux_priv *priv)
 {
 	if (muxc->deselect)
-		muxc->deselect(muxc, priv->chan_id);
+		if (muxc->deselect(muxc, priv->chan_id) < 0)
+			dev_err(muxc->dev,
+	   "Failed to deselect mux channel. Parent bus might be unreliable\n");
 }
 
 static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
