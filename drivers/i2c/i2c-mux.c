@@ -298,7 +298,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 		return -EINVAL;
 	}
 
-	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	priv = devm_kzalloc(muxc->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -410,7 +410,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 			dev_err(&parent->dev,
 				"failed to add mux-adapter %u as bus %u (error=%d)\n",
 				chan_id, force_nr, ret);
-			goto err_free_priv;
+			return ret;
 		}
 	} else {
 		ret = i2c_add_adapter(&priv->adap);
@@ -418,7 +418,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 			dev_err(&parent->dev,
 				"failed to add mux-adapter %u (error=%d)\n",
 				chan_id, ret);
-			goto err_free_priv;
+			return ret;
 		}
 	}
 
@@ -435,10 +435,6 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 
 	muxc->adapter[muxc->num_adapters++] = &priv->adap;
 	return 0;
-
-err_free_priv:
-	kfree(priv);
-	return ret;
 }
 EXPORT_SYMBOL_GPL(i2c_mux_add_adapter);
 
@@ -460,7 +456,6 @@ void i2c_mux_del_adapters(struct i2c_mux_core *muxc)
 		sysfs_remove_link(&priv->adap.dev.kobj, "mux_device");
 		i2c_del_adapter(adap);
 		of_node_put(np);
-		kfree(priv);
 	}
 }
 EXPORT_SYMBOL_GPL(i2c_mux_del_adapters);
