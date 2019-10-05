@@ -244,8 +244,8 @@ EXPORT_SYMBOL_GPL(i2c_root_adapter);
 struct i2c_mux_core *i2c_mux_alloc(struct i2c_adapter *parent,
 				   struct device *dev, int max_adapters,
 				   int sizeof_priv, u32 flags,
-				   int (*select)(struct i2c_mux_core *, u32),
-				   int (*deselect)(struct i2c_mux_core *, u32))
+				   i2c_mux_core_ctl select,
+				   i2c_mux_core_ctl deselect)
 {
 	struct i2c_mux_core *muxc;
 

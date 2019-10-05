@@ -15,6 +15,9 @@
 
 #include <linux/bitops.h>
 
+struct i2c_mux_core;
+typedef int (*i2c_mux_core_ctl)(struct i2c_mux_core *, u32 chan_id);
+
 struct i2c_mux_core {
 	struct i2c_adapter *parent;
 	struct device *dev;
@@ -24,8 +27,8 @@ struct i2c_mux_core {
 
 	void *priv;
 
-	int (*select)(struct i2c_mux_core *, u32 chan_id);
-	int (*deselect)(struct i2c_mux_core *, u32 chan_id);
+	i2c_mux_core_ctl select;
+	i2c_mux_core_ctl deselect;
 
 	int num_adapters;
 	int max_adapters;
@@ -35,8 +38,8 @@ struct i2c_mux_core {
 struct i2c_mux_core *i2c_mux_alloc(struct i2c_adapter *parent,
 				   struct device *dev, int max_adapters,
 				   int sizeof_priv, u32 flags,
-				   int (*select)(struct i2c_mux_core *, u32),
-				   int (*deselect)(struct i2c_mux_core *, u32));
+				   i2c_mux_core_ctl select,
+				   i2c_mux_core_ctl deselect);
 
 /* flags for i2c_mux_alloc */
 #define I2C_MUX_LOCKED     BIT(0)
