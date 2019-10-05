@@ -36,6 +36,13 @@ struct i2c_mux_priv {
 	u32 chan_id;
 };
 
+static void i2c_mux_deselect(struct i2c_mux_core *muxc,
+			     struct i2c_mux_priv *priv)
+{
+	if (muxc->deselect)
+		muxc->deselect(muxc, priv->chan_id);
+}
+
 static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 				 struct i2c_msg msgs[], int num)
 {
@@ -49,8 +56,7 @@ static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = __i2c_transfer(parent, msgs, num);
-	if (muxc->deselect)
-		muxc->deselect(muxc, priv->chan_id);
+	i2c_mux_deselect(muxc, priv);
 
 	return ret;
 }
@@ -68,8 +74,7 @@ static int i2c_mux_master_xfer(struct i2c_adapter *adap,
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = i2c_transfer(parent, msgs, num);
-	if (muxc->deselect)
-		muxc->deselect(muxc, priv->chan_id);
+	i2c_mux_deselect(muxc, priv);
 
 	return ret;
 }
@@ -90,8 +95,7 @@ static int __i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 	if (ret >= 0)
 		ret = __i2c_smbus_xfer(parent, addr, flags,
 				       read_write, command, size, data);
-	if (muxc->deselect)
-		muxc->deselect(muxc, priv->chan_id);
+	i2c_mux_deselect(muxc, priv);
 
 	return ret;
 }
@@ -112,8 +116,7 @@ static int i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 	if (ret >= 0)
 		ret = i2c_smbus_xfer(parent, addr, flags,
 				     read_write, command, size, data);
-	if (muxc->deselect)
-		muxc->deselect(muxc, priv->chan_id);
+	i2c_mux_deselect(muxc, priv);
 
 	return ret;
 }
