@@ -151,9 +151,8 @@ static void i2c_mux_lock_bus(struct i2c_adapter *adapter, unsigned int flags)
 	struct i2c_adapter *parent = priv->muxc->parent;
 
 	rt_mutex_lock_nested(&parent->mux_lock, i2c_adapter_depth(adapter));
-	if (!(flags & I2C_LOCK_ROOT_ADAPTER))
-		return;
-	i2c_lock_bus(parent, flags);
+	if (flags & I2C_LOCK_ROOT_ADAPTER)
+		i2c_lock_bus(parent, flags);
 }
 
 static int i2c_mux_trylock_bus(struct i2c_adapter *adapter, unsigned int flags)
