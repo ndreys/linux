@@ -257,12 +257,7 @@ struct i2c_mux_core *i2c_mux_alloc(struct i2c_adapter *parent,
 
 	muxc->parent = parent;
 	muxc->dev = dev;
-	if (flags & I2C_MUX_LOCKED)
-		muxc->mux_locked = true;
-	if (flags & I2C_MUX_ARBITRATOR)
-		muxc->arbitrator = true;
-	if (flags & I2C_MUX_GATE)
-		muxc->gate = true;
+	muxc->flags = flags;
 	muxc->select = select;
 	muxc->deselect = deselect;
 	muxc->max_adapters = max_adapters;
@@ -309,7 +304,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 	 * of time what sort of physical adapter we'll be dealing with.
 	 */
 	if (parent->algo->master_xfer) {
-		if (muxc->mux_locked)
+		if (muxc->flags & I2C_MUX_LOCKED)
 			priv->algo.master_xfer = i2c_mux_master_xfer;
 		else
 			priv->algo.master_xfer = __i2c_mux_master_xfer;
@@ -318,7 +313,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 		priv->algo.master_xfer_atomic = priv->algo.master_xfer;
 
 	if (parent->algo->smbus_xfer) {
-		if (muxc->mux_locked)
+		if (muxc->flags & I2C_MUX_LOCKED)
 			priv->algo.smbus_xfer = i2c_mux_smbus_xfer;
 		else
 			priv->algo.smbus_xfer = __i2c_mux_smbus_xfer;
@@ -338,7 +333,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 	priv->adap.retries = parent->retries;
 	priv->adap.timeout = parent->timeout;
 	priv->adap.quirks = parent->quirks;
-	if (muxc->mux_locked)
+	if (muxc->flags & I2C_MUX_LOCKED)
 		priv->adap.lock_ops = &i2c_mux_lock_ops;
 	else
 		priv->adap.lock_ops = &i2c_parent_lock_ops;
@@ -360,9 +355,9 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 		struct device_node *mux_node, *child = NULL;
 		u32 reg;
 
-		if (muxc->arbitrator)
+		if (muxc->flags & I2C_MUX_ARBITRATOR)
 			mux_node = of_get_child_by_name(dev_node, "i2c-arb");
-		else if (muxc->gate)
+		else if (muxc->flags & I2C_MUX_GATE)
 			mux_node = of_get_child_by_name(dev_node, "i2c-gate");
 		else
 			mux_node = of_get_child_by_name(dev_node, "i2c-mux");
@@ -377,7 +372,7 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 
 		if (!mux_node)
 			mux_node = of_node_get(dev_node);
-		else if (muxc->arbitrator || muxc->gate)
+		else if (muxc->flags & (I2C_MUX_ARBITRATOR | I2C_MUX_GATE))
 			child = of_node_get(mux_node);
 
 		if (!child) {
