@@ -157,9 +157,7 @@ static irqreturn_t caam_jr_interrupt(int irq, void *st_dev)
 	/* Have valid interrupt at this point, just ACK and trigger */
 	wr_reg32(&jrp->rregs->jrintstatus, irqstate);
 
-	preempt_disable();
 	tasklet_schedule(&jrp->irqtask);
-	preempt_enable();
 
 	return IRQ_HANDLED;
 }
