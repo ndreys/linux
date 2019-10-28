@@ -110,7 +110,6 @@ struct caam_drv_private_sm {
 	/* Installed handlers for keystore access */
 	int (*data_init)(struct device *dev, u32 unit);
 	void (*data_cleanup)(struct device *dev, u32 unit);
-	void *(*slot_get_address)(struct device *dev, u32 unit, u32 handle);
 	void *(*slot_get_physical)(struct device *dev, u32 unit, u32 handle);
 	u32 (*slot_get_base)(struct device *dev, u32 unit, u32 handle);
 };

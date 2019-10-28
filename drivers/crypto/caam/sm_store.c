@@ -413,16 +413,12 @@ static int sm_key_job(struct device *ksdev, u32 *jobdesc)
  */
 
 
-void *slot_get_address(struct device *dev, u32 unit, u32 slot)
+static void *slot_get_address(struct caam_drv_private_sm *smpriv,
+			      u32 unit, u32 slot)
 {
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
 
-	if (slot >= ksdata->slot_count)
-		return NULL;
-
-	dev_dbg(dev, "slot_get_address(): slot %d is 0x%08x\n", slot,
-		 (u32)ksdata->base_address + slot * smpriv->slot_size);
+	BUG_ON(slot >= ksdata->slot_count);
 
 	return ksdata->base_address + slot * smpriv->slot_size;
 }
@@ -537,7 +533,6 @@ void sm_init_keystore(struct device *dev)
 
 	smpriv->data_init = kso_init_data;
 	smpriv->data_cleanup = kso_cleanup_data;
-	smpriv->slot_get_address = slot_get_address;
 	smpriv->slot_get_physical = slot_get_physical;
 	smpriv->slot_get_base = slot_get_base;
 	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
@@ -691,7 +686,7 @@ int sm_keystore_slot_load(struct device *dev, u32 unit, u32 slot,
 		goto out;
 	}
 
-	slot_location = smpriv->slot_get_address(dev, unit, slot);
+	slot_location = slot_get_address(smpriv, unit, slot);
 
 	for (i = 0; i < key_length; i++)
 		slot_location[i] = key_data[i];
@@ -714,7 +709,7 @@ int sm_keystore_slot_read(struct device *dev, u32 unit, u32 slot,
 
 	spin_lock(&smpriv->kslock);
 
-	slot_addr = smpriv->slot_get_address(dev, unit, slot);
+	slot_addr = slot_get_address(smpriv, unit, slot);
 	slot_size = smpriv->slot_size;
 
 	if (key_length > slot_size) {
@@ -740,13 +735,11 @@ int sm_keystore_cover_key(struct device *dev, u32 unit, u32 slot,
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	int retval = 0;
-	u8 __iomem *slotaddr;
 	void *slotphys;
 	u32 dsize, jstat;
 	u32 __iomem *coverdesc = NULL;
 
 	/* Get the address of the object in the slot */
-	slotaddr = (u8 *)smpriv->slot_get_address(dev, unit, slot);
 	slotphys = (u8 *)smpriv->slot_get_physical(dev, unit, slot);
 
 	dsize = blacken_key_jobdesc(&coverdesc, slotphys, key_length, keyauth);
@@ -767,14 +760,13 @@ int sm_keystore_slot_export(struct device *dev, u32 unit, u32 slot, u8 keycolor,
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	int retval = 0;
-	u8 __iomem *slotaddr, *lkeymod;
+	u8 __iomem *lkeymod;
 	u8 __iomem *slotphys;
 	dma_addr_t keymod_dma, outbuf_dma;
 	u32 dsize, jstat;
 	u32 __iomem *encapdesc = NULL;
 
 	/* Get the base address(es) of the specified slot */
-	slotaddr = (u8 *)smpriv->slot_get_address(dev, unit, slot);
 	slotphys = smpriv->slot_get_physical(dev, unit, slot);
 
 	/* Build/map/flush the key modifier */
@@ -818,14 +810,13 @@ int sm_keystore_slot_import(struct device *dev, u32 unit, u32 slot, u8 keycolor,
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	int retval = 0;
-	u8 __iomem *slotaddr, *lkeymod;
+	u8 __iomem *lkeymod;
 	u8 __iomem *slotphys;
 	dma_addr_t keymod_dma, inbuf_dma;
 	u32 dsize, jstat;
 	u32 __iomem *decapdesc = NULL;
 
 	/* Get the base address(es) of the specified slot */
-	slotaddr = (u8 *)smpriv->slot_get_address(dev, unit, slot);
 	slotphys = smpriv->slot_get_physical(dev, unit, slot);
 
 	/* Build/map/flush the key modifier */
