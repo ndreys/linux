@@ -108,7 +108,6 @@ struct caam_drv_private_sm {
 	struct sm_page_descriptor *pagedesc;	/* Allocated per-page */
 
 	/* Installed handlers for keystore access */
-	int (*data_init)(struct device *dev, u32 unit);
 	void (*data_cleanup)(struct device *dev, u32 unit);
 };
 

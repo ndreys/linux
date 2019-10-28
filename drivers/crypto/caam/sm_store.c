@@ -433,7 +433,7 @@ static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
 	return ksdata->phys_address + slot * smpriv->slot_size;
 }
 
-int kso_init_data(struct device *dev, u32 unit)
+int sm_establish_keystore(struct device *dev, u32 unit)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	int retval = -EINVAL;
@@ -486,6 +486,7 @@ out:
 
 	return retval;
 }
+EXPORT_SYMBOL(sm_establish_keystore);
 
 void kso_cleanup_data(struct device *dev, u32 unit)
 {
@@ -511,7 +512,6 @@ void sm_init_keystore(struct device *dev)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 
-	smpriv->data_init = kso_init_data;
 	smpriv->data_cleanup = kso_cleanup_data;
 	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
 }
@@ -525,23 +525,6 @@ u32 sm_detect_keystore_units(struct device *dev)
 	return smpriv->localpages;
 }
 EXPORT_SYMBOL(sm_detect_keystore_units);
-
-/*
- * Do any keystore specific initializations
- */
-int sm_establish_keystore(struct device *dev, u32 unit)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-
-	dev_dbg(dev, "sm_establish_keystore(): unit %d initializing\n", unit);
-
-	if (smpriv->data_init == NULL)
-		return -EINVAL;
-
-	/* Call the data_init function for any user setup */
-	return smpriv->data_init(dev, unit);
-}
-EXPORT_SYMBOL(sm_establish_keystore);
 
 void sm_release_keystore(struct device *dev, u32 unit)
 {
