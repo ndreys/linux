@@ -49,8 +49,6 @@ extern int sm_keystore_slot_load(struct device *dev, u32 unit, u32 slot,
 				 const u8 *key_data, u32 key_length);
 extern int sm_keystore_slot_read(struct device *dev, u32 unit, u32 slot,
 				 u32 key_length, u8 *key_data);
-extern int sm_keystore_cover_key(struct device *dev, u32 unit, u32 slot,
-				 u16 key_length, u8 keyauth);
 extern int sm_keystore_slot_export(struct device *dev, u32 unit, u32 slot,
 				   u8 keycolor, u8 keyauth, u8 *outbuf,
 				   u16 keylen, u8 *keymod);
