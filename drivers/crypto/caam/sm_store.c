@@ -413,61 +413,6 @@ static int sm_key_job(struct device *ksdev, u32 *jobdesc)
  */
 
 
-int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-	u32 i;
-
-	dev_dbg(dev, "slot_alloc(): requesting slot for %d bytes\n", size);
-
-
-	if (size > smpriv->slot_size)
-		return -EKEYREJECTED;
-
-	for (i = 0; i < ksdata->slot_count; i++) {
-		if (ksdata->slot[i].allocated == 0) {
-			ksdata->slot[i].allocated = 1;
-			(*slot) = i;
-
-			dev_dbg(dev, "slot_alloc(): new slot %d allocated\n",
-				*slot);
-			return 0;
-		}
-	}
-
-	return -ENOSPC;
-}
-EXPORT_SYMBOL(slot_alloc);
-
-int slot_dealloc(struct device *dev, u32 unit, u32 slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-	u8 __iomem *slotdata;
-
-
-	dev_dbg(dev, "slot_dealloc(): releasing slot %d\n", slot);
-
-	if (slot >= ksdata->slot_count)
-		return -EINVAL;
-	slotdata = ksdata->base_address + slot * smpriv->slot_size;
-
-	if (ksdata->slot[slot].allocated == 1) {
-		/* Forcibly overwrite the data from the keystore */
-		memset(ksdata->base_address + slot * smpriv->slot_size, 0,
-		       smpriv->slot_size);
-
-		ksdata->slot[slot].allocated = 0;
-
-		dev_dbg(dev, "slot_dealloc(): slot %d released\n", slot);
-		return 0;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL(slot_dealloc);
-
 void *slot_get_address(struct device *dev, u32 unit, u32 slot)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
@@ -605,8 +550,6 @@ void sm_init_keystore(struct device *dev)
 
 	smpriv->data_init = kso_init_data;
 	smpriv->data_cleanup = kso_cleanup_data;
-	smpriv->slot_alloc = slot_alloc;
-	smpriv->slot_dealloc = slot_dealloc;
 	smpriv->slot_get_address = slot_get_address;
 	smpriv->slot_get_physical = slot_get_physical;
 	smpriv->slot_get_base = slot_get_base;
@@ -653,6 +596,31 @@ void sm_release_keystore(struct device *dev, u32 unit)
 }
 EXPORT_SYMBOL(sm_release_keystore);
 
+static int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
+{
+	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
+	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
+	u32 i;
+
+	dev_dbg(dev, "slot_alloc(): requesting slot for %d bytes\n", size);
+
+
+	if (size > smpriv->slot_size)
+		return -EKEYREJECTED;
+
+	for (i = 0; i < ksdata->slot_count; i++) {
+		if (ksdata->slot[i].allocated == 0) {
+			ksdata->slot[i].allocated = 1;
+			(*slot) = i;
+
+			dev_dbg(dev, "slot_alloc(): new slot %d allocated\n",
+				*slot);
+			return 0;
+		}
+	}
+
+	return -ENOSPC;
+}
 /*
  * Subsequent interfacce (sm_keystore_*) forms the accessor interfacce to
  * the keystore
@@ -664,17 +632,43 @@ int sm_keystore_slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
 
 	spin_lock(&smpriv->kslock);
 
-	if ((smpriv->slot_alloc == NULL) ||
-	    (smpriv->pagedesc[unit].ksdata == NULL))
+	if (smpriv->pagedesc[unit].ksdata == NULL)
 		goto out;
 
-	retval =  smpriv->slot_alloc(dev, unit, size, slot);
+	retval = slot_alloc(dev, unit, size, slot);
 
 out:
 	spin_unlock(&smpriv->kslock);
 	return retval;
 }
 EXPORT_SYMBOL(sm_keystore_slot_alloc);
+
+static int slot_dealloc(struct device *dev, u32 unit, u32 slot)
+{
+	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
+	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
+	u8 __iomem *slotdata;
+
+
+	dev_dbg(dev, "slot_dealloc(): releasing slot %d\n", slot);
+
+	if (slot >= ksdata->slot_count)
+		return -EINVAL;
+	slotdata = ksdata->base_address + slot * smpriv->slot_size;
+
+	if (ksdata->slot[slot].allocated == 1) {
+		/* Forcibly overwrite the data from the keystore */
+		memset(ksdata->base_address + slot * smpriv->slot_size, 0,
+		       smpriv->slot_size);
+
+		ksdata->slot[slot].allocated = 0;
+
+		dev_dbg(dev, "slot_dealloc(): slot %d released\n", slot);
+		return 0;
+	}
+
+	return -EINVAL;
+}
 
 int sm_keystore_slot_dealloc(struct device *dev, u32 unit, u32 slot)
 {
@@ -683,11 +677,10 @@ int sm_keystore_slot_dealloc(struct device *dev, u32 unit, u32 slot)
 
 	spin_lock(&smpriv->kslock);
 
-	if ((smpriv->slot_alloc == NULL) ||
-	    (smpriv->pagedesc[unit].ksdata == NULL))
+	if (smpriv->pagedesc[unit].ksdata == NULL)
 		goto out;
 
-	retval = smpriv->slot_dealloc(dev, unit, slot);
+	retval = slot_dealloc(dev, unit, slot);
 out:
 	spin_unlock(&smpriv->kslock);
 	return retval;
