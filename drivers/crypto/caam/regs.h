@@ -892,8 +892,6 @@ struct caam_job_ring {
 #define JRCR_RESET                  0x01
 
 /* secure memory command */
-#define SMC_PAGE_SHIFT	16
-#define SMC_PAGE_MASK	(0xffff << SMC_PAGE_SHIFT)
 #define SMC_PART_SHIFT	8
 #define SMC_PART_MASK	(0x0f << SMC_PART_SHIFT)
 #define SMC_CMD_SHIFT	0
@@ -905,16 +903,13 @@ struct caam_job_ring {
 #define SMC_CMD_PAGE_INQUIRY	0x05	/* find partition associate with page */
 
 /* secure memory (command) status */
-#define SMCS_PAGE_SHIFT		16
-#define SMCS_PAGE_MASK		(0x0fff << SMCS_PAGE_SHIFT)
+#define SMCS_PAGE		GENMASK(31, 16)
 #define SMCS_CMDERR_SHIFT	14
 #define SMCS_CMDERR_MASK	(3 << SMCS_CMDERR_SHIFT)
 #define SMCS_ALCERR_SHIFT	12
 #define SMCS_ALCERR_MASK	(3 << SMCS_ALCERR_SHIFT)
-#define SMCS_PGOWN_SHIFT	6
-#define SMCS_PGWON_MASK		(3 << SMCS_PGOWN_SHIFT)
-#define SMCS_PART_SHIFT		0
-#define SMCS_PART_MASK		(0xf << SMCS_PART_SHIFT)
+#define SMCS_PGWON		GENMASK(7, 6)
+#define SMCS_PART		GENMASK(3, 0)
 
 #define SMCS_CMDERR_NONE	0
 #define SMCS_CMDERR_INCOMP	1	/* Command not yet complete */

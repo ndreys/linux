@@ -58,8 +58,6 @@ struct keystore_data {
 
 /* store the detected attributes of a secure memory page */
 struct sm_page_descriptor {
-	u16 phys_pagenum;	/* may be discontiguous */
-	u16 own_part;		/* Owning partition */
 	void *pg_base;		/* Calculated virtual address */
 	void *pg_phys;		/* Calculated physical address */
 	struct keystore_data *ksdata;
@@ -714,6 +712,26 @@ out:
 }
 EXPORT_SYMBOL(sm_keystore_slot_import);
 
+static bool sm_is_our_page(struct caam_drv_private_jr *jr, u32 page)
+{
+	u32 pgstat;
+	bool owned;
+
+	wr_reg32(&jr->rregs->sm_cmd, FIELD_PREP(SMCS_PAGE, page) |
+		 SMC_CMD_PAGE_INQUIRY);
+	pgstat = rd_reg32(&jr->rregs->sm_status);
+
+	owned = FIELD_GET(SMCS_PGWON, pgstat) == SMCS_PGOWN_OWNED;
+
+	if (owned)
+		dev_dbg(jr->dev, "physical page %lu, owning partition = %lu\n",
+			FIELD_GET(SMCS_PAGE, pgstat),
+			FIELD_GET(SMCS_PART, pgstat));
+
+	return owned;
+}
+
+
 /*
  * Initialization/shutdown subsystem
  * Assumes statically-invoked startup/shutdown from the controller driver
@@ -731,7 +749,7 @@ int caam_sm_startup(struct platform_device *pdev)
 	struct caam_drv_private_jr *jrpriv;	/* need this for reg page */
 	struct platform_device *sm_pdev;
 	struct sm_page_descriptor *lpagedesc;
-	u32 page, pgstat, lpagect, detectedpage;
+	u32 page, lpagect, detectedpage;
 	u32 smvid, smpart;
 	u32 max_pages;		/* maximum pages this instance can support */
 	u32 top_partition;	/* highest partition number in this instance */
@@ -818,26 +836,13 @@ int caam_sm_startup(struct platform_device *pdev)
 	}
 
 	for (page = 0; page < max_pages; page++) {
-		wr_reg32(&jrpriv->rregs->sm_cmd,
-			 ((page << SMC_PAGE_SHIFT) & SMC_PAGE_MASK) |
-			 (SMC_CMD_PAGE_INQUIRY & SMC_CMD_MASK));
-		pgstat = rd_reg32(&jrpriv->rregs->sm_status);
-		if (((pgstat & SMCS_PGWON_MASK) >> SMCS_PGOWN_SHIFT)
-		    == SMCS_PGOWN_OWNED) { /* our page? */
-			lpagedesc[page].phys_pagenum =
-				(pgstat & SMCS_PAGE_MASK) >> SMCS_PAGE_SHIFT;
-			lpagedesc[page].own_part =
-				(pgstat & SMCS_PART_SHIFT) >> SMCS_PART_MASK;
+		if (sm_is_our_page(jrpriv, page)) {
 			lpagedesc[page].pg_base = ctrlpriv->sm_base +
 				((smpriv->page_size * page) / sizeof(u32));
 			/* FIXME: get base address from platform property... */
 			lpagedesc[page].pg_phys = (u32 *)0x00100000 +
 				((smpriv->page_size * page) / sizeof(u32));
 			lpagect++;
-			dev_dbg(smdev,
-				"physical page %d, owning partition = %d\n",
-				lpagedesc[page].phys_pagenum,
-				lpagedesc[page].own_part);
 		}
 	}
 
