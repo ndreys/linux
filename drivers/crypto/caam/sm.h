@@ -35,7 +35,6 @@
 #define BLOB_OVERHEAD (32 + 16)
 
 /* Keystore maintenance functions */
-void sm_init_keystore(struct device *dev);
 u32 sm_detect_keystore_units(struct device *dev);
 int sm_establish_keystore(struct device *dev, u32 unit);
 void sm_release_keystore(struct device *dev, u32 unit);
@@ -106,9 +105,6 @@ struct caam_drv_private_sm {
 	/* Partition/Page Allocation Map */
 	u32 localpages;		/* Number of pages we can access */
 	struct sm_page_descriptor *pagedesc;	/* Allocated per-page */
-
-	/* Installed handlers for keystore access */
-	void (*data_cleanup)(struct device *dev, u32 unit);
 };
 
 #endif /* SM_H */

@@ -488,7 +488,7 @@ out:
 }
 EXPORT_SYMBOL(sm_establish_keystore);
 
-void kso_cleanup_data(struct device *dev, u32 unit)
+void sm_release_keystore(struct device *dev, u32 unit)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	struct keystore_data *keystore_data = NULL;
@@ -501,21 +501,7 @@ void kso_cleanup_data(struct device *dev, u32 unit)
 
 	return;
 }
-
-
-
-/*
- * Keystore management section
- */
-
-void sm_init_keystore(struct device *dev)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-
-	smpriv->data_cleanup = kso_cleanup_data;
-	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
-}
-EXPORT_SYMBOL(sm_init_keystore);
+EXPORT_SYMBOL(sm_release_keystore);
 
 /* Return available pages/units */
 u32 sm_detect_keystore_units(struct device *dev)
@@ -525,18 +511,6 @@ u32 sm_detect_keystore_units(struct device *dev)
 	return smpriv->localpages;
 }
 EXPORT_SYMBOL(sm_detect_keystore_units);
-
-void sm_release_keystore(struct device *dev, u32 unit)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-
-	dev_dbg(dev, "sm_establish_keystore(): unit %d releasing\n", unit);
-	if ((smpriv != NULL) && (smpriv->data_cleanup != NULL))
-		smpriv->data_cleanup(dev, unit);
-
-	return;
-}
-EXPORT_SYMBOL(sm_release_keystore);
 
 static int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
 {
@@ -972,8 +946,6 @@ int caam_sm_startup(struct platform_device *pdev)
 	}
 
 	kfree(lpagedesc);
-
-	sm_init_keystore(smdev);
 
 	return 0;
 }
