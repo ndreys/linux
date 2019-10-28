@@ -42,6 +42,29 @@
 
 #define INITIAL_DESCSZ 16	/* size of tmp buffer for descriptor const. */
 
+/* Data structure to hold per-slot information */
+struct keystore_data_slot_info {
+	u8	allocated;	/* Track slot assignments */
+	u32	key_length;	/* Size of the key */
+};
+
+/* Data structure to hold keystore information */
+struct keystore_data {
+	void	*base_address;	/* Virtual base of secure memory pages */
+	void	*phys_address;	/* Physical base of secure memory pages */
+	u32	slot_count;	/* Number of slots in the keystore */
+	struct keystore_data_slot_info *slot; /* Per-slot information */
+};
+
+/* store the detected attributes of a secure memory page */
+struct sm_page_descriptor {
+	u16 phys_pagenum;	/* may be discontiguous */
+	u16 own_part;		/* Owning partition */
+	void *pg_base;		/* Calculated virtual address */
+	void *pg_phys;		/* Calculated physical address */
+	struct keystore_data *ksdata;
+};
+
 /*
  * Construct a blob encapsulation job descriptor
  *
