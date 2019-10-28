@@ -483,20 +483,16 @@ struct caam_perfmon {
 #define SMPARTOWN_OURS		3
 
 /* Maximum number of pages possible */
-#define SMPART_MAX_NUMPG_SHIFT	16
-#define SMPART_MAX_NUMPG_MASK	(0x3f << SMPART_MAX_NUMPG_SHIFT)
+#define SMPART_MAX_NUMPG	GENMASK(21, 16)
 
 /* Maximum partition number */
-#define SMPART_MAX_PNUM_SHIFT	12
-#define SMPART_MAX_PNUM_MASK	(0xf << SMPART_MAX_PNUM_SHIFT)
+#define SMPART_MAX_PNUM		GENMASK(15, 12)
 
 /* Highest possible page number */
-#define SMPART_MAX_PG_SHIFT	0
-#define SMPART_MAX_PG_MASK	(0x3f << SMPART_MAX_PG_SHIFT)
+#define SMPART_MAX_PG		GENMASK(5, 0)
 
 /* Max size of a page */
-#define SMVID_PG_SIZE_SHIFT	16
-#define SMVID_PG_SIZE_MASK	(0x7 << SMVID_PG_SIZE_SHIFT)
+#define SMVID_PG_SIZE		GENMASK(18, 16)
 
 /* Major/Minor Version ID */
 #define SMVID_MAJ_VERS_SHIFT	8

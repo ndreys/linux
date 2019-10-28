@@ -815,6 +815,7 @@ int caam_sm_startup(struct platform_device *pdev)
 	struct platform_device *sm_pdev;
 	struct sm_page_descriptor *lpagedesc;
 	u32 page, pgstat, lpagect, detectedpage;
+	u32 smvid, smpart;
 
 	struct device_node *np;
 	ctrldev = &pdev->dev;
@@ -856,27 +857,23 @@ int caam_sm_startup(struct platform_device *pdev)
 	dev_set_drvdata(smdev, smpriv);
 	ctrlpriv->smdev = smdev;
 
+	smpart = rd_reg32(&ctrlpriv->ctrl->perfmon.smpart);
+	smvid  = rd_reg32(&ctrlpriv->ctrl->perfmon.smvid);
 	/*
 	 * Collect configuration limit data for reference
 	 * This batch comes from the partition data/vid registers in perfmon
 	 */
-	smpriv->max_pages = ((rd_reg32(&ctrlpriv->ctrl->perfmon.smpart)
-			    & SMPART_MAX_NUMPG_MASK) >>
-			    SMPART_MAX_NUMPG_SHIFT) + 1;
-	smpriv->top_partition = ((rd_reg32(&ctrlpriv->ctrl->perfmon.smpart)
-				& SMPART_MAX_PNUM_MASK) >>
-				SMPART_MAX_PNUM_SHIFT) + 1;
-	smpriv->top_page =  ((rd_reg32(&ctrlpriv->ctrl->perfmon.smpart)
-			    & SMPART_MAX_PG_MASK) >> SMPART_MAX_PG_SHIFT) + 1;
-	smpriv->page_size = 1024 << ((rd_reg32(&ctrlpriv->ctrl->perfmon.smvid)
-			    & SMVID_PG_SIZE_MASK) >> SMVID_PG_SIZE_SHIFT);
-	smpriv->slot_size = 1 << CONFIG_CRYPTO_DEV_FSL_CAAM_SM_SLOTSIZE;
+	smpriv->max_pages     = FIELD_GET(SMPART_MAX_NUMPG, smpart) + 1;
+	smpriv->top_partition = FIELD_GET(SMPART_MAX_PNUM, smpart) + 1;
+	smpriv->top_page      = FIELD_GET(SMPART_MAX_PG, smpart) + 1;
+	smpriv->page_size     = 1024 << FIELD_GET(SMVID_PG_SIZE, smvid);
+	smpriv->slot_size     = 1 << CONFIG_CRYPTO_DEV_FSL_CAAM_SM_SLOTSIZE;
 
 	dev_dbg(smdev, "max pages = %d, top partition = %d\n",
-			smpriv->max_pages, smpriv->top_partition);
+		smpriv->max_pages, smpriv->top_partition);
 	dev_dbg(smdev, "top page = %d, page size = %d (total = %d)\n",
-			smpriv->top_page, smpriv->page_size,
-			smpriv->top_page * smpriv->page_size);
+		smpriv->top_page, smpriv->page_size,
+		smpriv->top_page * smpriv->page_size);
 	dev_dbg(smdev, "selected slot size = %d\n", smpriv->slot_size);
 
 
