@@ -437,22 +437,6 @@ void *slot_get_physical(struct device *dev, u32 unit, u32 slot)
 	return ksdata->phys_address + slot * smpriv->slot_size;
 }
 
-u32 slot_get_base(struct device *dev, u32 unit, u32 slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-
-	/*
-	 * There could potentially be more than one secure partition object
-	 * associated with this keystore.  For now, there is just one.
-	 */
-
-	dev_dbg(dev, "slot_get_base(): slot %d = 0x%08x\n",
-		slot, (u32)ksdata->base_address);
-
-	return (u32)(ksdata->base_address);
-}
-
 int kso_init_data(struct device *dev, u32 unit)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
@@ -534,7 +518,6 @@ void sm_init_keystore(struct device *dev)
 	smpriv->data_init = kso_init_data;
 	smpriv->data_cleanup = kso_cleanup_data;
 	smpriv->slot_get_physical = slot_get_physical;
-	smpriv->slot_get_base = slot_get_base;
 	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
 }
 EXPORT_SYMBOL(sm_init_keystore);
