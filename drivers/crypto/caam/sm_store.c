@@ -733,6 +733,9 @@ int caam_sm_startup(struct platform_device *pdev)
 	struct sm_page_descriptor *lpagedesc;
 	u32 page, pgstat, lpagect, detectedpage;
 	u32 smvid, smpart;
+	u32 max_pages;		/* maximum pages this instance can support */
+	u32 top_partition;	/* highest partition number in this instance */
+	u32 top_page;		/* highest page number in this instance */
 
 	struct device_node *np;
 	ctrldev = &pdev->dev;
@@ -780,17 +783,17 @@ int caam_sm_startup(struct platform_device *pdev)
 	 * Collect configuration limit data for reference
 	 * This batch comes from the partition data/vid registers in perfmon
 	 */
-	smpriv->max_pages     = FIELD_GET(SMPART_MAX_NUMPG, smpart) + 1;
-	smpriv->top_partition = FIELD_GET(SMPART_MAX_PNUM, smpart) + 1;
-	smpriv->top_page      = FIELD_GET(SMPART_MAX_PG, smpart) + 1;
-	smpriv->page_size     = 1024 << FIELD_GET(SMVID_PG_SIZE, smvid);
-	smpriv->slot_size     = 1 << CONFIG_CRYPTO_DEV_FSL_CAAM_SM_SLOTSIZE;
+	max_pages     = FIELD_GET(SMPART_MAX_NUMPG, smpart) + 1;
+	top_partition = FIELD_GET(SMPART_MAX_PNUM, smpart) + 1;
+	top_page      = FIELD_GET(SMPART_MAX_PG, smpart) + 1;
+
+	smpriv->page_size = 1024 << FIELD_GET(SMVID_PG_SIZE, smvid);
+	smpriv->slot_size = 1 << CONFIG_CRYPTO_DEV_FSL_CAAM_SM_SLOTSIZE;
 
 	dev_dbg(smdev, "max pages = %d, top partition = %d\n",
-		smpriv->max_pages, smpriv->top_partition);
+		max_pages, top_partition);
 	dev_dbg(smdev, "top page = %d, page size = %d (total = %d)\n",
-		smpriv->top_page, smpriv->page_size,
-		smpriv->top_page * smpriv->page_size);
+		top_page, smpriv->page_size, top_page * smpriv->page_size);
 	dev_dbg(smdev, "selected slot size = %d\n", smpriv->slot_size);
 
 
@@ -808,13 +811,13 @@ int caam_sm_startup(struct platform_device *pdev)
 	jrpriv = dev_get_drvdata(smpriv->smringdev);
 	lpagect = 0;
 	lpagedesc = kzalloc(sizeof(struct sm_page_descriptor)
-			    * smpriv->max_pages, GFP_KERNEL);
+			    * max_pages, GFP_KERNEL);
 	if (lpagedesc == NULL) {
 		kfree(smpriv);
 		return -ENOMEM;
 	}
 
-	for (page = 0; page < smpriv->max_pages; page++) {
+	for (page = 0; page < max_pages; page++) {
 		wr_reg32(&jrpriv->rregs->sm_cmd,
 			 ((page << SMC_PAGE_SHIFT) & SMC_PAGE_MASK) |
 			 (SMC_CMD_PAGE_INQUIRY & SMC_CMD_MASK));
@@ -848,7 +851,7 @@ int caam_sm_startup(struct platform_device *pdev)
 	smpriv->localpages = lpagect;
 
 	detectedpage = 0;
-	for (page = 0; page < smpriv->max_pages; page++) {
+	for (page = 0; page < max_pages; page++) {
 		if (lpagedesc[page].pg_base != NULL) {	/* e.g. live entry */
 			memcpy(&smpriv->pagedesc[detectedpage],
 			       &lpagedesc[page],

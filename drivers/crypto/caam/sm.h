@@ -73,9 +73,6 @@ struct caam_drv_private_sm {
 	spinlock_t kslock ____cacheline_aligned;
 
 	/* Default parameters for geometry */
-	u32 max_pages;		/* maximum pages this instance can support */
-	u32 top_partition;	/* highest partition number in this instance */
-	u32 top_page;		/* highest page number in this instance */
 	u32 page_size;		/* page size */
 	u32 slot_size;		/* selected size of each storage block */
 
