@@ -512,20 +512,6 @@ u32 slot_get_base(struct device *dev, u32 unit, u32 slot)
 	return (u32)(ksdata->base_address);
 }
 
-u32 slot_get_offset(struct device *dev, u32 unit, u32 slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-
-	if (slot >= ksdata->slot_count)
-		return -EINVAL;
-
-	dev_dbg(dev, "slot_get_offset(): slot %d = %d\n", slot,
-		slot * smpriv->slot_size);
-
-	return slot * smpriv->slot_size;
-}
-
 u32 slot_get_slot_size(struct device *dev, u32 unit, u32 slot)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
@@ -624,7 +610,6 @@ void sm_init_keystore(struct device *dev)
 	smpriv->slot_get_address = slot_get_address;
 	smpriv->slot_get_physical = slot_get_physical;
 	smpriv->slot_get_base = slot_get_base;
-	smpriv->slot_get_offset = slot_get_offset;
 	smpriv->slot_get_slot_size = slot_get_slot_size;
 	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
 }
