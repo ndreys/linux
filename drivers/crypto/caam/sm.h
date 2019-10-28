@@ -113,7 +113,6 @@ struct caam_drv_private_sm {
 	void *(*slot_get_address)(struct device *dev, u32 unit, u32 handle);
 	void *(*slot_get_physical)(struct device *dev, u32 unit, u32 handle);
 	u32 (*slot_get_base)(struct device *dev, u32 unit, u32 handle);
-	u32 (*slot_get_slot_size)(struct device *dev, u32 unit, u32 handle);
 };
 
 #endif /* SM_H */
