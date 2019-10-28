@@ -423,16 +423,12 @@ static void *slot_get_address(struct caam_drv_private_sm *smpriv,
 	return ksdata->base_address + slot * smpriv->slot_size;
 }
 
-void *slot_get_physical(struct device *dev, u32 unit, u32 slot)
+static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
+			       u32 unit, u32 slot)
 {
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
 
-	if (slot >= ksdata->slot_count)
-		return NULL;
-
-	dev_dbg(dev, "slot_get_physical(): slot %d is 0x%08x\n", slot,
-		(u32)ksdata->phys_address + slot * smpriv->slot_size);
+	BUG_ON(slot >= ksdata->slot_count);
 
 	return ksdata->phys_address + slot * smpriv->slot_size;
 }
@@ -517,7 +513,6 @@ void sm_init_keystore(struct device *dev)
 
 	smpriv->data_init = kso_init_data;
 	smpriv->data_cleanup = kso_cleanup_data;
-	smpriv->slot_get_physical = slot_get_physical;
 	dev_dbg(dev, "sm_init_keystore(): handlers installed\n");
 }
 EXPORT_SYMBOL(sm_init_keystore);
@@ -723,7 +718,7 @@ int sm_keystore_cover_key(struct device *dev, u32 unit, u32 slot,
 	u32 __iomem *coverdesc = NULL;
 
 	/* Get the address of the object in the slot */
-	slotphys = (u8 *)smpriv->slot_get_physical(dev, unit, slot);
+	slotphys = slot_get_physical(smpriv, unit, slot);
 
 	dsize = blacken_key_jobdesc(&coverdesc, slotphys, key_length, keyauth);
 	if (!dsize)
@@ -750,7 +745,7 @@ int sm_keystore_slot_export(struct device *dev, u32 unit, u32 slot, u8 keycolor,
 	u32 __iomem *encapdesc = NULL;
 
 	/* Get the base address(es) of the specified slot */
-	slotphys = smpriv->slot_get_physical(dev, unit, slot);
+	slotphys = slot_get_physical(smpriv, unit, slot);
 
 	/* Build/map/flush the key modifier */
 	lkeymod = kmalloc(SECMEM_KEYMOD_LEN, GFP_KERNEL | GFP_DMA);
@@ -800,7 +795,7 @@ int sm_keystore_slot_import(struct device *dev, u32 unit, u32 slot, u8 keycolor,
 	u32 __iomem *decapdesc = NULL;
 
 	/* Get the base address(es) of the specified slot */
-	slotphys = smpriv->slot_get_physical(dev, unit, slot);
+	slotphys = slot_get_physical(smpriv, unit, slot);
 
 	/* Build/map/flush the key modifier */
 	lkeymod = kmalloc(SECMEM_KEYMOD_LEN, GFP_KERNEL | GFP_DMA);
