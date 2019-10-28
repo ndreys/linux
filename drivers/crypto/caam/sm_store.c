@@ -377,7 +377,7 @@ struct sm_key_job_result {
 	struct completion completion;
 };
 
-void sm_key_job_done(struct device *dev, u32 *desc, u32 err, void *context)
+static void sm_key_job_done(struct device *dev, u32 *desc, u32 err, void *context)
 {
 	struct sm_key_job_result *res = context;
 
