@@ -40,21 +40,6 @@
 #define SECMEM_KEYMOD_LEN 8
 #define GENMEM_KEYMOD_LEN 16
 
-static void sm_show_page(struct device *dev, struct sm_page_descriptor *pgdesc)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	u32 i, *smdata;
-
-	dev_dbg(dev, "physical page %d content at 0x%08x\n",
-		 pgdesc->phys_pagenum, pgdesc->pg_base);
-	smdata = pgdesc->pg_base;
-	for (i = 0; i < (smpriv->page_size / sizeof(u32)); i += 4)
-		dev_dbg(dev, "[0x%08x] 0x%08x 0x%08x 0x%08x 0x%08x\n",
-			 (u32)&smdata[i], smdata[i], smdata[i+1], smdata[i+2],
-			 smdata[i+3]);
-}
-
-
 #define INITIAL_DESCSZ 16	/* size of tmp buffer for descriptor const. */
 
 /*
@@ -846,7 +831,6 @@ int caam_sm_startup(struct platform_device *pdev)
 			       &lpagedesc[page],
 			       sizeof(struct sm_page_descriptor));
 
-			sm_show_page(smdev, &smpriv->pagedesc[detectedpage]);
 			detectedpage++;
 		}
 	}
