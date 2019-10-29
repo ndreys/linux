@@ -75,8 +75,6 @@ struct caam_drv_private {
 	struct caam_deco __iomem *deco; /* DECO/CCB views */
 	struct caam_assurance __iomem *assure;
 	struct caam_queue_if __iomem *qi; /* QI control region */
-	dma_addr_t __iomem *sm_base;	/* Secure memory storage base */
-	u32 sm_size;
 
 	struct iommu_domain *domain;
 

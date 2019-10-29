@@ -665,15 +665,6 @@ static int caam_probe(struct platform_device *pdev)
 	/* Get the IRQ of the controller (for security violations only) */
 	ctrlpriv->secvio_irq = irq_of_parse_and_map(nprop, 0);
 
-	/* Get CAAM-SM node and of_iomap() and save */
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-caam-sm");
-
-	if (!np)
-		return -ENODEV;
-
-	ctrlpriv->sm_base = of_iomap(np, 0);
-	ctrlpriv->sm_size = 0x3fff;
-
 	/*
 	 * Enable DECO watchdogs and, if this is a PHYS_ADDR_T_64BIT kernel,
 	 * long pointers in master configuration register.

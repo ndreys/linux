@@ -749,11 +749,14 @@ int caam_sm_startup(struct platform_device *pdev)
 	struct caam_drv_private_jr *jrpriv;	/* need this for reg page */
 	struct platform_device *sm_pdev;
 	struct sm_page_descriptor *lpagedesc;
+	void __iomem *sm_base;	/* Secure memory storage base */
+	struct resource res;
 	u32 page, lpagect, detectedpage;
 	u32 smvid, smpart;
 	u32 max_pages;		/* maximum pages this instance can support */
 	u32 top_partition;	/* highest partition number in this instance */
 	u32 top_page;		/* highest page number in this instance */
+	int ret;
 
 	struct device_node *np;
 	ctrldev = &pdev->dev;
@@ -787,6 +790,19 @@ int caam_sm_startup(struct platform_device *pdev)
 	if (sm_pdev == NULL) {
 		kfree(smpriv);
 		return -EINVAL;
+	}
+
+	ret = of_address_to_resource(np, 0, &res);
+	if (ret) {
+		dev_err(ctrldev, "sm: of_address_to_resource() failed\n");
+		return ret;
+	}
+
+	sm_base = devm_ioremap_resource(ctrldev, &res);
+	ret = PTR_ERR_OR_ZERO(sm_base);
+	if (ret) {
+		dev_err(ctrldev, "sm: of_iomap() failed\n");
+		return ret;
 	}
 
 	/* Save a pointer to the platform device for Secure Memory */
@@ -837,11 +853,10 @@ int caam_sm_startup(struct platform_device *pdev)
 
 	for (page = 0; page < max_pages; page++) {
 		if (sm_is_our_page(jrpriv, page)) {
-			lpagedesc[page].pg_base = ctrlpriv->sm_base +
-				((smpriv->page_size * page) / sizeof(u32));
-			/* FIXME: get base address from platform property... */
-			lpagedesc[page].pg_phys = (u32 *)0x00100000 +
-				((smpriv->page_size * page) / sizeof(u32));
+			lpagedesc[page].pg_base =
+				sm_base + smpriv->page_size * page;
+			lpagedesc[page].pg_phys =
+				(void *)res.start + smpriv->page_size * page;
 			lpagect++;
 		}
 	}
