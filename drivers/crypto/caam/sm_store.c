@@ -748,10 +748,9 @@ int caam_sm_startup(struct platform_device *pdev)
 	struct caam_drv_private_sm *smpriv;
 	struct caam_drv_private_jr *jrpriv;	/* need this for reg page */
 	struct platform_device *sm_pdev;
-	struct sm_page_descriptor *lpagedesc;
 	void __iomem *sm_base;	/* Secure memory storage base */
 	struct resource res;
-	u32 page, lpagect, detectedpage;
+	u32 page;
 	u32 smvid, smpart;
 	u32 max_pages;		/* maximum pages this instance can support */
 	u32 top_partition;	/* highest partition number in this instance */
@@ -843,45 +842,25 @@ int caam_sm_startup(struct platform_device *pdev)
 	 */
 	smpriv->smringdev = caam_jr_alloc();
 	jrpriv = dev_get_drvdata(smpriv->smringdev);
-	lpagect = 0;
-	lpagedesc = kzalloc(sizeof(struct sm_page_descriptor)
-			    * max_pages, GFP_KERNEL);
-	if (lpagedesc == NULL) {
+
+	smpriv->pagedesc = kzalloc(sizeof(struct sm_page_descriptor)
+				   * max_pages,
+				   GFP_KERNEL);
+	if (smpriv->pagedesc == NULL) {
 		kfree(smpriv);
 		return -ENOMEM;
 	}
 
 	for (page = 0; page < max_pages; page++) {
 		if (sm_is_our_page(jrpriv, page)) {
-			lpagedesc[page].pg_base =
-				sm_base + smpriv->page_size * page;
-			lpagedesc[page].pg_phys =
+			struct sm_page_descriptor *pagedesc;
+
+			pagedesc = &smpriv->pagedesc[smpriv->localpages++];
+			pagedesc->pg_base = sm_base + smpriv->page_size * page;
+			pagedesc->pg_phys =
 				(void *)res.start + smpriv->page_size * page;
-			lpagect++;
 		}
 	}
-
-	smpriv->pagedesc = kzalloc(sizeof(struct sm_page_descriptor) * lpagect,
-				   GFP_KERNEL);
-	if (smpriv->pagedesc == NULL) {
-		kfree(lpagedesc);
-		kfree(smpriv);
-		return -ENOMEM;
-	}
-	smpriv->localpages = lpagect;
-
-	detectedpage = 0;
-	for (page = 0; page < max_pages; page++) {
-		if (lpagedesc[page].pg_base != NULL) {	/* e.g. live entry */
-			memcpy(&smpriv->pagedesc[detectedpage],
-			       &lpagedesc[page],
-			       sizeof(struct sm_page_descriptor));
-
-			detectedpage++;
-		}
-	}
-
-	kfree(lpagedesc);
 
 	return 0;
 }
