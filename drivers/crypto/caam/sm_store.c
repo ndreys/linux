@@ -49,7 +49,6 @@ struct keystore_data_slot_info {
 
 /* Data structure to hold keystore information */
 struct keystore_data {
-	u32	slot_count;	/* Number of slots in the keystore */
 	struct keystore_data_slot_info *slot; /* Per-slot information */
 };
 
@@ -352,13 +351,15 @@ static int sm_key_job(struct device *ksdev, u32 *jobdesc)
  * interface to deal with the mechanics of accessing the phyiscal keystore
  */
 
+static u32 sm_slot_count(struct caam_drv_private_sm *smpriv)
+{
+	return smpriv->page_size / smpriv->slot_size;
+}
 
 static void *slot_get_address(struct caam_drv_private_sm *smpriv,
 			      u32 unit, u32 slot)
 {
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-
-	BUG_ON(slot >= ksdata->slot_count);
+	BUG_ON(slot >= sm_slot_count(smpriv));
 
 	return smpriv->pagedesc[unit].pg_base + slot * smpriv->slot_size;
 }
@@ -366,9 +367,7 @@ static void *slot_get_address(struct caam_drv_private_sm *smpriv,
 static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
 			       u32 unit, u32 slot)
 {
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-
-	BUG_ON(slot >= ksdata->slot_count);
+	BUG_ON(slot >= sm_slot_count(smpriv));
 
 	return smpriv->pagedesc[unit].pg_phys + slot * smpriv->slot_size;
 }
@@ -378,19 +377,16 @@ int sm_establish_keystore(struct device *dev, u32 unit)
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	int retval = -EINVAL;
 	struct keystore_data *keystore_data = NULL;
-	u32 slot_count;
 	u32 keystore_data_size;
 
 	/*
 	 * Calculate the required size of the keystore data structure, based
 	 * on the number of keys that can fit in the partition.
 	 */
-	slot_count = smpriv->page_size / smpriv->slot_size;
-	dev_dbg(dev, "kso_init_data: %d slots initializing\n", slot_count);
 
 	keystore_data_size = sizeof(struct keystore_data) +
-				slot_count *
-				sizeof(struct keystore_data_slot_info);
+		sm_slot_count(smpriv) *
+		sizeof(struct keystore_data_slot_info);
 
 	keystore_data = kzalloc(keystore_data_size, GFP_KERNEL);
 
@@ -408,7 +404,6 @@ int sm_establish_keystore(struct device *dev, u32 unit)
 	 */
 	keystore_data->slot = (struct keystore_data_slot_info *)
 			      (keystore_data + 1);
-	keystore_data->slot_count = slot_count;
 
 	smpriv->pagedesc[unit].ksdata = keystore_data;
 
@@ -460,7 +455,7 @@ static int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
 	if (size > smpriv->slot_size)
 		return -EKEYREJECTED;
 
-	for (i = 0; i < ksdata->slot_count; i++) {
+	for (i = 0; i < sm_slot_count(smpriv); i++) {
 		if (ksdata->slot[i].allocated == 0) {
 			ksdata->slot[i].allocated = 1;
 			(*slot) = i;
@@ -505,7 +500,7 @@ static int slot_dealloc(struct device *dev, u32 unit, u32 slot)
 
 	dev_dbg(dev, "slot_dealloc(): releasing slot %d\n", slot);
 
-	if (slot >= ksdata->slot_count)
+	if (slot >= sm_slot_count(smpriv))
 		return -EINVAL;
 	slotdata = base_address + slot * smpriv->slot_size;
 
