@@ -36,8 +36,6 @@
 
 /* Keystore maintenance functions */
 u32 sm_detect_keystore_units(struct device *dev);
-int sm_establish_keystore(struct device *dev, u32 unit);
-void sm_release_keystore(struct device *dev, u32 unit);
 void caam_sm_shutdown(struct platform_device *pdev);
 int caam_sm_example_init(struct platform_device *pdev);
 

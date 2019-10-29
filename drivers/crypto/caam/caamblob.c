@@ -154,8 +154,6 @@ static int caam_blob_data_init(void)
 		goto out_put_free;
 	}
 
-	/* Initialize/Establish Keystore */
-	sm_establish_keystore(data->smdev, DEFAULT_UNIT);
 	return 0;
 
 out_put_free:
@@ -167,7 +165,6 @@ out_free:
 
 static void caam_blob_data_shutdown(void)
 {
-	sm_release_keystore(data->smdev, DEFAULT_UNIT);
 	of_node_put(data->dev_node);
 	kfree(data);
 }

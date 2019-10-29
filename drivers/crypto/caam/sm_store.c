@@ -42,21 +42,11 @@
 
 #define INITIAL_DESCSZ 16	/* size of tmp buffer for descriptor const. */
 
-/* Data structure to hold per-slot information */
-struct keystore_data_slot_info {
-	u8	allocated;	/* Track slot assignments */
-};
-
-/* Data structure to hold keystore information */
-struct keystore_data {
-	struct keystore_data_slot_info *slot; /* Per-slot information */
-};
-
 /* store the detected attributes of a secure memory page */
 struct sm_page_descriptor {
 	void *pg_base;		/* Calculated virtual address */
 	void *pg_phys;		/* Calculated physical address */
-	struct keystore_data *ksdata;
+	unsigned long *free_slot_map;
 };
 
 /*
@@ -372,68 +362,6 @@ static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
 	return smpriv->pagedesc[unit].pg_phys + slot * smpriv->slot_size;
 }
 
-int sm_establish_keystore(struct device *dev, u32 unit)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	int retval = -EINVAL;
-	struct keystore_data *keystore_data = NULL;
-	u32 keystore_data_size;
-
-	/*
-	 * Calculate the required size of the keystore data structure, based
-	 * on the number of keys that can fit in the partition.
-	 */
-
-	keystore_data_size = sizeof(struct keystore_data) +
-		sm_slot_count(smpriv) *
-		sizeof(struct keystore_data_slot_info);
-
-	keystore_data = kzalloc(keystore_data_size, GFP_KERNEL);
-
-	if (keystore_data == NULL) {
-		retval = -ENOSPC;
-		goto out;
-	}
-
-	dev_dbg(dev, "kso_init_data: keystore data size = %d\n",
-		keystore_data_size);
-
-	/*
-	 * Place the slot information structure directly after the keystore data
-	 * structure.
-	 */
-	keystore_data->slot = (struct keystore_data_slot_info *)
-			      (keystore_data + 1);
-
-	smpriv->pagedesc[unit].ksdata = keystore_data;
-
-	retval = 0;
-
-out:
-	if (retval != 0)
-		if (keystore_data != NULL)
-			kfree(keystore_data);
-
-
-	return retval;
-}
-EXPORT_SYMBOL(sm_establish_keystore);
-
-void sm_release_keystore(struct device *dev, u32 unit)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *keystore_data = NULL;
-
-	if (smpriv->pagedesc[unit].ksdata != NULL)
-		keystore_data = smpriv->pagedesc[unit].ksdata;
-
-	/* Release the allocated keystore management data */
-	kfree(smpriv->pagedesc[unit].ksdata);
-
-	return;
-}
-EXPORT_SYMBOL(sm_release_keystore);
-
 /* Return available pages/units */
 u32 sm_detect_keystore_units(struct device *dev)
 {
@@ -443,31 +371,6 @@ u32 sm_detect_keystore_units(struct device *dev)
 }
 EXPORT_SYMBOL(sm_detect_keystore_units);
 
-static int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-	u32 i;
-
-	dev_dbg(dev, "slot_alloc(): requesting slot for %d bytes\n", size);
-
-
-	if (size > smpriv->slot_size)
-		return -EKEYREJECTED;
-
-	for (i = 0; i < sm_slot_count(smpriv); i++) {
-		if (ksdata->slot[i].allocated == 0) {
-			ksdata->slot[i].allocated = 1;
-			(*slot) = i;
-
-			dev_dbg(dev, "slot_alloc(): new slot %d allocated\n",
-				*slot);
-			return 0;
-		}
-	}
-
-	return -ENOSPC;
-}
 /*
  * Subsequent interfacce (sm_keystore_*) forms the accessor interfacce to
  * the keystore
@@ -475,63 +378,55 @@ static int slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
 int sm_keystore_slot_alloc(struct device *dev, u32 unit, u32 size, u32 *slot)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	int retval = -EINVAL;
+	struct sm_page_descriptor *page = &smpriv->pagedesc[unit];
+	unsigned int nbits = sm_slot_count(smpriv);
+	int i, ret = 0;
+
+	if (size > smpriv->slot_size)
+		return -EKEYREJECTED;
 
 	spin_lock(&smpriv->kslock);
 
-	if (smpriv->pagedesc[unit].ksdata == NULL)
-		goto out;
+	dev_dbg(dev, "slot_alloc(): requesting slot for %d bytes\n", size);
 
-	retval = slot_alloc(dev, unit, size, slot);
+	i = find_first_bit(page->free_slot_map, nbits);
+	if (i == nbits) {
+		ret = -ENOSPC;
+		goto out;
+	}
+
+	clear_bit(i, page->free_slot_map);
+	*slot = i;
 
 out:
 	spin_unlock(&smpriv->kslock);
-	return retval;
+	return ret;
 }
 EXPORT_SYMBOL(sm_keystore_slot_alloc);
-
-static int slot_dealloc(struct device *dev, u32 unit, u32 slot)
-{
-	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
-	void *base_address = smpriv->pagedesc[unit].pg_base;
-	u8 __iomem *slotdata;
-
-
-	dev_dbg(dev, "slot_dealloc(): releasing slot %d\n", slot);
-
-	if (slot >= sm_slot_count(smpriv))
-		return -EINVAL;
-	slotdata = base_address + slot * smpriv->slot_size;
-
-	if (ksdata->slot[slot].allocated == 1) {
-		/* Forcibly overwrite the data from the keystore */
-		memset(base_address + slot * smpriv->slot_size, 0,
-		       smpriv->slot_size);
-
-		ksdata->slot[slot].allocated = 0;
-
-		dev_dbg(dev, "slot_dealloc(): slot %d released\n", slot);
-		return 0;
-	}
-
-	return -EINVAL;
-}
 
 int sm_keystore_slot_dealloc(struct device *dev, u32 unit, u32 slot)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
-	int retval = -EINVAL;
+	struct sm_page_descriptor *page = &smpriv->pagedesc[unit];
+	int ret = 0;
+
+	if (slot >= sm_slot_count(smpriv))
+		return -EINVAL;
 
 	spin_lock(&smpriv->kslock);
 
-	if (smpriv->pagedesc[unit].ksdata == NULL)
-		goto out;
+	if (!test_and_set_bit(slot, page->free_slot_map)) {
+		/* Forcibly overwrite the data from the keystore */
+		memset(slot_get_address(smpriv, unit, slot), 0,
+		       smpriv->slot_size);
 
-	retval = slot_dealloc(dev, unit, slot);
-out:
+		dev_dbg(dev, "slot_dealloc(): slot %d released\n", slot);
+	} else {
+		ret = -EINVAL;
+	}
+
 	spin_unlock(&smpriv->kslock);
-	return retval;
+	return ret;
 }
 EXPORT_SYMBOL(sm_keystore_slot_dealloc);
 
@@ -843,11 +738,16 @@ int caam_sm_startup(struct platform_device *pdev)
 	for (page = 0; page < max_pages; page++) {
 		if (sm_is_our_page(jrpriv, page)) {
 			struct sm_page_descriptor *pagedesc;
+			unsigned int nbits = sm_slot_count(smpriv);
 
 			pagedesc = &smpriv->pagedesc[smpriv->localpages++];
 			pagedesc->pg_base = sm_base + smpriv->page_size * page;
 			pagedesc->pg_phys =
 				(void *)res.start + smpriv->page_size * page;
+
+			pagedesc->free_slot_map = bitmap_alloc(nbits,
+							       GFP_KERNEL);
+			bitmap_fill(pagedesc->free_slot_map, nbits);
 		}
 	}
 
