@@ -368,8 +368,6 @@ static void kick_trng(struct platform_device *pdev, int ent_delay)
 	wr_reg32(&r4tst->rtfrqmin, ent_delay >> 2);
 	/* disable maximum frequency count */
 	wr_reg32(&r4tst->rtfrqmax, RTFRQMAX_DISABLE);
-	/* read the control register */
-	val = rd_reg32(&r4tst->rtmctl);
 start_rng:
 	/*
 	 * select raw sampling in both entropy shifter
