@@ -357,18 +357,18 @@ static void kick_trng(struct platform_device *pdev, int ent_delay)
 	 */
 	val = (rd_reg32(&r4tst->rtsdctl) & RTSDCTL_ENT_DLY_MASK)
 	      >> RTSDCTL_ENT_DLY_SHIFT;
-	if (ent_delay <= val)
-		goto start_rng;
+	if (ent_delay > val) {
+		val = rd_reg32(&r4tst->rtsdctl);
+		val = (val & ~RTSDCTL_ENT_DLY_MASK) |
+			(ent_delay << RTSDCTL_ENT_DLY_SHIFT);
+		wr_reg32(&r4tst->rtsdctl, val);
+		/* min. freq. count, equal to 1/4 of the entropy
+		 * sample length */
+		wr_reg32(&r4tst->rtfrqmin, ent_delay >> 2);
+		/* disable maximum frequency count */
+		wr_reg32(&r4tst->rtfrqmax, RTFRQMAX_DISABLE);
+	}
 
-	val = rd_reg32(&r4tst->rtsdctl);
-	val = (val & ~RTSDCTL_ENT_DLY_MASK) |
-	      (ent_delay << RTSDCTL_ENT_DLY_SHIFT);
-	wr_reg32(&r4tst->rtsdctl, val);
-	/* min. freq. count, equal to 1/4 of the entropy sample length */
-	wr_reg32(&r4tst->rtfrqmin, ent_delay >> 2);
-	/* disable maximum frequency count */
-	wr_reg32(&r4tst->rtfrqmax, RTFRQMAX_DISABLE);
-start_rng:
 	/*
 	 * select raw sampling in both entropy shifter
 	 * and statistical checker; ; put RNG4 into run mode
