@@ -50,8 +50,6 @@ struct keystore_data_slot_info {
 
 /* Data structure to hold keystore information */
 struct keystore_data {
-	void	*base_address;	/* Virtual base of secure memory pages */
-	void	*phys_address;	/* Physical base of secure memory pages */
 	u32	slot_count;	/* Number of slots in the keystore */
 	struct keystore_data_slot_info *slot; /* Per-slot information */
 };
@@ -363,7 +361,7 @@ static void *slot_get_address(struct caam_drv_private_sm *smpriv,
 
 	BUG_ON(slot >= ksdata->slot_count);
 
-	return ksdata->base_address + slot * smpriv->slot_size;
+	return smpriv->pagedesc[unit].pg_base + slot * smpriv->slot_size;
 }
 
 static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
@@ -373,7 +371,7 @@ static void *slot_get_physical(struct caam_drv_private_sm *smpriv,
 
 	BUG_ON(slot >= ksdata->slot_count);
 
-	return ksdata->phys_address + slot * smpriv->slot_size;
+	return smpriv->pagedesc[unit].pg_phys + slot * smpriv->slot_size;
 }
 
 int sm_establish_keystore(struct device *dev, u32 unit)
@@ -414,10 +412,6 @@ int sm_establish_keystore(struct device *dev, u32 unit)
 	keystore_data->slot_count = slot_count;
 
 	smpriv->pagedesc[unit].ksdata = keystore_data;
-	smpriv->pagedesc[unit].ksdata->base_address =
-		smpriv->pagedesc[unit].pg_base;
-	smpriv->pagedesc[unit].ksdata->phys_address =
-		smpriv->pagedesc[unit].pg_phys;
 
 	retval = 0;
 
@@ -506,6 +500,7 @@ static int slot_dealloc(struct device *dev, u32 unit, u32 slot)
 {
 	struct caam_drv_private_sm *smpriv = dev_get_drvdata(dev);
 	struct keystore_data *ksdata = smpriv->pagedesc[unit].ksdata;
+	void *base_address = smpriv->pagedesc[unit].pg_base;
 	u8 __iomem *slotdata;
 
 
@@ -513,11 +508,11 @@ static int slot_dealloc(struct device *dev, u32 unit, u32 slot)
 
 	if (slot >= ksdata->slot_count)
 		return -EINVAL;
-	slotdata = ksdata->base_address + slot * smpriv->slot_size;
+	slotdata = base_address + slot * smpriv->slot_size;
 
 	if (ksdata->slot[slot].allocated == 1) {
 		/* Forcibly overwrite the data from the keystore */
-		memset(ksdata->base_address + slot * smpriv->slot_size, 0,
+		memset(base_address + slot * smpriv->slot_size, 0,
 		       smpriv->slot_size);
 
 		ksdata->slot[slot].allocated = 0;
