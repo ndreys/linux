@@ -45,7 +45,6 @@
 /* Data structure to hold per-slot information */
 struct keystore_data_slot_info {
 	u8	allocated;	/* Track slot assignments */
-	u32	key_length;	/* Size of the key */
 };
 
 /* Data structure to hold keystore information */
