@@ -224,7 +224,7 @@ static int ahash_set_sh_desc(struct crypto_ahash *ahash)
 	struct caam_hash_ctx *ctx = crypto_ahash_ctx(ahash);
 	int digestsize = crypto_ahash_digestsize(ahash);
 	struct device *jrdev = ctx->jr->dev;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	u32 *desc;
 
 	ctx->adata.key_virt = ctx->key;
@@ -447,7 +447,7 @@ static int ahash_setkey(struct crypto_ahash *ahash,
 	struct device *jrdev = ctx->jr->dev;
 	int blocksize = crypto_tfm_alg_blocksize(&ahash->base);
 	int digestsize = crypto_ahash_digestsize(ahash);
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	int ret;
 	u8 *hashed_key = NULL;
 
@@ -1839,7 +1839,7 @@ static int caam_hash_cra_init(struct crypto_tfm *tfm)
 		return PTR_ERR(ctx->jr);
 	}
 
-	priv = dev_get_drvdata(ctx->jr->dev->parent);
+	priv = dev_get_drvdata(ctx->jr->dev);
 
 	if (is_xcbc_aes(caam_hash->alg_type)) {
 		ctx->dir = DMA_TO_DEVICE;

@@ -118,7 +118,7 @@ static int aead_null_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
 	struct device *jrdev = ctx->jr->dev;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	u32 *desc;
 	int rem_bytes = CAAM_DESC_BYTES_MAX - AEAD_DESC_JOB_IO_LEN -
 			ctx->adata.keylen_pad;
@@ -171,7 +171,7 @@ static int aead_set_sh_desc(struct crypto_aead *aead)
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
 	struct device *jrdev = ctx->jr->dev;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	u32 ctx1_iv_off = 0;
 	u32 *desc, *nonce = NULL;
 	u32 inl_mask;
@@ -564,7 +564,7 @@ static int aead_setkey(struct crypto_aead *aead,
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
 	struct device *jrdev = ctx->jr->dev;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	struct crypto_authenc_keys keys;
 	int ret = 0;
 
@@ -1223,7 +1223,7 @@ static void init_authenc_job(struct aead_request *req,
 						 struct caam_aead_alg, aead);
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jr->dev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jr->dev);
 	const bool ctr_mode = ((ctx->cdata.algtype & OP_ALG_AAI_MASK) ==
 			       OP_ALG_AAI_CTR_MOD128);
 	const bool is_rfc3686 = alg->caam.rfc3686;
@@ -3421,7 +3421,7 @@ static int caam_init_common(struct caam_ctx *ctx, struct caam_alg_entry *caam,
 		return PTR_ERR(ctx->jr);
 	}
 
-	priv = dev_get_drvdata(ctx->jr->dev->parent);
+	priv = dev_get_drvdata(ctx->jr->dev);
 	if (priv->era >= 6 && uses_dkp)
 		ctx->dir = DMA_BIDIRECTIONAL;
 	else

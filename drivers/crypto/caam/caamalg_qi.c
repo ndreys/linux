@@ -82,7 +82,7 @@ static int aead_set_sh_desc(struct crypto_aead *aead)
 	const bool ctr_mode = ((ctx->cdata.algtype & OP_ALG_AAI_MASK) ==
 			       OP_ALG_AAI_CTR_MOD128);
 	const bool is_rfc3686 = alg->caam.rfc3686;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jrdev);
 
 	if (!ctx->cdata.keylen || !ctx->authsize)
 		return 0;
@@ -189,7 +189,7 @@ static int aead_setkey(struct crypto_aead *aead, const u8 *key,
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
 	struct device *jrdev = ctx->jrdev;
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev);
 	struct crypto_authenc_keys keys;
 	int ret = 0;
 

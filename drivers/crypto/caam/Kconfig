@@ -40,16 +40,13 @@ config CRYPTO_DEV_FSL_CAAM_RNG_API
 	  the hw_random API for suppying the kernel entropy pool.
 
 menuconfig CRYPTO_DEV_FSL_CAAM_JR
-	tristate "Freescale CAAM Job Ring driver backend"
+	bool "Freescale CAAM Job Ring driver backend"
 	default y
 	help
 	  Enables the driver module for Job Rings which are part of
 	  Freescale's Cryptographic Accelerator
 	  and Assurance Module (CAAM). This module adds a job ring operation
 	  interface.
-
-	  To compile this driver as a module, choose M here: the module
-	  will be called caam_jr.
 
 if CRYPTO_DEV_FSL_CAAM_JR
 

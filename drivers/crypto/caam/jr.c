@@ -64,9 +64,9 @@ algs_unlock:
 	mutex_unlock(&algs_lock);
 }
 
-static int caam_reset_hw_jr(struct device *dev)
+static int caam_reset_hw_jr(struct caam_drv_private_jr *jrp)
 {
-	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	struct device *dev = jrp->dev;
 	unsigned int timeout = 100000;
 
 	/*
@@ -104,37 +104,11 @@ static int caam_reset_hw_jr(struct device *dev)
 	return 0;
 }
 
-/*
- * Shutdown JobR independent of platform property code
- */
-static int caam_jr_shutdown(struct device *dev)
-{
-	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
-	int ret;
-
-	ret = caam_reset_hw_jr(dev);
-
-	tasklet_kill(&jrp->irqtask);
-
-	return ret;
-}
-
-static int caam_jr_remove(struct platform_device *pdev)
+static void caam_jr_remove(void *data)
 {
 	int ret;
-	struct device *jrdev;
-	struct caam_drv_private_jr *jrpriv;
-
-	jrdev = &pdev->dev;
-	jrpriv = dev_get_drvdata(jrdev);
-
-	/*
-	 * Return EBUSY if job ring already allocated.
-	 */
-	if (atomic_read(&jrpriv->tfm_count)) {
-		dev_err(jrdev, "Device is busy\n");
-		return -EBUSY;
-	}
+	struct caam_drv_private_jr *jrpriv = data;
+	struct device *jrdev = jrpriv->dev;
 
 	/* Unregister JR-based RNG & crypto algorithms */
 	unregister_algs();
@@ -145,18 +119,18 @@ static int caam_jr_remove(struct platform_device *pdev)
 	spin_unlock(&driver_data.jr_alloc_lock);
 
 	/* Release ring */
-	ret = caam_jr_shutdown(jrdev);
+	ret = caam_reset_hw_jr(jrpriv);
 	if (ret)
 		dev_err(jrdev, "Failed to shut down job ring\n");
 
-	return ret;
+	tasklet_kill(&jrpriv->irqtask);
 }
 
 /* Main per-ring interrupt handler */
 static irqreturn_t caam_jr_interrupt(int irq, void *st_dev)
 {
-	struct device *dev = st_dev;
-	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	struct caam_drv_private_jr *jrp = st_dev;
+	struct device *dev = jrp->dev;
 	u32 irqstate;
 
 	/*
@@ -194,8 +168,8 @@ static irqreturn_t caam_jr_interrupt(int irq, void *st_dev)
 static void caam_jr_dequeue(unsigned long devarg)
 {
 	int hw_idx, sw_idx, i, head, tail;
-	struct device *dev = (struct device *)devarg;
-	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	struct caam_drv_private_jr *jrp = (void *)devarg;
+	struct device *dev = jrp->dev;
 	caam_jr_cbk usercall;
 	u32 *userdesc, userstatus;
 	void *userarg;
@@ -417,15 +391,13 @@ EXPORT_SYMBOL(caam_jr_enqueue);
 /*
  * Init JobR independent of platform property detection
  */
-static int caam_jr_init(struct device *dev)
+static int caam_jr_init(struct caam_drv_private_jr *jrp)
 {
-	struct caam_drv_private_jr *jrp;
+	struct device *dev = jrp->dev;
 	dma_addr_t inpbusaddr, outbusaddr;
 	int i, error;
 
-	jrp = dev_get_drvdata(dev);
-
-	error = caam_reset_hw_jr(dev);
+	error = caam_reset_hw_jr(jrp);
 	if (error)
 		return error;
 
@@ -468,11 +440,11 @@ static int caam_jr_init(struct device *dev)
 		      (JOBR_INTC_COUNT_THLD << JRCFG_ICDCT_SHIFT) |
 		      (JOBR_INTC_TIME_THLD << JRCFG_ICTT_SHIFT));
 
-	tasklet_init(&jrp->irqtask, caam_jr_dequeue, (unsigned long)dev);
+	tasklet_init(&jrp->irqtask, caam_jr_dequeue, (unsigned long)jrp);
 
 	/* Connect job ring interrupt handler. */
 	error = devm_request_irq(dev, jrp->irq, caam_jr_interrupt, IRQF_SHARED,
-				 dev_name(dev), dev);
+				 dev_name(dev), jrp);
 	if (error) {
 		dev_err(dev, "can't connect JobR %d interrupt (%d)\n",
 			jrp->ridx, jrp->irq);
@@ -490,49 +462,35 @@ static void caam_jr_irq_dispose_mapping(void *data)
 /*
  * Probe routine for each detected JobR subsystem.
  */
-static int caam_jr_probe(struct platform_device *pdev)
+int caam_jr_probe(struct device *jrdev, struct device_node *nprop)
 {
-	struct device *jrdev;
-	struct device_node *nprop;
 	struct caam_job_ring __iomem *ctrl;
 	struct caam_drv_private_jr *jrpriv;
 	static int total_jobrs;
-	struct resource *r;
+	struct resource r;
 	int error;
 
-	jrdev = &pdev->dev;
 	jrpriv = devm_kmalloc(jrdev, sizeof(*jrpriv), GFP_KERNEL);
 	if (!jrpriv)
 		return -ENOMEM;
 
-	dev_set_drvdata(jrdev, jrpriv);
-
 	/* save ring identity relative to detection */
 	jrpriv->ridx = total_jobrs++;
+	jrpriv->dev = jrdev;
 
-	nprop = pdev->dev.of_node;
-	/* Get configuration properties from device tree */
-	/* First, get register page */
-	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!r) {
-		dev_err(jrdev, "platform_get_resource() failed\n");
-		return -ENOMEM;
+	error = of_address_to_resource(nprop, 0, &r);
+	if (error) {
+		dev_err(jrdev, "of_address_to_resource() failed\n");
+		return error;
 	}
 
-	ctrl = devm_ioremap(jrdev, r->start, resource_size(r));
+	ctrl = devm_ioremap(jrdev, r.start, resource_size(&r));
 	if (!ctrl) {
 		dev_err(jrdev, "devm_ioremap() failed\n");
 		return -ENOMEM;
 	}
 
 	jrpriv->rregs = (struct caam_job_ring __iomem __force *)ctrl;
-
-	error = dma_set_mask_and_coherent(jrdev, caam_get_dma_mask(jrdev));
-	if (error) {
-		dev_err(jrdev, "dma_set_mask_and_coherent failed (%d)\n",
-			error);
-		return error;
-	}
 
 	/* Identify the interrupt */
 	jrpriv->irq = irq_of_parse_and_map(nprop, 0);
@@ -547,55 +505,21 @@ static int caam_jr_probe(struct platform_device *pdev)
 		return error;
 
 	/* Now do the platform independent part */
-	error = caam_jr_init(jrdev); /* now turn on hardware */
+	error = caam_jr_init(jrpriv); /* now turn on hardware */
 	if (error)
 		return error;
 
-	jrpriv->dev = jrdev;
 	spin_lock(&driver_data.jr_alloc_lock);
 	list_add_tail(&jrpriv->list_node, &driver_data.jr_list);
 	spin_unlock(&driver_data.jr_alloc_lock);
 
 	atomic_set(&jrpriv->tfm_count, 0);
 
-	register_algs(jrdev->parent);
+	error = devm_add_action_or_reset(jrdev, caam_jr_remove, jrpriv);
+	if (error)
+		return error;
+
+	register_algs(jrdev);
 
 	return 0;
 }
-
-static const struct of_device_id caam_jr_match[] = {
-	{
-		.compatible = "fsl,sec-v4.0-job-ring",
-	},
-	{
-		.compatible = "fsl,sec4.0-job-ring",
-	},
-	{},
-};
-MODULE_DEVICE_TABLE(of, caam_jr_match);
-
-static struct platform_driver caam_jr_driver = {
-	.driver = {
-		.name = "caam_jr",
-		.of_match_table = caam_jr_match,
-	},
-	.probe       = caam_jr_probe,
-	.remove      = caam_jr_remove,
-};
-
-static int __init jr_driver_init(void)
-{
-	return platform_driver_register(&caam_jr_driver);
-}
-
-static void __exit jr_driver_exit(void)
-{
-	platform_driver_unregister(&caam_jr_driver);
-}
-
-module_init(jr_driver_init);
-module_exit(jr_driver_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("FSL CAAM JR request backend");
-MODULE_AUTHOR("Freescale Semiconductor - NMG/STC");

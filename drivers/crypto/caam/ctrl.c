@@ -913,9 +913,18 @@ static int caam_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = devm_of_platform_populate(dev);
-	if (ret)
-		dev_err(dev, "JR platform devices creation error\n");
+	for_each_available_child_of_node(nprop, np) {
+		if (of_device_is_compatible(np, "fsl,sec-v4.0-job-ring") ||
+		    of_device_is_compatible(np, "fsl,sec4.0-job-ring")) {
+			ret = caam_jr_probe(dev, np);
+			if (ret) {
+				dev_err(dev,
+				       "JR platform devices creation error\n");
+				of_node_put(np);
+				break;
+			}
+		}
+	}
 
 	return ret;
 }

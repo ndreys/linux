@@ -18,5 +18,6 @@ struct caam_drv_private_jr *caam_jr_alloc(void);
 void caam_jr_free(struct caam_drv_private_jr *jr);
 int caam_jr_enqueue(struct caam_drv_private_jr *jr, u32 *desc, caam_jr_cbk cbk,
 		    void *areq);
+int caam_jr_probe(struct device *jrdev, struct device_node *nprop);
 
 #endif /* JR_H */
