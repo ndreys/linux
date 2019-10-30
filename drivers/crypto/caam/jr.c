@@ -23,7 +23,10 @@ struct jr_driver_data {
 	spinlock_t		jr_alloc_lock;	/* jr_list lock */
 } ____cacheline_aligned;
 
-static struct jr_driver_data driver_data;
+static struct jr_driver_data driver_data = {
+	.jr_list = LIST_HEAD_INIT(driver_data.jr_list),
+	.jr_alloc_lock = __SPIN_LOCK_UNLOCKED(driver_data.jr_alloc_lock),
+};
 static DEFINE_MUTEX(algs_lock);
 static unsigned int active_devs;
 
@@ -588,8 +591,6 @@ static struct platform_driver caam_jr_driver = {
 
 static int __init jr_driver_init(void)
 {
-	spin_lock_init(&driver_data.jr_alloc_lock);
-	INIT_LIST_HEAD(&driver_data.jr_list);
 	return platform_driver_register(&caam_jr_driver);
 }
 
