@@ -8,13 +8,15 @@
 #ifndef JR_H
 #define JR_H
 
-/* Prototypes for backend-level services exposed to APIs */
-typedef void (*caam_jr_cbk)(struct device *dev, u32 *desc, u32 status,
-			    void *areq);
+struct caam_drv_private_jr;
 
-struct device *caam_jr_alloc(void);
-void caam_jr_free(struct device *rdev);
-int caam_jr_enqueue(struct device *dev, u32 *desc, caam_jr_cbk cbk,
+/* Prototypes for backend-level services exposed to APIs */
+typedef void (*caam_jr_cbk)(struct caam_drv_private_jr *jr, u32 *desc,
+			    u32 status, void *areq);
+
+struct caam_drv_private_jr *caam_jr_alloc(void);
+void caam_jr_free(struct caam_drv_private_jr *jr);
+int caam_jr_enqueue(struct caam_drv_private_jr *jr, u32 *desc, caam_jr_cbk cbk,
 		    void *areq);
 
 #endif /* JR_H */

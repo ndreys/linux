@@ -41,8 +41,9 @@ struct split_key_result {
 	int err;
 };
 
-void split_key_done(struct device *dev, u32 *desc, u32 err, void *context);
+void split_key_done(struct caam_drv_private_jr *jr, u32 *desc, u32 err,
+		    void *context);
 
-int gen_split_key(struct device *jrdev, u8 *key_out,
+int gen_split_key(struct caam_drv_private_jr *jr, u8 *key_out,
 		  struct alginfo * const adata, const u8 *key_in, u32 keylen,
 		  int max_keylen);

@@ -264,7 +264,7 @@ static void caam_jr_dequeue(unsigned long devarg)
 		}
 
 		/* Finally, execute user's callback */
-		usercall(dev, userdesc, userstatus, userarg);
+		usercall(jrp, userdesc, userstatus, userarg);
 		outring_used--;
 	}
 
@@ -278,10 +278,9 @@ static void caam_jr_dequeue(unsigned long devarg)
  * returns :  pointer to the newly allocated physical
  *	      JobR dev can be written to if successful.
  **/
-struct device *caam_jr_alloc(void)
+struct caam_drv_private_jr *caam_jr_alloc(void)
 {
-	struct caam_drv_private_jr *jrpriv, *min_jrpriv = NULL;
-	struct device *dev = ERR_PTR(-ENODEV);
+	struct caam_drv_private_jr *jrpriv, *min_jrpriv = ERR_PTR(-ENODEV);
 	int min_tfm_cnt	= INT_MAX;
 	int tfm_cnt;
 
@@ -302,13 +301,12 @@ struct device *caam_jr_alloc(void)
 			break;
 	}
 
-	if (min_jrpriv) {
+	if (!IS_ERR(min_jrpriv))
 		atomic_inc(&min_jrpriv->tfm_count);
-		dev = min_jrpriv->dev;
-	}
+
 	spin_unlock(&driver_data.jr_alloc_lock);
 
-	return dev;
+	return min_jrpriv;
 }
 EXPORT_SYMBOL(caam_jr_alloc);
 
@@ -317,10 +315,8 @@ EXPORT_SYMBOL(caam_jr_alloc);
  * @rdev     - points to the dev that identifies the Job ring to
  *             be released.
  **/
-void caam_jr_free(struct device *rdev)
+void caam_jr_free(struct caam_drv_private_jr *jrpriv)
 {
-	struct caam_drv_private_jr *jrpriv = dev_get_drvdata(rdev);
-
 	atomic_dec(&jrpriv->tfm_count);
 }
 EXPORT_SYMBOL(caam_jr_free);
@@ -353,9 +349,10 @@ EXPORT_SYMBOL(caam_jr_free);
  * @areq: optional pointer to a user argument for use at callback
  *        time.
  **/
-int caam_jr_enqueue(struct device *dev, u32 *desc, caam_jr_cbk cbk, void *areq)
+int caam_jr_enqueue(struct caam_drv_private_jr *jrp, u32 *desc,
+		    caam_jr_cbk cbk, void *areq)
 {
-	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	struct device *dev = jrp->dev;
 	struct caam_jrentry_info *head_entry;
 	int head, tail, desc_size;
 	dma_addr_t desc_dma;

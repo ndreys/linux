@@ -93,7 +93,7 @@ struct caam_rsa_key {
  */
 struct caam_rsa_ctx {
 	struct caam_rsa_key key;
-	struct device *dev;
+	struct caam_drv_private_jr *jr;
 	dma_addr_t padding_dma;
 
 };

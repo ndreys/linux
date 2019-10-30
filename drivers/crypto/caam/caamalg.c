@@ -108,7 +108,7 @@ struct caam_ctx {
 	dma_addr_t sh_desc_dec_dma;
 	dma_addr_t key_dma;
 	enum dma_data_direction dir;
-	struct device *jrdev;
+	struct caam_drv_private_jr *jr;
 	struct alginfo adata;
 	struct alginfo cdata;
 	unsigned int authsize;
@@ -117,7 +117,7 @@ struct caam_ctx {
 static int aead_null_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
 	u32 *desc;
 	int rem_bytes = CAAM_DESC_BYTES_MAX - AEAD_DESC_JOB_IO_LEN -
@@ -170,7 +170,7 @@ static int aead_set_sh_desc(struct crypto_aead *aead)
 						 struct caam_aead_alg, aead);
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
 	u32 ctx1_iv_off = 0;
 	u32 *desc, *nonce = NULL;
@@ -308,7 +308,7 @@ static int aead_setauthsize(struct crypto_aead *authenc,
 static int gcm_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	u32 *desc;
 	int rem_bytes = CAAM_DESC_BYTES_MAX - GCM_DESC_JOB_IO_LEN -
@@ -373,7 +373,7 @@ static int gcm_setauthsize(struct crypto_aead *authenc, unsigned int authsize)
 static int rfc4106_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	u32 *desc;
 	int rem_bytes = CAAM_DESC_BYTES_MAX - GCM_DESC_JOB_IO_LEN -
@@ -441,7 +441,7 @@ static int rfc4106_setauthsize(struct crypto_aead *authenc,
 static int rfc4543_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	u32 *desc;
 	int rem_bytes = CAAM_DESC_BYTES_MAX - GCM_DESC_JOB_IO_LEN -
@@ -507,7 +507,7 @@ static int rfc4543_setauthsize(struct crypto_aead *authenc,
 static int chachapoly_set_sh_desc(struct crypto_aead *aead)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	u32 *desc;
 
@@ -563,7 +563,7 @@ static int aead_setkey(struct crypto_aead *aead,
 			       const u8 *key, unsigned int keylen)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
 	struct crypto_authenc_keys keys;
 	int ret = 0;
@@ -598,7 +598,7 @@ static int aead_setkey(struct crypto_aead *aead,
 		goto skip_split_key;
 	}
 
-	ret = gen_split_key(ctx->jrdev, ctx->key, &ctx->adata, keys.authkey,
+	ret = gen_split_key(ctx->jr, ctx->key, &ctx->adata, keys.authkey,
 			    keys.authkeylen, CAAM_MAX_KEY_SIZE -
 			    keys.enckeylen);
 	if (ret) {
@@ -645,7 +645,7 @@ static int gcm_setkey(struct crypto_aead *aead,
 		      const u8 *key, unsigned int keylen)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	int err;
 
 	err = aes_check_keylen(keylen);
@@ -668,7 +668,7 @@ static int rfc4106_setkey(struct crypto_aead *aead,
 			  const u8 *key, unsigned int keylen)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	int err;
 
 	err = aes_check_keylen(keylen - 4);
@@ -696,7 +696,7 @@ static int rfc4543_setkey(struct crypto_aead *aead,
 			  const u8 *key, unsigned int keylen)
 {
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	int err;
 
 	err = aes_check_keylen(keylen - 4);
@@ -727,7 +727,7 @@ static int skcipher_setkey(struct crypto_skcipher *skcipher, const u8 *key,
 	struct caam_skcipher_alg *alg =
 		container_of(crypto_skcipher_alg(skcipher), typeof(*alg),
 			     skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	unsigned int ivsize = crypto_skcipher_ivsize(skcipher);
 	u32 *desc;
 	const bool is_rfc3686 = alg->caam.rfc3686;
@@ -842,7 +842,7 @@ static int xts_skcipher_setkey(struct crypto_skcipher *skcipher, const u8 *key,
 			       unsigned int keylen)
 {
 	struct caam_ctx *ctx = crypto_skcipher_ctx(skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	u32 *desc;
 
 	if (keylen != 2 * AES_MIN_KEY_SIZE  && keylen != 2 * AES_MAX_KEY_SIZE) {
@@ -960,10 +960,11 @@ static void skcipher_unmap(struct device *dev, struct skcipher_edesc *edesc,
 		   edesc->sec4_sg_dma, edesc->sec4_sg_bytes);
 }
 
-static void aead_encrypt_done(struct device *jrdev, u32 *desc, u32 err,
-				   void *context)
+static void aead_encrypt_done(struct caam_drv_private_jr *jr, u32 *desc,
+			      u32 err, void *context)
 {
 	struct aead_request *req = context;
+	struct device *jrdev = jr->dev;
 	struct aead_edesc *edesc;
 	int ecode = 0;
 
@@ -981,10 +982,11 @@ static void aead_encrypt_done(struct device *jrdev, u32 *desc, u32 err,
 	aead_request_complete(req, ecode);
 }
 
-static void aead_decrypt_done(struct device *jrdev, u32 *desc, u32 err,
-				   void *context)
+static void aead_decrypt_done(struct caam_drv_private_jr *jr, u32 *desc,
+			      u32 err, void *context)
 {
 	struct aead_request *req = context;
+	struct device *jrdev = jr->dev;
 	struct aead_edesc *edesc;
 	int ecode = 0;
 
@@ -1002,13 +1004,14 @@ static void aead_decrypt_done(struct device *jrdev, u32 *desc, u32 err,
 	aead_request_complete(req, ecode);
 }
 
-static void skcipher_encrypt_done(struct device *jrdev, u32 *desc, u32 err,
-				  void *context)
+static void skcipher_encrypt_done(struct caam_drv_private_jr *jr, u32 *desc,
+				  u32 err, void *context)
 {
 	struct skcipher_request *req = context;
 	struct skcipher_edesc *edesc;
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	int ivsize = crypto_skcipher_ivsize(skcipher);
+	struct device *jrdev = jr->dev;
 	int ecode = 0;
 
 	dev_dbg(jrdev, "%s %d: err 0x%x\n", __func__, __LINE__, err);
@@ -1042,13 +1045,14 @@ static void skcipher_encrypt_done(struct device *jrdev, u32 *desc, u32 err,
 	skcipher_request_complete(req, ecode);
 }
 
-static void skcipher_decrypt_done(struct device *jrdev, u32 *desc, u32 err,
-				  void *context)
+static void skcipher_decrypt_done(struct caam_drv_private_jr *jr, u32 *desc,
+				  u32 err, void *context)
 {
 	struct skcipher_request *req = context;
 	struct skcipher_edesc *edesc;
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	int ivsize = crypto_skcipher_ivsize(skcipher);
+	struct device *jrdev = jr->dev;
 	int ecode = 0;
 
 	dev_dbg(jrdev, "%s %d: err 0x%x\n", __func__, __LINE__, err);
@@ -1219,7 +1223,7 @@ static void init_authenc_job(struct aead_request *req,
 						 struct caam_aead_alg, aead);
 	unsigned int ivsize = crypto_aead_ivsize(aead);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jrdev->parent);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(ctx->jr->dev->parent);
 	const bool ctr_mode = ((ctx->cdata.algtype & OP_ALG_AAI_MASK) ==
 			       OP_ALG_AAI_CTR_MOD128);
 	const bool is_rfc3686 = alg->caam.rfc3686;
@@ -1268,7 +1272,7 @@ static void init_skcipher_job(struct skcipher_request *req,
 {
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	struct caam_ctx *ctx = crypto_skcipher_ctx(skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	int ivsize = crypto_skcipher_ivsize(skcipher);
 	u32 *desc = edesc->hw_desc;
 	u32 *sh_desc;
@@ -1324,7 +1328,7 @@ static struct aead_edesc *aead_edesc_alloc(struct aead_request *req,
 {
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	gfp_t flags = (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP) ?
 		       GFP_KERNEL : GFP_ATOMIC;
 	int src_nents, mapped_src_nents, dst_nents = 0, mapped_dst_nents = 0;
@@ -1460,7 +1464,7 @@ static int gcm_encrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret = 0;
@@ -1478,7 +1482,7 @@ static int gcm_encrypt(struct aead_request *req)
 			     desc_bytes(edesc->hw_desc), 1);
 
 	desc = edesc->hw_desc;
-	ret = caam_jr_enqueue(jrdev, desc, aead_encrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_encrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1494,7 +1498,7 @@ static int chachapoly_encrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret;
@@ -1511,7 +1515,7 @@ static int chachapoly_encrypt(struct aead_request *req)
 			     DUMP_PREFIX_ADDRESS, 16, 4, desc, desc_bytes(desc),
 			     1);
 
-	ret = caam_jr_enqueue(jrdev, desc, aead_encrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_encrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1527,7 +1531,7 @@ static int chachapoly_decrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret;
@@ -1544,7 +1548,7 @@ static int chachapoly_decrypt(struct aead_request *req)
 			     DUMP_PREFIX_ADDRESS, 16, 4, desc, desc_bytes(desc),
 			     1);
 
-	ret = caam_jr_enqueue(jrdev, desc, aead_decrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_decrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1565,7 +1569,7 @@ static int aead_encrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret = 0;
@@ -1584,7 +1588,7 @@ static int aead_encrypt(struct aead_request *req)
 			     desc_bytes(edesc->hw_desc), 1);
 
 	desc = edesc->hw_desc;
-	ret = caam_jr_enqueue(jrdev, desc, aead_encrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_encrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1600,7 +1604,7 @@ static int gcm_decrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret = 0;
@@ -1618,7 +1622,7 @@ static int gcm_decrypt(struct aead_request *req)
 			     desc_bytes(edesc->hw_desc), 1);
 
 	desc = edesc->hw_desc;
-	ret = caam_jr_enqueue(jrdev, desc, aead_decrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_decrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1639,7 +1643,7 @@ static int aead_decrypt(struct aead_request *req)
 	struct aead_edesc *edesc;
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	struct caam_ctx *ctx = crypto_aead_ctx(aead);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	bool all_contig;
 	u32 *desc;
 	int ret = 0;
@@ -1662,7 +1666,7 @@ static int aead_decrypt(struct aead_request *req)
 			     desc_bytes(edesc->hw_desc), 1);
 
 	desc = edesc->hw_desc;
-	ret = caam_jr_enqueue(jrdev, desc, aead_decrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, aead_decrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -1681,7 +1685,7 @@ static struct skcipher_edesc *skcipher_edesc_alloc(struct skcipher_request *req,
 {
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	struct caam_ctx *ctx = crypto_skcipher_ctx(skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	gfp_t flags = (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP) ?
 		       GFP_KERNEL : GFP_ATOMIC;
 	int src_nents, mapped_src_nents, dst_nents = 0, mapped_dst_nents = 0;
@@ -1839,7 +1843,7 @@ static int skcipher_encrypt(struct skcipher_request *req)
 	struct skcipher_edesc *edesc;
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	struct caam_ctx *ctx = crypto_skcipher_ctx(skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	u32 *desc;
 	int ret = 0;
 
@@ -1859,7 +1863,7 @@ static int skcipher_encrypt(struct skcipher_request *req)
 			     desc_bytes(edesc->hw_desc), 1);
 
 	desc = edesc->hw_desc;
-	ret = caam_jr_enqueue(jrdev, desc, skcipher_encrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, skcipher_encrypt_done, req);
 
 	if (!ret) {
 		ret = -EINPROGRESS;
@@ -1876,7 +1880,7 @@ static int skcipher_decrypt(struct skcipher_request *req)
 	struct skcipher_edesc *edesc;
 	struct crypto_skcipher *skcipher = crypto_skcipher_reqtfm(req);
 	struct caam_ctx *ctx = crypto_skcipher_ctx(skcipher);
-	struct device *jrdev = ctx->jrdev;
+	struct device *jrdev = ctx->jr->dev;
 	u32 *desc;
 	int ret = 0;
 
@@ -1896,7 +1900,7 @@ static int skcipher_decrypt(struct skcipher_request *req)
 			     DUMP_PREFIX_ADDRESS, 16, 4, edesc->hw_desc,
 			     desc_bytes(edesc->hw_desc), 1);
 
-	ret = caam_jr_enqueue(jrdev, desc, skcipher_decrypt_done, req);
+	ret = caam_jr_enqueue(ctx->jr, desc, skcipher_decrypt_done, req);
 	if (!ret) {
 		ret = -EINPROGRESS;
 	} else {
@@ -3411,25 +3415,25 @@ static int caam_init_common(struct caam_ctx *ctx, struct caam_alg_entry *caam,
 	dma_addr_t dma_addr;
 	struct caam_drv_private *priv;
 
-	ctx->jrdev = caam_jr_alloc();
-	if (IS_ERR(ctx->jrdev)) {
+	ctx->jr = caam_jr_alloc();
+	if (IS_ERR(ctx->jr)) {
 		pr_err("Job Ring Device allocation for transform failed\n");
-		return PTR_ERR(ctx->jrdev);
+		return PTR_ERR(ctx->jr);
 	}
 
-	priv = dev_get_drvdata(ctx->jrdev->parent);
+	priv = dev_get_drvdata(ctx->jr->dev->parent);
 	if (priv->era >= 6 && uses_dkp)
 		ctx->dir = DMA_BIDIRECTIONAL;
 	else
 		ctx->dir = DMA_TO_DEVICE;
 
-	dma_addr = dma_map_single_attrs(ctx->jrdev, ctx->sh_desc_enc,
+	dma_addr = dma_map_single_attrs(ctx->jr->dev, ctx->sh_desc_enc,
 					offsetof(struct caam_ctx,
 						 sh_desc_enc_dma),
 					ctx->dir, DMA_ATTR_SKIP_CPU_SYNC);
-	if (dma_mapping_error(ctx->jrdev, dma_addr)) {
-		dev_err(ctx->jrdev, "unable to map key, shared descriptors\n");
-		caam_jr_free(ctx->jrdev);
+	if (dma_mapping_error(ctx->jr->dev, dma_addr)) {
+		dev_err(ctx->jr->dev, "unable to map key, shared descriptors\n");
+		caam_jr_free(ctx->jr);
 		return -ENOMEM;
 	}
 
@@ -3467,10 +3471,10 @@ static int caam_aead_init(struct crypto_aead *tfm)
 
 static void caam_exit_common(struct caam_ctx *ctx)
 {
-	dma_unmap_single_attrs(ctx->jrdev, ctx->sh_desc_enc_dma,
+	dma_unmap_single_attrs(ctx->jr->dev, ctx->sh_desc_enc_dma,
 			       offsetof(struct caam_ctx, sh_desc_enc_dma),
 			       ctx->dir, DMA_ATTR_SKIP_CPU_SYNC);
-	caam_jr_free(ctx->jrdev);
+	caam_jr_free(ctx->jr);
 }
 
 static void caam_cra_exit(struct crypto_skcipher *tfm)

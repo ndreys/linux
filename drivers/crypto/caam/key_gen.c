@@ -9,12 +9,14 @@
 #include "jr.h"
 #include "error.h"
 #include "desc_constr.h"
+#include "intern.h"
 #include "key_gen.h"
 
-void split_key_done(struct device *dev, u32 *desc, u32 err,
-			   void *context)
+void split_key_done(struct caam_drv_private_jr *jr, u32 *desc, u32 err,
+		    void *context)
 {
 	struct split_key_result *res = context;
+	struct device *dev = jr->dev;
 	int ecode = 0;
 
 	dev_dbg(dev, "%s %d: err 0x%x\n", __func__, __LINE__, err);
@@ -41,11 +43,12 @@ Split key generation-----------------------------------------------
 [06] 0x64260028    fifostr: class2 mdsplit-jdk len=40
 			@0xffe04000
 */
-int gen_split_key(struct device *jrdev, u8 *key_out,
+int gen_split_key(struct caam_drv_private_jr *jr, u8 *key_out,
 		  struct alginfo * const adata, const u8 *key_in, u32 keylen,
 		  int max_keylen)
 {
 	u32 *desc;
+	struct device *jrdev = jr->dev;
 	struct split_key_result result;
 	dma_addr_t dma_addr;
 	unsigned int local_max;
@@ -107,7 +110,7 @@ int gen_split_key(struct device *jrdev, u8 *key_out,
 	result.err = 0;
 	init_completion(&result.completion);
 
-	ret = caam_jr_enqueue(jrdev, desc, split_key_done, &result);
+	ret = caam_jr_enqueue(jr, desc, split_key_done, &result);
 	if (!ret) {
 		/* in progress */
 		wait_for_completion(&result.completion);

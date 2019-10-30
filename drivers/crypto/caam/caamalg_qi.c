@@ -55,7 +55,7 @@ struct caam_skcipher_alg {
  * per-session context
  */
 struct caam_ctx {
-	struct device *jrdev;
+	struct caam_drv_private_jr *jr;
 	u32 sh_desc_enc[DESC_MAX_USED_LEN];
 	u32 sh_desc_dec[DESC_MAX_USED_LEN];
 	u8 key[CAAM_MAX_KEY_SIZE];
@@ -2423,10 +2423,10 @@ static int caam_init_common(struct caam_ctx *ctx, struct caam_alg_entry *caam,
 	 * distribute tfms across job rings to ensure in-order
 	 * crypto request processing per tfm
 	 */
-	ctx->jrdev = caam_jr_alloc();
-	if (IS_ERR(ctx->jrdev)) {
+	ctx->jr = caam_jr_alloc();
+	if (IS_ERR(ctx->jr)) {
 		pr_err("Job Ring Device allocation for transform failed\n");
-		return PTR_ERR(ctx->jrdev);
+		return PTR_ERR(ctx->jr);
 	}
 
 	dev = ctx->jrdev->parent;

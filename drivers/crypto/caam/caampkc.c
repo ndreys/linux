@@ -114,8 +114,10 @@ static void rsa_priv_f3_unmap(struct device *dev, struct rsa_edesc *edesc,
 }
 
 /* RSA Job Completion handler */
-static void rsa_pub_done(struct device *dev, u32 *desc, u32 err, void *context)
+static void rsa_pub_done(struct caam_drv_private_jr *jr, u32 *desc, u32 err,
+			 void *context)
 {
+	struct device *dev = jr->dev;
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
 	int ecode = 0;
@@ -132,9 +134,10 @@ static void rsa_pub_done(struct device *dev, u32 *desc, u32 err, void *context)
 	akcipher_request_complete(req, ecode);
 }
 
-static void rsa_priv_f1_done(struct device *dev, u32 *desc, u32 err,
-			     void *context)
+static void rsa_priv_f1_done(struct caam_drv_private_jr *jr, u32 *desc,
+			     u32 err, void *context)
 {
+	struct device *dev = jr->dev;
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
 	int ecode = 0;
@@ -151,9 +154,10 @@ static void rsa_priv_f1_done(struct device *dev, u32 *desc, u32 err,
 	akcipher_request_complete(req, ecode);
 }
 
-static void rsa_priv_f2_done(struct device *dev, u32 *desc, u32 err,
-			     void *context)
+static void rsa_priv_f2_done(struct caam_drv_private_jr *jr, u32 *desc,
+			     u32 err, void *context)
 {
+	struct device *dev = jr->dev;
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
 	int ecode = 0;
@@ -170,9 +174,10 @@ static void rsa_priv_f2_done(struct device *dev, u32 *desc, u32 err,
 	akcipher_request_complete(req, ecode);
 }
 
-static void rsa_priv_f3_done(struct device *dev, u32 *desc, u32 err,
-			     void *context)
+static void rsa_priv_f3_done(struct caam_drv_private_jr *jr, u32 *desc,
+			     u32 err, void *context)
 {
+	struct device *dev = jr->dev;
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
 	int ecode = 0;
@@ -245,7 +250,7 @@ static struct rsa_edesc *rsa_edesc_alloc(struct akcipher_request *req,
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct device *dev = ctx->dev;
+	struct device *dev = ctx->jr->dev;
 	struct caam_rsa_req_ctx *req_ctx = akcipher_request_ctx(req);
 	struct caam_rsa_key *key = &ctx->key;
 	struct rsa_edesc *edesc;
@@ -371,7 +376,7 @@ static int set_rsa_pub_pdb(struct akcipher_request *req,
 	struct caam_rsa_req_ctx *req_ctx = akcipher_request_ctx(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
-	struct device *dev = ctx->dev;
+	struct device *dev = ctx->jr->dev;
 	struct rsa_pub_pdb *pdb = &edesc->pdb.pub;
 	int sec4_sg_index = 0;
 
@@ -416,7 +421,7 @@ static int set_rsa_priv_f1_pdb(struct akcipher_request *req,
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
-	struct device *dev = ctx->dev;
+	struct device *dev = ctx->jr->dev;
 	struct rsa_priv_f1_pdb *pdb = &edesc->pdb.priv_f1;
 	int sec4_sg_index = 0;
 
@@ -463,7 +468,7 @@ static int set_rsa_priv_f2_pdb(struct akcipher_request *req,
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
-	struct device *dev = ctx->dev;
+	struct device *dev = ctx->jr->dev;
 	struct rsa_priv_f2_pdb *pdb = &edesc->pdb.priv_f2;
 	int sec4_sg_index = 0;
 	size_t p_sz = key->p_sz;
@@ -540,7 +545,7 @@ static int set_rsa_priv_f3_pdb(struct akcipher_request *req,
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
-	struct device *dev = ctx->dev;
+	struct device *dev = ctx->jr->dev;
 	struct rsa_priv_f3_pdb *pdb = &edesc->pdb.priv_f3;
 	int sec4_sg_index = 0;
 	size_t p_sz = key->p_sz;
@@ -632,7 +637,7 @@ static int caam_rsa_enc(struct akcipher_request *req)
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
-	struct device *jrdev = ctx->dev;
+	struct device *jrdev = ctx->jr->dev;
 	struct rsa_edesc *edesc;
 	int ret;
 
@@ -658,7 +663,7 @@ static int caam_rsa_enc(struct akcipher_request *req)
 	/* Initialize Job Descriptor */
 	init_rsa_pub_desc(edesc->hw_desc, &edesc->pdb.pub);
 
-	ret = caam_jr_enqueue(jrdev, edesc->hw_desc, rsa_pub_done, req);
+	ret = caam_jr_enqueue(ctx->jr, edesc->hw_desc, rsa_pub_done, req);
 	if (!ret)
 		return -EINPROGRESS;
 
@@ -674,7 +679,7 @@ static int caam_rsa_dec_priv_f1(struct akcipher_request *req)
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct device *jrdev = ctx->dev;
+	struct device *jrdev = ctx->jr->dev;
 	struct rsa_edesc *edesc;
 	int ret;
 
@@ -691,7 +696,7 @@ static int caam_rsa_dec_priv_f1(struct akcipher_request *req)
 	/* Initialize Job Descriptor */
 	init_rsa_priv_f1_desc(edesc->hw_desc, &edesc->pdb.priv_f1);
 
-	ret = caam_jr_enqueue(jrdev, edesc->hw_desc, rsa_priv_f1_done, req);
+	ret = caam_jr_enqueue(ctx->jr, edesc->hw_desc, rsa_priv_f1_done, req);
 	if (!ret)
 		return -EINPROGRESS;
 
@@ -707,7 +712,7 @@ static int caam_rsa_dec_priv_f2(struct akcipher_request *req)
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct device *jrdev = ctx->dev;
+	struct device *jrdev = ctx->jr->dev;
 	struct rsa_edesc *edesc;
 	int ret;
 
@@ -724,7 +729,7 @@ static int caam_rsa_dec_priv_f2(struct akcipher_request *req)
 	/* Initialize Job Descriptor */
 	init_rsa_priv_f2_desc(edesc->hw_desc, &edesc->pdb.priv_f2);
 
-	ret = caam_jr_enqueue(jrdev, edesc->hw_desc, rsa_priv_f2_done, req);
+	ret = caam_jr_enqueue(ctx->jr, edesc->hw_desc, rsa_priv_f2_done, req);
 	if (!ret)
 		return -EINPROGRESS;
 
@@ -740,7 +745,7 @@ static int caam_rsa_dec_priv_f3(struct akcipher_request *req)
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct device *jrdev = ctx->dev;
+	struct device *jrdev = ctx->jr->dev;
 	struct rsa_edesc *edesc;
 	int ret;
 
@@ -757,7 +762,7 @@ static int caam_rsa_dec_priv_f3(struct akcipher_request *req)
 	/* Initialize Job Descriptor */
 	init_rsa_priv_f3_desc(edesc->hw_desc, &edesc->pdb.priv_f3);
 
-	ret = caam_jr_enqueue(jrdev, edesc->hw_desc, rsa_priv_f3_done, req);
+	ret = caam_jr_enqueue(ctx->jr, edesc->hw_desc, rsa_priv_f3_done, req);
 	if (!ret)
 		return -EINPROGRESS;
 
@@ -781,7 +786,7 @@ static int caam_rsa_dec(struct akcipher_request *req)
 
 	if (req->dst_len < key->n_sz) {
 		req->dst_len = key->n_sz;
-		dev_err(ctx->dev, "Output buffer length less than parameter n\n");
+		dev_err(ctx->jr->dev, "Output buffer length less than parameter n\n");
 		return -EOVERFLOW;
 	}
 
@@ -1038,19 +1043,19 @@ static int caam_rsa_init_tfm(struct crypto_akcipher *tfm)
 {
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 
-	ctx->dev = caam_jr_alloc();
+	ctx->jr = caam_jr_alloc();
 
-	if (IS_ERR(ctx->dev)) {
+	if (IS_ERR(ctx->jr)) {
 		pr_err("Job Ring Device allocation for transform failed\n");
-		return PTR_ERR(ctx->dev);
+		return PTR_ERR(ctx->jr);
 	}
 
-	ctx->padding_dma = dma_map_single(ctx->dev, zero_buffer,
+	ctx->padding_dma = dma_map_single(ctx->jr->dev, zero_buffer,
 					  CAAM_RSA_MAX_INPUT_SIZE - 1,
 					  DMA_TO_DEVICE);
-	if (dma_mapping_error(ctx->dev, ctx->padding_dma)) {
-		dev_err(ctx->dev, "unable to map padding\n");
-		caam_jr_free(ctx->dev);
+	if (dma_mapping_error(ctx->jr->dev, ctx->padding_dma)) {
+		dev_err(ctx->jr->dev, "unable to map padding\n");
+		caam_jr_free(ctx->jr);
 		return -ENOMEM;
 	}
 
@@ -1063,10 +1068,10 @@ static void caam_rsa_exit_tfm(struct crypto_akcipher *tfm)
 	struct caam_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct caam_rsa_key *key = &ctx->key;
 
-	dma_unmap_single(ctx->dev, ctx->padding_dma, CAAM_RSA_MAX_INPUT_SIZE -
-			 1, DMA_TO_DEVICE);
+	dma_unmap_single(ctx->jr->dev, ctx->padding_dma,
+			 CAAM_RSA_MAX_INPUT_SIZE - 1, DMA_TO_DEVICE);
 	caam_rsa_free_key(key);
-	caam_jr_free(ctx->dev);
+	caam_jr_free(ctx->jr);
 }
 
 static struct caam_akcipher_alg caam_rsa = {
