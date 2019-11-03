@@ -11,6 +11,7 @@
 #define INTERN_H
 
 #include "ctrl.h"
+#include "jr.h"
 
 /* Currently comes from Kconfig param as a ^2 (driver-required) */
 #define JOBR_DEPTH (1 << CONFIG_CRYPTO_DEV_FSL_CAAM_RINGSIZE)
@@ -31,7 +32,7 @@
  * Each entry on an output ring needs one of these
  */
 struct caam_jrentry_info {
-	void (*callbk)(struct device *dev, u32 *desc, u32 status, void *arg);
+	caam_jr_cbk callbk;
 	void *cbkarg;	/* Argument per ring entry */
 	u32 *desc_addr_virt;	/* Stored virt addr for postprocessing */
 	dma_addr_t desc_addr_dma;	/* Stored bus addr for done matching */

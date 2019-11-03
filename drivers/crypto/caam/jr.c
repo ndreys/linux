@@ -196,7 +196,7 @@ static void caam_jr_dequeue(unsigned long devarg)
 	int hw_idx, sw_idx, i, head, tail;
 	struct device *dev = (struct device *)devarg;
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
-	void (*usercall)(struct device *dev, u32 *desc, u32 status, void *arg);
+	caam_jr_cbk usercall;
 	u32 *userdesc, userstatus;
 	void *userarg;
 	u32 outring_used = 0;
@@ -353,10 +353,7 @@ EXPORT_SYMBOL(caam_jr_free);
  * @areq: optional pointer to a user argument for use at callback
  *        time.
  **/
-int caam_jr_enqueue(struct device *dev, u32 *desc,
-		    void (*cbk)(struct device *dev, u32 *desc,
-				u32 status, void *areq),
-		    void *areq)
+int caam_jr_enqueue(struct device *dev, u32 *desc, caam_jr_cbk cbk, void *areq)
 {
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
 	struct caam_jrentry_info *head_entry;
@@ -385,7 +382,7 @@ int caam_jr_enqueue(struct device *dev, u32 *desc,
 	head_entry = &jrp->entinfo[head];
 	head_entry->desc_addr_virt = desc;
 	head_entry->desc_size = desc_size;
-	head_entry->callbk = (void *)cbk;
+	head_entry->callbk = cbk;
 	head_entry->cbkarg = areq;
 	head_entry->desc_addr_dma = desc_dma;
 
