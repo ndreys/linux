@@ -933,6 +933,7 @@ static struct platform_driver caam_driver = {
 	.driver = {
 		.name = "caam",
 		.of_match_table = caam_match,
+		.suppress_bind_attrs = true,
 	},
 	.probe       = caam_probe,
 };
