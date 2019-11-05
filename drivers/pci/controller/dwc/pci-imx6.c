@@ -120,6 +120,9 @@ struct imx6_pcie {
 #define PCIE_PHY_STAT (PL_OFFSET + 0x110)
 #define PCIE_PHY_STAT_ACK		BIT(16)
 
+#define PCIE_ACK_F_ASPM_CTRL_OFF		(PL_OFFSET + 0xc)
+#define PCEI_ACK_F_ASPM_CTRL_OFF_ENTER_ASPM	BIT(30)
+
 #define PCIE_LINK_WIDTH_SPEED_CONTROL	0x80C
 
 /* PHY registers (not memory-mapped) */
@@ -559,7 +562,7 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 	case IMX8MQ:
 		reset_control_deassert(imx6_pcie->pciephy_reset);
 		if (IS_ENABLED(CONFIG_PCIEASPM)) {
-			u32 lcr;
+			u32 lcr, aspm_ctrl;
 			/*
 			 * TODO: Is this really needed? If so, can we
 			 * just set APPS_CLK_REQ in imx7_reset_probe()
@@ -580,6 +583,15 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 			lcr &= ~PCI_EXP_LNKCAP_L1EL;
 			lcr |= IMX8MQ_PCIE_LINK_CAP_L1EL_64US;
 			dw_pcie_writel_dbi2(pci, PCIE_RC_LCR, lcr);
+			/*
+			 * Set ENTER_ASPM to be more aggressive about
+			 * entering ASPM
+			 */
+			aspm_ctrl = dw_pcie_readl_dbi(pci,
+						     PCIE_ACK_F_ASPM_CTRL_OFF);
+			aspm_ctrl |= PCEI_ACK_F_ASPM_CTRL_OFF_ENTER_ASPM;
+			dw_pcie_writel_dbi(pci, PCIE_ACK_F_ASPM_CTRL_OFF,
+					   aspm_ctrl);
 
 			dw_pcie_dbi_ro_wr_dis(pci);
 		}
