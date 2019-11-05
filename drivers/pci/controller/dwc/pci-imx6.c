@@ -40,6 +40,9 @@
 #define IMX8MQ_GPR12_PCIE2_CTRL_DEVICE_TYPE	GENMASK(11, 8)
 #define IMX8MQ_PCIE2_BASE_ADDR			0x33c00000
 
+#define IMX8MQ_PCIE_LINK_CAP_L1EL_64US		(0x6 << 15)
+#define IMX8MQ_PCIE_CTRL_APPS_CLK_REQ		BIT(4)
+
 #define to_imx6_pcie(x)	dev_get_drvdata((x)->dev)
 
 enum imx6_pcie_variants {
@@ -70,6 +73,7 @@ struct imx6_pcie {
 	struct clk		*pcie;
 	struct clk		*pcie_aux;
 	struct regmap		*iomuxc_gpr;
+	struct regmap		*src;
 	u32			controller_id;
 	struct reset_control	*pciephy_reset;
 	struct reset_control	*apps_reset;
@@ -421,6 +425,13 @@ static unsigned int imx6_pcie_grp_offset(const struct imx6_pcie *imx6_pcie)
 	return imx6_pcie->controller_id == 1 ? IOMUXC_GPR16 : IOMUXC_GPR14;
 }
 
+static unsigned int
+imx6_pcie_pciphy_rcr_offset(const struct imx6_pcie *imx6_pcie)
+{
+	WARN_ON(imx6_pcie->drvdata->variant != IMX8MQ);
+	return imx6_pcie->controller_id == 1 ? 0x48 : 0x2C;
+}
+
 static int imx6_pcie_enable_ref_clk(struct imx6_pcie *imx6_pcie)
 {
 	struct dw_pcie *pci = imx6_pcie->pci;
@@ -547,6 +558,31 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 	switch (imx6_pcie->drvdata->variant) {
 	case IMX8MQ:
 		reset_control_deassert(imx6_pcie->pciephy_reset);
+		if (IS_ENABLED(CONFIG_PCIEASPM)) {
+			u32 lcr;
+			/*
+			 * TODO: Is this really needed? If so, can we
+			 * just set APPS_CLK_REQ in imx7_reset_probe()
+			 * and forget about it?
+			 */
+			regmap_update_bits(imx6_pcie->src,
+				        imx6_pcie_pciphy_rcr_offset(imx6_pcie),
+					IMX8MQ_PCIE_CTRL_APPS_CLK_REQ,
+					IMX8MQ_PCIE_CTRL_APPS_CLK_REQ);
+			/*
+			 * Configure the L1 latency of rc to less than
+			 * 64us Otherwise, the L1/L1SUB wouldn't be
+			 * enable by ASPM.
+			 */
+			dw_pcie_dbi_ro_wr_en(pci);
+
+			lcr  = dw_pcie_readl_dbi2(pci, PCIE_RC_LCR);
+			lcr &= ~PCI_EXP_LNKCAP_L1EL;
+			lcr |= IMX8MQ_PCIE_LINK_CAP_L1EL_64US;
+			dw_pcie_writel_dbi2(pci, PCIE_RC_LCR, lcr);
+
+			dw_pcie_dbi_ro_wr_dis(pci);
+		}
 		break;
 	case IMX7D:
 		reset_control_deassert(imx6_pcie->pciephy_reset);
@@ -1054,6 +1090,11 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	pci->dbi_base = devm_ioremap_resource(dev, dbi_base);
 	if (IS_ERR(pci->dbi_base))
 		return PTR_ERR(pci->dbi_base);
+	/*
+	 * Configure dbi_base2 to access DBI space with CS2
+	 * asserted
+	 */
+	pci->dbi_base2 = pci->dbi_base + SZ_1M;
 
 	/* Fetch GPIOs */
 	imx6_pcie->reset_gpio = of_get_named_gpio(node, "reset-gpio", 0);
@@ -1107,6 +1148,13 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 			dev_err(dev, "pcie_aux clock source missing or invalid\n");
 			return PTR_ERR(imx6_pcie->pcie_aux);
 		}
+		imx6_pcie->src =
+			syscon_regmap_lookup_by_compatible("fsl,imx8mq-src");
+		if (IS_ERR(imx6_pcie->src)) {
+			dev_err(dev, "SRC regmap is missing or invalid\n");
+			return PTR_ERR(imx6_pcie->src);
+		}
+
 		/* fall through */
 	case IMX7D:
 		if (dbi_base->start == IMX8MQ_PCIE2_BASE_ADDR)
