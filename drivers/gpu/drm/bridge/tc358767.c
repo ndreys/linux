@@ -1229,19 +1229,6 @@ static int __tc_bridge_enable(struct tc_data *tc)
 	return 0;
 }
 
-static void tc_bridge_enable(struct drm_bridge *bridge)
-{
-	struct tc_data *tc = bridge_to_tc(bridge);
-
-	mutex_lock(&tc->tstctl_lock);
-
-	if (!__tc_bridge_enable(tc))
-		drm_panel_enable(tc->panel);
-
-	tc->enabled = true;
-	mutex_unlock(&tc->tstctl_lock);
-}
-
 static int __tc_bridge_disable(struct tc_data *tc)
 {
 	int ret;
@@ -1255,6 +1242,66 @@ static int __tc_bridge_disable(struct tc_data *tc)
 		dev_err(tc->dev, "main link disable error: %d\n", ret);
 
 	return ret;
+}
+
+static void tc_bridge_enable(struct drm_bridge *bridge)
+{
+	struct tc_data *tc = bridge_to_tc(bridge);
+	const int link_retries = 5;
+	const int poll_retries = 50;
+	int ret, i, j;
+	u8 status;
+
+	mutex_lock(&tc->tstctl_lock);
+
+	for (i = 0; i < link_retries; i++) {
+		ret = __tc_bridge_enable(tc);
+		if (ret)
+			goto done;
+
+		for (j = 0; j < poll_retries; j++) {
+			ret = drm_dp_dpcd_readb(&tc->aux, DP_SINK_STATUS,
+						&status);
+			if (ret < 0) {
+				dev_err(tc->dev,
+					"failed to read DP sink status: %d\n",
+					ret);
+				goto done;
+			}
+
+			if (status & DP_RECEIVE_PORT_0_STATUS)
+				break;
+
+			dev_warn(tc->dev,
+		   "DP sink isn't ready, waiting ~100us and checking again\n");
+
+			usleep_range(100, 200);
+		}
+
+		if (status & DP_RECEIVE_PORT_0_STATUS) {
+			drm_panel_enable(tc->panel);
+			if (i > 0) /* Warn only if we had to retry */
+				dev_warn(tc->dev,
+					 "DP sink came up after %d retries\n",
+					 i);
+			goto done;
+		}
+
+		dev_warn(tc->dev,
+			 "DP link wasn't established, trying again\n");
+
+		ret = __tc_bridge_disable(tc);
+		if (ret)
+			goto done;
+	}
+
+	dev_err(tc->dev,
+		"failed to establish DP link after %d retries\n",
+		link_retries);
+
+done:
+	tc->enabled = true;
+	mutex_unlock(&tc->tstctl_lock);
 }
 
 static void tc_bridge_disable(struct drm_bridge *bridge)
