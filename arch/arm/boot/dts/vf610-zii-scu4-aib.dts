@@ -670,6 +670,26 @@
 	};
 };
 
+&qspi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_qspi0>;
+	status = "okay";
+
+	/*
+	 * Attached MT25QL02 can go up to 90Mhz in DTR and 166 in STR
+	 * modes, so, spi-max-frequency is limited to 90MHz
+	 */
+	flash@2 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		spi-max-frequency = <90000000>;
+		spi-rx-bus-width = <4>;
+		reg = <2>;
+		m25p,fast-read;
+	};
+};
+
 &snvsrtc {
 	status = "disabled";
 };
@@ -806,12 +826,12 @@
 
 	pinctrl_qspi0: qspi0grp {
 		fsl,pins = <
-			VF610_PAD_PTD7__QSPI0_B_QSCK		0x31c3
-			VF610_PAD_PTD8__QSPI0_B_CS0		0x31ff
-			VF610_PAD_PTD9__QSPI0_B_DATA3		0x31c3
-			VF610_PAD_PTD10__QSPI0_B_DATA2		0x31c3
-			VF610_PAD_PTD11__QSPI0_B_DATA1		0x31c3
-			VF610_PAD_PTD12__QSPI0_B_DATA0		0x31c3
+			VF610_PAD_PTD7__QSPI0_B_QSCK		0x38c2
+			VF610_PAD_PTD8__QSPI0_B_CS0		0x38c2
+			VF610_PAD_PTD9__QSPI0_B_DATA3		0x38c3
+			VF610_PAD_PTD10__QSPI0_B_DATA2		0x38c3
+			VF610_PAD_PTD11__QSPI0_B_DATA1		0x38c3
+			VF610_PAD_PTD12__QSPI0_B_DATA0		0x38c3
 		>;
 	};
 
