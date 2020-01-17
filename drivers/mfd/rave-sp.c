@@ -286,6 +286,7 @@ static int rave_sp_write(struct rave_sp *sp, const u8 *data, u8 data_size)
 	unsigned char crc[RAVE_SP_CHECKSUM_SIZE];
 	unsigned char *dest = frame;
 	size_t length;
+	int ret;
 
 	if (WARN_ON(checksum_length > sizeof(crc)))
 		return -ENOMEM;
@@ -305,7 +306,11 @@ static int rave_sp_write(struct rave_sp *sp, const u8 *data, u8 data_size)
 	print_hex_dump_debug("rave-sp tx: ", DUMP_PREFIX_NONE,
 			     16, 1, frame, length, false);
 
-	return serdev_device_write(sp->serdev, frame, length, HZ);
+	ret = serdev_device_write(sp->serdev, frame, length, HZ);
+	if (ret != length)
+		return ret < 0 ? ret : -EIO;
+
+	return 0;
 }
 
 static u8 rave_sp_reply_code(u8 command)
@@ -370,7 +375,9 @@ static int __rave_sp_exec(struct rave_sp *sp,
 	data[0] = command;
 	data[1] = ackid;
 
-	rave_sp_write(sp, data, data_size);
+	ret = rave_sp_write(sp, data, data_size);
+	if (ret)
+		goto unlock;
 
 	if (!wait_for_completion_timeout(&reply.received, timeout)) {
 		dev_err(&sp->serdev->dev, "Command timeout\n");
@@ -381,6 +388,7 @@ static int __rave_sp_exec(struct rave_sp *sp,
 		mutex_unlock(&sp->reply_lock);
 	}
 
+unlock:
 	mutex_unlock(&sp->bus_lock);
 	return ret;
 }
@@ -402,7 +410,7 @@ static void rave_sp_receive_event(struct rave_sp *sp,
 		[1] = data[1],
 	};
 
-	rave_sp_write(sp, cmd, sizeof(cmd));
+	WARN_ON_ONCE(rave_sp_write(sp, cmd, sizeof(cmd)));
 
 	blocking_notifier_call_chain(&sp->event_notifier_list,
 				     rave_sp_action_pack(data[0], data[2]),
