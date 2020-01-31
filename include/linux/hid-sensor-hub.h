@@ -165,9 +165,10 @@ int sensor_hub_input_get_attribute_info(struct hid_sensor_hub_device *hsdev,
 * @report_id:	Report id to look for
 * @flag:      Synchronous or asynchronous read
 * @is_signed:   If true then fields < 32 bits will be sign-extended
+* @ret_val:	Variable to store result in
 *
 * Issues a synchronous or asynchronous read request for an input attribute.
-* Returns data upto 32 bits.
+* Returns 0 on success and negative error code on failure.
 */
 
 enum sensor_hub_read_flags {
@@ -179,8 +180,8 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
  					u32 usage_id,
  					u32 attr_usage_id, u32 report_id,
 					enum sensor_hub_read_flags flag,
-					bool is_signed
-);
+					bool is_signed,
+					int *ret_val);
 
 /**
 * sensor_hub_set_feature() - Feature set request

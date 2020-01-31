@@ -82,16 +82,20 @@ static int press_read_raw(struct iio_dev *indio_dev,
 			break;
 		}
 		if (report_id >= 0) {
+			int ret;
+
 			hid_sensor_power_state(&press_state->common_attributes,
 						true);
-			*val = sensor_hub_input_attr_get_raw_value(
+			ret = sensor_hub_input_attr_get_raw_value(
 				press_state->common_attributes.hsdev,
 				HID_USAGE_SENSOR_PRESSURE, address,
 				report_id,
 				SENSOR_HUB_SYNC,
-				min < 0);
+				min < 0, val);
 			hid_sensor_power_state(&press_state->common_attributes,
 						false);
+			if (ret)
+				return ret;
 		} else {
 			*val = 0;
 			return -EINVAL;

@@ -53,22 +53,24 @@ static int humidity_read_raw(struct iio_dev *indio_dev,
 				int *val, int *val2, long mask)
 {
 	struct hid_humidity_state *humid_st = iio_priv(indio_dev);
+	int ret;
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 		if (chan->type != IIO_HUMIDITYRELATIVE)
 			return -EINVAL;
 		hid_sensor_power_state(&humid_st->common_attributes, true);
-		*val = sensor_hub_input_attr_get_raw_value(
+		ret = sensor_hub_input_attr_get_raw_value(
 				humid_st->common_attributes.hsdev,
 				HID_USAGE_SENSOR_HUMIDITY,
 				HID_USAGE_SENSOR_ATMOSPHERIC_HUMIDITY,
 				humid_st->humidity_attr.report_id,
 				SENSOR_HUB_SYNC,
-				humid_st->humidity_attr.logical_minimum < 0);
+				humid_st->humidity_attr.logical_minimum < 0,
+				val);
 		hid_sensor_power_state(&humid_st->common_attributes, false);
 
-		return IIO_VAL_INT;
+		return ret ?: IIO_VAL_INT;
 
 	case IIO_CHAN_INFO_SCALE:
 		*val = humid_st->scale_pre_decml;

@@ -342,12 +342,17 @@ static ssize_t show_value(struct device *dev, struct device_attribute *attr,
 			len += snprintf(&buf[len], PAGE_SIZE - len, "\n");
 
 			return len;
-		} else if (input)
-			value = sensor_hub_input_attr_get_raw_value(
+		} else if (input) {
+			int ret;
+			ret = sensor_hub_input_attr_get_raw_value(
 						sensor_inst->hsdev,
 						sensor_inst->hsdev->usage,
 						usage, report_id,
-						SENSOR_HUB_SYNC, false);
+						SENSOR_HUB_SYNC, false,
+						&value);
+			if (ret)
+				return ret;
+		}
 	} else if (!strncmp(name, "units", strlen("units")))
 		value = sensor_inst->fields[field_index].attribute.units;
 	else if (!strncmp(name, "unit-expo", strlen("unit-expo")))

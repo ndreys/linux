@@ -18,6 +18,9 @@
 
 #define HZ_PER_MHZ	1000000L
 
+#undef hid_dbg
+#define hid_dbg hid_info
+
 static struct {
 	u32 usage_id;
 	int unit; /* 0 for default others from HID sensor spec */
@@ -496,6 +499,8 @@ int hid_sensor_parse_common_attributes(struct hid_sensor_hub_device *hsdev,
 		st->power_state.index, st->power_state.report_id,
 		st->sensitivity.index, st->sensitivity.report_id,
 		timestamp.index, timestamp.report_id);
+
+	return 0;
 
 	ret = sensor_hub_get_feature(hsdev,
 				st->power_state.report_id,

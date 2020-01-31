@@ -109,14 +109,18 @@ static int incl_3d_read_raw(struct iio_dev *indio_dev,
 		report_id = incl_state->incl[chan->scan_index].report_id;
 		min = incl_state->incl[chan->scan_index].logical_minimum;
 		address = incl_3d_addresses[chan->scan_index];
-		if (report_id >= 0)
-			*val = sensor_hub_input_attr_get_raw_value(
+		if (report_id >= 0) {
+			int ret;
+
+			ret = sensor_hub_input_attr_get_raw_value(
 				incl_state->common_attributes.hsdev,
 				HID_USAGE_SENSOR_INCLINOMETER_3D, address,
 				report_id,
 				SENSOR_HUB_SYNC,
-				min < 0);
-		else {
+				min < 0, val);
+			if (ret)
+				return ret;
+		} else {
 			hid_sensor_power_state(&incl_state->common_attributes,
 						false);
 			return -EINVAL;

@@ -287,12 +287,12 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 					u32 usage_id,
 					u32 attr_usage_id, u32 report_id,
 					enum sensor_hub_read_flags flag,
-					bool is_signed)
+					bool is_signed,
+					int *ret_val)
 {
 	struct sensor_hub_data *data = hid_get_drvdata(hsdev->hdev);
 	unsigned long flags;
 	struct hid_report *report;
-	int ret_val = 0;
 
 	report = sensor_hub_report(report_id, hsdev->hdev,
 				   HID_INPUT_REPORT);
@@ -320,28 +320,28 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 		switch (hsdev->pending.raw_size) {
 		case 1:
 			if (is_signed)
-				ret_val = *(s8 *)hsdev->pending.raw_data;
+				*ret_val = *(s8 *)hsdev->pending.raw_data;
 			else
-				ret_val = *(u8 *)hsdev->pending.raw_data;
+				*ret_val = *(u8 *)hsdev->pending.raw_data;
 			break;
 		case 2:
 			if (is_signed)
-				ret_val = *(s16 *)hsdev->pending.raw_data;
+				*ret_val = *(s16 *)hsdev->pending.raw_data;
 			else
-				ret_val = *(u16 *)hsdev->pending.raw_data;
+				*ret_val = *(u16 *)hsdev->pending.raw_data;
 			break;
 		case 4:
-			ret_val = *(u32 *)hsdev->pending.raw_data;
+			*ret_val = *(u32 *)hsdev->pending.raw_data;
 			break;
 		default:
-			ret_val = 0;
+			*ret_val = 0;
 		}
 		kfree(hsdev->pending.raw_data);
 		hsdev->pending.status = false;
 	}
 	mutex_unlock(hsdev->mutex_ptr);
 
-	return ret_val;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(sensor_hub_input_attr_get_raw_value);
 

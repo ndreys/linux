@@ -53,6 +53,7 @@ static int temperature_read_raw(struct iio_dev *indio_dev,
 				int *val, int *val2, long mask)
 {
 	struct temperature_state *temp_st = iio_priv(indio_dev);
+	int ret;
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
@@ -60,18 +61,19 @@ static int temperature_read_raw(struct iio_dev *indio_dev,
 			return -EINVAL;
 		hid_sensor_power_state(
 			&temp_st->common_attributes, true);
-		*val = sensor_hub_input_attr_get_raw_value(
+		ret = sensor_hub_input_attr_get_raw_value(
 			temp_st->common_attributes.hsdev,
 			HID_USAGE_SENSOR_TEMPERATURE,
 			HID_USAGE_SENSOR_DATA_ENVIRONMENTAL_TEMPERATURE,
 			temp_st->temperature_attr.report_id,
 			SENSOR_HUB_SYNC,
-			temp_st->temperature_attr.logical_minimum < 0);
+			temp_st->temperature_attr.logical_minimum < 0,
+			val);
 		hid_sensor_power_state(
 				&temp_st->common_attributes,
 				false);
 
-		return IIO_VAL_INT;
+		return ret ? ret : IIO_VAL_INT;
 
 	case IIO_CHAN_INFO_SCALE:
 		*val = temp_st->scale_pre_decml;
