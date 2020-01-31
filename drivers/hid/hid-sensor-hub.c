@@ -315,23 +315,25 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 	hid_hw_request(hsdev->hdev, report, HID_REQ_GET_REPORT);
 	mutex_unlock(&data->mutex);
 	if (flag == SENSOR_HUB_SYNC) {
+		void *raw_data = hsdev->pending.raw_data;
+
 		wait_for_completion_interruptible_timeout(
 						&hsdev->pending.ready, HZ*5);
 		switch (hsdev->pending.raw_size) {
 		case 1:
 			if (is_signed)
-				*ret_val = *(s8 *)hsdev->pending.raw_data;
+				*ret_val = *(s8 *)raw_data;
 			else
-				*ret_val = *(u8 *)hsdev->pending.raw_data;
+				*ret_val = *(u8 *)raw_data;
 			break;
 		case 2:
 			if (is_signed)
-				*ret_val = *(s16 *)hsdev->pending.raw_data;
+				*ret_val = *(s16 *)raw_data;
 			else
-				*ret_val = *(u16 *)hsdev->pending.raw_data;
+				*ret_val = *(u16 *)raw_data;
 			break;
 		case 4:
-			*ret_val = *(u32 *)hsdev->pending.raw_data;
+			*ret_val = *(u32 *)raw_data;
 			break;
 		default:
 			*ret_val = 0;
