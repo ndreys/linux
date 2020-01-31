@@ -336,7 +336,6 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 		default:
 			*ret_val = 0;
 		}
-		kfree(hsdev->pending.raw_data);
 		hsdev->pending.status = false;
 	}
 	mutex_unlock(hsdev->mutex_ptr);
@@ -513,11 +512,17 @@ static int sensor_hub_raw_event(struct hid_device *hdev,
 					      hsdev->pending.attr_usage_id ==
 					      report->field[i]->logical)) {
 			hid_dbg(hdev, "data was pending ...\n");
-			hsdev->pending.raw_data = kmemdup(ptr, sz, GFP_ATOMIC);
-			if (hsdev->pending.raw_data)
+
+			if (sz <= sizeof(hsdev->pending.raw_data)) {
+				memcpy(hsdev->pending.raw_data, ptr, sz);
 				hsdev->pending.raw_size = sz;
-			else
+			} else {
 				hsdev->pending.raw_size = 0;
+				hid_warn(hdev,
+				      "raw data buffer overflow by %d bytes\n",
+				      sz - sizeof(hsdev->pending.raw_data));
+			}
+
 			complete(&hsdev->pending.ready);
 		}
 		if (callback->capture_sample) {

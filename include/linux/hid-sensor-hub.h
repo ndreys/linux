@@ -50,7 +50,7 @@ struct sensor_hub_pending {
 	u32 usage_id;
 	u32 attr_usage_id;
 	int raw_size;
-	u8  *raw_data;
+	u8  raw_data[sizeof(u32)];
 };
 
 /**
