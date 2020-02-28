@@ -12,10 +12,10 @@
 
 #define CAAM_ERROR_STR_MAX 302
 
-int caam_strstatus(struct device *dev, u32 status, bool qi_v2);
+int caam_strstatus(struct device *dev, u32 status, bool qi_v2, const char *file, int line);
 
-#define caam_jr_strstatus(jrdev, status) caam_strstatus(jrdev, status, false)
-#define caam_qi2_strstatus(qidev, status) caam_strstatus(qidev, status, true)
+#define caam_jr_strstatus(jrdev, status) caam_strstatus(jrdev, status, false, __FILE__, __LINE__)
+#define caam_qi2_strstatus(qidev, status) caam_strstatus(qidev, status, true, __FILE__, __LINE__)
 
 void caam_dump_sg(const char *prefix_str, int prefix_type,
 		  int rowsize, int groupsize, struct scatterlist *sg,

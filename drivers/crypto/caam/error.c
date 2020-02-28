@@ -342,7 +342,7 @@ static int report_cond_code_status(struct device *jrdev, const u32 status,
 	return -EINVAL;
 }
 
-int caam_strstatus(struct device *jrdev, u32 status, bool qi_v2)
+int caam_strstatus(struct device *jrdev, u32 status, bool qi_v2, const char *file, int line)
 {
 	static const struct stat_src {
 		int (*report_ssed)(struct device *jrdev, const u32 status,
@@ -368,6 +368,8 @@ int caam_strstatus(struct device *jrdev, u32 status, bool qi_v2)
 	};
 	u32 ssrc = status >> JRSTA_SSRC_SHIFT;
 	const char *error = status_src[ssrc].error;
+
+	dev_err(jrdev, "%s: L%d\n", file, line);
 
 	/*
 	 * If there is an error handling function, call it to report the error.
