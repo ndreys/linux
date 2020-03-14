@@ -293,6 +293,7 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 	struct sensor_hub_data *data = hid_get_drvdata(hsdev->hdev);
 	unsigned long flags;
 	struct hid_report *report;
+	int ret = 0;
 
 	report = sensor_hub_report(report_id, hsdev->hdev,
 				   HID_INPUT_REPORT);
@@ -313,36 +314,44 @@ int sensor_hub_input_attr_get_raw_value(struct hid_sensor_hub_device *hsdev,
 	}
 	mutex_lock(&data->mutex);
 	hid_hw_request(hsdev->hdev, report, HID_REQ_GET_REPORT);
+
 	mutex_unlock(&data->mutex);
 	if (flag == SENSOR_HUB_SYNC) {
 		void *raw_data = hsdev->pending.raw_data;
 
-		wait_for_completion_interruptible_timeout(
+		ret = wait_for_completion_interruptible_timeout(
 						&hsdev->pending.ready, HZ*5);
-		switch (hsdev->pending.raw_size) {
-		case 1:
-			if (is_signed)
-				*ret_val = *(s8 *)raw_data;
-			else
-				*ret_val = *(u8 *)raw_data;
-			break;
-		case 2:
-			if (is_signed)
-				*ret_val = *(s16 *)raw_data;
-			else
-				*ret_val = *(u16 *)raw_data;
-			break;
-		case 4:
-			*ret_val = *(u32 *)raw_data;
-			break;
-		default:
-			*ret_val = 0;
+
+		if (ret > 0) {
+			switch (hsdev->pending.raw_size) {
+			case 1:
+				if (is_signed)
+					*ret_val = *(s8 *)raw_data;
+				else
+					*ret_val = *(u8 *)raw_data;
+				break;
+			case 2:
+				if (is_signed)
+					*ret_val = *(s16 *)raw_data;
+				else
+					*ret_val = *(u16 *)raw_data;
+				break;
+			case 4:
+				*ret_val = *(u32 *)raw_data;
+				break;
+			default:
+				*ret_val = 0;
+			}
+			ret = 0;
+		} else if (ret == 0) {
+			ret = -ETIMEDOUT;
 		}
+
 		hsdev->pending.status = false;
 	}
 	mutex_unlock(hsdev->mutex_ptr);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(sensor_hub_input_attr_get_raw_value);
 
