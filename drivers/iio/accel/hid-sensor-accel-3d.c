@@ -271,6 +271,10 @@ static int accel_3d_capture_sample(struct hid_sensor_hub_device *hsdev,
 	case HID_USAGE_SENSOR_ACCEL_Y_AXIS:
 	case HID_USAGE_SENSOR_ACCEL_Z_AXIS:
 		offset = usage_id - HID_USAGE_SENSOR_ACCEL_X_AXIS;
+		/*
+		 * FIXME: I think this u32 read is bogus and will read
+		 * past passed buffer boundary if raw_len < 4
+		 */
 		accel_state->accel_val[CHANNEL_SCAN_INDEX_X + offset] =
 						*(u32 *)raw_data;
 		ret = 0;
@@ -310,7 +314,7 @@ static int accel_3d_parse_report(struct platform_device *pdev,
 				CHANNEL_SCAN_INDEX_X + i,
 				st->accel[CHANNEL_SCAN_INDEX_X + i].size);
 	}
-	dev_dbg(&pdev->dev, "accel_3d %x:%x, %x:%x, %x:%x\n",
+	dev_info(&pdev->dev, "accel_3d %x:%x, %x:%x, %x:%x\n",
 			st->accel[0].index,
 			st->accel[0].report_id,
 			st->accel[1].index, st->accel[1].report_id,
@@ -328,7 +332,7 @@ static int accel_3d_parse_report(struct platform_device *pdev,
 			HID_USAGE_SENSOR_DATA_MOD_CHANGE_SENSITIVITY_ABS |
 			HID_USAGE_SENSOR_DATA_ACCELERATION,
 			&st->common_attributes.sensitivity);
-		dev_dbg(&pdev->dev, "Sensitivity index:report %d:%d\n",
+		dev_info(&pdev->dev, "Sensitivity index:report %d:%d\n",
 			st->common_attributes.sensitivity.index,
 			st->common_attributes.sensitivity.report_id);
 	}
