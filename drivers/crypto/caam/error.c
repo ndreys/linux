@@ -10,6 +10,14 @@
 #include "desc.h"
 #include "error.h"
 
+#include "compat.h"
+#include "ctrl.h"
+#include "regs.h"
+#include "jr.h"
+#include "desc.h"
+#include "intern.h"
+
+
 #ifdef DEBUG
 #include <linux/highmem.h>
 
@@ -344,6 +352,8 @@ static int report_cond_code_status(struct device *jrdev, const u32 status,
 
 int caam_strstatus(struct device *jrdev, u32 status, bool qi_v2, const char *file, int line)
 {
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+	void __iomem *rregs = ctrlpriv->ctrl;
 	static const struct stat_src {
 		int (*report_ssed)(struct device *jrdev, const u32 status,
 				   const char *error);
@@ -370,6 +380,7 @@ int caam_strstatus(struct device *jrdev, u32 status, bool qi_v2, const char *fil
 	const char *error = status_src[ssrc].error;
 
 	dev_err(jrdev, "%s: L%d\n", file, line);
+	dev_err(jrdev, "RTSTATUS = %x\n", rd_reg32(rregs + 0x63c));
 
 	/*
 	 * If there is an error handling function, call it to report the error.
