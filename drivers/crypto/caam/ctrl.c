@@ -6,6 +6,7 @@
  * Copyright 2018-2019 NXP
  */
 
+#include <linux/bitfield.h>
 #include <linux/device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -362,6 +363,12 @@ static void kick_trng(struct platform_device *pdev, int ent_delay)
 	 * force re-generation.
 	 */
 	clrsetbits_32(&r4tst->rtmctl, 0, RTMCTL_PRGM | RTMCTL_ACC);
+
+	/*
+	 * Set retry count to its maximum value
+	 */
+	clrsetbits_32(&r4tst->rtscmisc, RTSCMISC_RTY_CNT,
+		      FIELD_PREP(RTSCMISC_RTY_CNT, 0b1111));
 
 	/*
 	 * Performance-wise, it does not make sense to

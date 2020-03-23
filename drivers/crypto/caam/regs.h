@@ -500,6 +500,7 @@ struct rng4tst {
 						     in statistical checker */
 #define RTMCTL_SAMP_MODE_INVALID		3 /* invalid combination */
 	u32 rtmctl;		/* misc. control register */
+#define RTSCMISC_RTY_CNT	GENMASK(19, 16)
 	u32 rtscmisc;		/* statistical check misc. register */
 	u32 rtpkrrng;		/* poker range register */
 	union {
