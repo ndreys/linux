@@ -3236,7 +3236,6 @@ static int ims_pcu_line_setup(struct ims_pcu *pcu)
 static int ims_pcu_get_device_info(struct ims_pcu *pcu)
 {
 	int error;
-	char print_buf[IMS_PCU_BUF_SIZE];
 	uint16_t ver_major;
 	uint8_t ver_minor;
 
@@ -3293,18 +3292,9 @@ static int ims_pcu_get_device_info(struct ims_pcu *pcu)
 	snprintf(pcu->reset_reason, sizeof(pcu->reset_reason),
 		 "%02x", pcu->cmd_buf[IMS_PCU_DATA_OFFSET]);
 
-    memset (print_buf, 0, sizeof (print_buf));
-    strncpy (print_buf, pcu->part_number, sizeof (pcu->part_number));
-    dev_info (pcu->dev, "Part number: %s", print_buf);
-
-    memset (print_buf, 0, sizeof (print_buf));
-    strncpy (print_buf,
-        pcu->date_of_manufacturing, sizeof (pcu->date_of_manufacturing));
-    dev_info (pcu->dev, "Manufacturing date: %s", print_buf);
-
-    memset (print_buf, 0, sizeof (print_buf));
-    strncpy (print_buf, pcu->serial_number, sizeof (pcu->serial_number));
-    dev_info (pcu->dev, "Serial number: %s", print_buf);
+    dev_info (pcu->dev, "Part number: %s", pcu->part_number);
+    dev_info (pcu->dev, "Manufacturing date: %s", pcu->date_of_manufacturing);
+    dev_info (pcu->dev, "Serial number: %s", pcu->serial_number);
 
 	dev_info (pcu->dev, "Main firmware: %s", pcu->fw_version_main);
 	dev_info (pcu->dev, "Main bootloader: %s", pcu->bl_version_main);
@@ -3386,9 +3376,9 @@ static int ims_pcu_init_application_mode(struct ims_pcu *pcu)
 	if (error)
 		return error;
 
-    error = zii_pcu_t2_setup_display(pcu);
-    if (error)
-        goto err_destroy_display;
+	error = zii_pcu_t2_setup_display(pcu);
+	if (error)
+		goto err_destroy_display;
 
 	info = &ims_pcu_device_info[device_id];
 	error = ims_pcu_setup_buttons(pcu, info->keymap, info->keymap_len);
